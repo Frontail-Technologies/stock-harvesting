@@ -535,6 +535,7 @@ export async function computeSymbolBreakoutBacktest(
     matched[weeklyIndex] = passesWeekly && passesDaily;
   }
 
+  const signalsGenerated = matched.filter(Boolean).length;
   const trades: BreakoutTrade[] = [];
   let entryIndex: number | null = null;
 
@@ -576,7 +577,7 @@ export async function computeSymbolBreakoutBacktest(
     totalReturnPct: equity - 100,
     maxDrawdownPct,
     profitFactor: grossLoss === 0 ? null : grossProfit / grossLoss,
-    signalsGenerated: trades.length,
+    signalsGenerated,
     avgHoldingDays:
       trades.reduce((sum, trade) => sum + (trade.exitIndex - trade.entryIndex) * 7, 0) / trades.length,
     largestWinnerPct: Math.max(...trades.map((trade) => trade.returnPct)),

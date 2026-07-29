@@ -31,6 +31,7 @@ export function buildBacktestStatsFromCandles(
   const matched = sortedCandles.map(
     (candle, index) => candle.close >= rollingHighs[index] * NEAR_HIGH_THRESHOLD
   );
+  const signalsGenerated = matched.filter(Boolean).length;
   const trades = buildTrades(sortedCandles, matched);
 
   if (trades.length === 0) {
@@ -39,7 +40,7 @@ export function buildBacktestStatsFromCandles(
       totalReturnPct: 0,
       maxDrawdownPct: 0,
       profitFactor: null,
-      signalsGenerated: 0,
+      signalsGenerated,
       avgHoldingDays: 0,
       largestWinnerPct: 0,
       largestLoserPct: 0,
@@ -66,7 +67,7 @@ export function buildBacktestStatsFromCandles(
     totalReturnPct: equity - 100,
     maxDrawdownPct,
     profitFactor: grossLoss === 0 ? null : grossProfit / grossLoss,
-    signalsGenerated: trades.length,
+    signalsGenerated,
     avgHoldingDays:
       trades.reduce((sum, trade) => sum + (trade.exitIndex - trade.entryIndex) * 7, 0) /
       trades.length,
