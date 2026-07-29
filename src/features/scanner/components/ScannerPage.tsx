@@ -423,6 +423,8 @@ function ScannerDrawingWorkspace({
   );
   const baseScanBands = useMemo(
     () => {
+      if (derivedScanBand) return [derivedScanBand];
+
       const backendBandsWithHighlights = scannerResultsQuery.scanBands.filter(
         (band) => (band.highlightTimes?.length ?? 0) > 0
       );
@@ -431,7 +433,6 @@ function ScannerDrawingWorkspace({
         return backendBandsWithHighlights;
       }
 
-      if (derivedScanBand) return [derivedScanBand];
       return scannerResultsQuery.isError ? mockScanBands : [];
     },
     [
