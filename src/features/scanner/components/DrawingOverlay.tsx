@@ -49,6 +49,7 @@ type DrawingOverlayProps = {
   chart: IChartApi;
   series: ScannerPriceSeries;
   containerRef: RefObject<HTMLDivElement | null>;
+  candleTimes: string[];
   drawing: DrawingController;
   exchange: string;
 };
@@ -1291,6 +1292,7 @@ export function DrawingOverlay({
   chart,
   series,
   containerRef,
+  candleTimes,
   drawing,
   exchange,
 }: DrawingOverlayProps) {
@@ -1363,7 +1365,7 @@ export function DrawingOverlay({
   }, [selectDrawing, selectedDrawingId, textEditorOpen]);
 
   useEffect(() => {
-    if (!drawing.crosshairActive || isCursorTool(drawing.activeTool)) {
+    if (!drawing.crosshairActive || !isCursorTool(drawing.activeTool)) {
       try {
         chart.clearCrosshairPosition();
       } catch {
@@ -1390,14 +1392,20 @@ export function DrawingOverlay({
     useMagnet = drawing.magnetActive
   ): DrawingPoint | null => {
     try {
-      const time = normalizeTime(chart.timeScale().coordinateToTime(screen.x));
       const logical = chart.timeScale().coordinateToLogical(screen.x);
       const price = series.coordinateToPrice(screen.y);
-      if (!time || price === null) return null;
+      if (logical === null || price === null) return null;
+
+      const time =
+        normalizeTime(chart.timeScale().coordinateToTime(screen.x)) ??
+        candleTimes[
+          clamp(Math.round(Number(logical)), 0, Math.max(candleTimes.length - 1, 0))
+        ];
+      if (!time) return null;
 
       return {
         time,
-        ...(logical !== null ? { logical: Number(logical) } : {}),
+        logical: Number(logical),
         price: useMagnet ? Math.round(Number(price) / 5) * 5 : Number(price),
       };
     } catch {
@@ -1406,7 +1414,7 @@ export function DrawingOverlay({
   };
 
   const syncCrosshairFromScreenPoint = (screen: ScreenPoint) => {
-    if (!drawing.crosshairActive) return;
+    if (!drawing.crosshairActive || !isCursorTool(drawing.activeTool)) return;
 
     const chartPoint = screenToDrawingPoint(screen, false);
     if (!chartPoint) {
@@ -1831,6 +1839,7 @@ export function DrawingOverlay({
           // isDraggingDrawing state below).
           <g
             key={item.id}
+            pointerEvents="auto"
             style={{
               cursor: isCursorTool(drawing.activeTool)
                 ? item.locked

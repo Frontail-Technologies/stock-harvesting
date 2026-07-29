@@ -79,7 +79,7 @@ export const queryKeys = {
     }) => ["scanner", "results", input] as const,
     workspaceDrawings: (input: { symbol: string; timeframe: string }) =>
       ["scanner", "workspace-drawings", input] as const,
-    backtest: (input: { symbol: string; exchange?: string }) =>
+    backtest: (input: { symbol: string; exchange?: string; lookback?: string }) =>
       ["scanner", "backtest", input] as const,
     defaultStock: (exchange: string) => ["scanner", "default-stock", exchange] as const,
   },

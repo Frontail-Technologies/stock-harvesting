@@ -92,6 +92,16 @@ export function ChartToolsBar({
     return null;
   };
 
+  const getDefaultToolItem = (group: ToolbarGroup): ToolMenuItem | null => {
+    for (const section of group.sections) {
+      const tool = section.items.find(
+        (item): item is ToolMenuItem => item.kind === "tool"
+      );
+      if (tool) return tool;
+    }
+    return null;
+  };
+
   const getRailIcon = (group: ToolbarGroup) => {
     const activeToolItem = getActiveToolItem(group);
     if (group.id === "select") return getCursorToolIcon(drawing.activeTool);
@@ -133,7 +143,13 @@ export function ChartToolsBar({
           label={getRailLabel(group)}
           icon={getRailIcon(group)}
           active={isGroupActive(group) || openGroupId === group.id}
-          onClick={() => setOpenGroupId((current) => (current === group.id ? null : group.id))}
+          onClick={() => {
+            const defaultTool = getDefaultToolItem(group);
+            if (defaultTool && !group.toolIds.includes(drawing.activeTool)) {
+              drawing.setActiveTool(defaultTool.id);
+            }
+            setOpenGroupId((current) => (current === group.id ? null : group.id));
+          }}
         />
       ))}
 

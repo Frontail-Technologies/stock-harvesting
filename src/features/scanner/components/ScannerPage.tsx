@@ -493,6 +493,7 @@ function ScannerDrawingWorkspace({
             rangeFilter={rangeFilter}
             theme={theme}
             timeframe={timeframe}
+            lookbackMultiplier={lookbackMultiplier}
             crosshairActive={drawing.crosshairActive}
             captureRequest={captureRequest}
             drawing={drawing}

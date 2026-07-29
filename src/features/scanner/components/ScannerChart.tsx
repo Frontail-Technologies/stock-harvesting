@@ -6,11 +6,13 @@ import type { Candle, ScanBand, Stock } from "@/types/market";
 import { useLightweightCandlestickChart } from "../hooks/use-lightweight-candlestick-chart";
 import { useScannerBacktest } from "../hooks/use-scanner-data";
 import { buildScannerChartData } from "../lib/build-scanner-chart-data";
+import { isCursorTool } from "../tools/cursor-tool-config";
 import type {
   ChartCaptureRequest,
   DrawingController,
   ScannerRangeFilter,
   ScannerChartType,
+  ScannerLookbackMultiplier,
   ScannerTheme,
   Timeframe,
 } from "../types";
@@ -25,6 +27,7 @@ type ScannerChartProps = {
   rangeFilter: ScannerRangeFilter;
   theme: ScannerTheme;
   timeframe: Timeframe;
+  lookbackMultiplier: ScannerLookbackMultiplier;
   crosshairActive: boolean;
   captureRequest: ChartCaptureRequest | null;
   drawing: DrawingController;
@@ -41,6 +44,7 @@ export function ScannerChart({
   rangeFilter,
   theme,
   timeframe,
+  lookbackMultiplier,
   crosshairActive,
   captureRequest,
   drawing,
@@ -61,15 +65,17 @@ export function ScannerChart({
     [candles]
   );
   const hasHistoricalCandles = candles.length > 1;
+  const effectiveCrosshairActive = crosshairActive && isCursorTool(drawing.activeTool);
   const { stats: backtestStats } = useScannerBacktest(
     stock.symbol,
     timeframe === "1W" && hasHistoricalCandles,
-    stock.exchange
+    stock.exchange,
+    lookbackMultiplier
   );
   const { containerRef, chartHandles } = useLightweightCandlestickChart({
     data: chartData,
     chartType,
-    crosshairActive,
+    crosshairActive: effectiveCrosshairActive,
     priceFormatter,
     theme,
     autoScale,

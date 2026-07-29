@@ -141,11 +141,16 @@ export function useExchangeDefaultStock(exchange: string, enabled: boolean) {
   return query.data ?? null;
 }
 
-export function useScannerBacktest(symbol: string, enabled: boolean, exchange?: string) {
+export function useScannerBacktest(
+  symbol: string,
+  enabled: boolean,
+  exchange?: string,
+  lookback?: ScannerLookbackMultiplier
+) {
   const authStatus = useSessionStore((state) => state.status);
   const query = useQuery({
-    queryKey: queryKeys.scanner.backtest({ symbol, exchange }),
-    queryFn: () => getScannerBacktest({ symbol, exchange }),
+    queryKey: queryKeys.scanner.backtest({ symbol, exchange, lookback }),
+    queryFn: () => getScannerBacktest({ symbol, exchange, lookback }),
     enabled: authStatus === "authenticated" && enabled && Boolean(symbol),
     retry: false,
     staleTime: 10 * 60_000,

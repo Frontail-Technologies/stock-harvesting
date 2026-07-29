@@ -9,6 +9,7 @@ import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-c
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
 import { getScannerChartTheme } from "../lib/scanner-chart-config";
 import { getChartCursorCss } from "../tools/cursor-tool-config";
+import { TIMEFRAME_LABEL } from "../types";
 import type {
   ChartCaptureRequest,
   DrawingController,
@@ -62,12 +63,27 @@ export function ScannerChartStage({
 
     void captureStageImage(
       stageRef.current,
-        `${stock.symbol}-${timeframe}-scanner.png`,
+        `${stock.symbol}-${timeframe}-scanner.jpg`,
         captureRequest.mode,
         theme,
-        buildShareText(stock, timeframe, candles, formatStockCurrency)
+        buildShareText(stock, timeframe, candles, formatStockCurrency),
+        stock,
+        timeframe,
+        candles,
+        latestSignalActive,
+        backtestStats,
+        formatStockCurrency
       );
-  }, [candles, captureRequest, formatStockCurrency, stock, theme, timeframe]);
+  }, [
+    backtestStats,
+    candles,
+    captureRequest,
+    formatStockCurrency,
+    latestSignalActive,
+    stock,
+    theme,
+    timeframe,
+  ]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -155,13 +171,13 @@ export function ScannerChartStage({
       }}
     >
       <div ref={containerRef} className="relative z-10 h-full w-full" />
-      <div className="pointer-events-none absolute bottom-12 right-14 z-20 flex max-w-[160px] select-none justify-end opacity-45 sm:bottom-10 sm:right-16">
+      <div className="pointer-events-none absolute bottom-12 right-24 z-20 flex max-w-[180px] select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-28">
         <NextImage
           src={getBrandLogoPath(theme)}
           alt=""
           width={220}
           height={70}
-          className="h-7 w-auto object-contain sm:h-8"
+          className="h-8 w-auto object-contain sm:h-9"
           unoptimized
         />
       </div>
@@ -194,6 +210,7 @@ export function ScannerChartStage({
             chart={chartHandles.chart}
             series={chartHandles.series}
             containerRef={containerRef}
+            candleTimes={candleTimes}
             drawing={drawing}
             exchange={stock.exchange}
           />
@@ -219,7 +236,13 @@ async function captureStageImage(
   filename: string,
   mode: ChartCaptureRequest["mode"],
   theme: ScannerTheme,
-  shareText: string
+  shareText: string,
+  stock: Stock,
+  timeframe: Timeframe,
+  candles: Candle[],
+  latestSignalActive: boolean,
+  backtestStats: ScannerBacktestStats | null,
+  formatStockCurrency: (value: number, exchange: string) => string
 ) {
   const rect = stage.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -285,15 +308,24 @@ async function captureStageImage(
   }
 
   await drawCenteredScreenshotWatermark(context, rect, theme);
-  await drawScreenshotWatermark(context, rect, theme);
+  drawChartInfoScreenshotOverlay(
+    context,
+    stock,
+    timeframe,
+    candles,
+    latestSignalActive,
+    theme,
+    formatStockCurrency
+  );
+  drawBacktestStatsScreenshotOverlay(context, backtestStats, rect, theme);
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    output.toBlob(resolve, "image/png")
+    output.toBlob(resolve, "image/jpeg", 0.92)
   );
   if (!blob) return;
 
   if (mode === "share") {
-    const file = new File([blob], filename, { type: "image/png" });
+    const file = new File([blob], filename, { type: "image/jpeg" });
     const shareData = {
       title: "Stock Harvesting Chart",
       text: shareText,
@@ -346,6 +378,164 @@ function buildShareText(
   ].join("\n");
 }
 
+function getScreenshotTextColors(theme: ScannerTheme) {
+  return theme === "dark"
+    ? {
+        text: "#d8e2f0",
+        muted: "#91a3ba",
+        panel: "rgba(15, 23, 42, 0.9)",
+        border: "rgba(148, 163, 184, 0.28)",
+        primary: "#f8b800",
+        success: "#00d084",
+        danger: "#ff4d67",
+      }
+    : {
+        text: "#172033",
+        muted: "#51627a",
+        panel: "rgba(255, 255, 255, 0.92)",
+        border: "rgba(88, 103, 125, 0.22)",
+        primary: "#f8b800",
+        success: "#008f5d",
+        danger: "#e3344f",
+      };
+}
+
+function drawRoundedRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+}
+
+function drawChartInfoScreenshotOverlay(
+  context: CanvasRenderingContext2D,
+  stock: Stock,
+  timeframe: Timeframe,
+  candles: Candle[],
+  latestSignalActive: boolean,
+  theme: ScannerTheme,
+  formatStockCurrency: (value: number, exchange: string) => string
+) {
+  const last = candles[candles.length - 1];
+  const prev = candles[candles.length - 2] ?? last;
+  if (!last || !prev) return;
+
+  const colors = getScreenshotTextColors(theme);
+  const change = last.close - prev.close;
+  const changePct = prev.close ? (change / prev.close) * 100 : 0;
+  const { text: changeText, isPositive } = formatSignedChange(change, changePct);
+  const x = 14;
+  const y = 16;
+
+  context.save();
+  context.font = "700 15px Arial, sans-serif";
+  context.fillStyle = colors.text;
+  context.fillText(stock.symbol, x, y);
+
+  context.font = "12px Arial, sans-serif";
+  context.fillStyle = colors.muted;
+  context.fillText(`${TIMEFRAME_LABEL[timeframe]} - ${stock.exchange}`, x + 54, y);
+
+  if (latestSignalActive) {
+    const badgeX = x + 148;
+    drawRoundedRect(context, badgeX, y - 14, 44, 19, 4);
+    context.fillStyle = "rgba(248, 184, 0, 0.16)";
+    context.fill();
+    context.fillStyle = colors.primary;
+    context.font = "700 10px Arial, sans-serif";
+    context.fillText("Signal", badgeX + 7, y);
+  }
+
+  const detailY = y + 25;
+  const details = [
+    ["O", formatStockCurrency(last.open, stock.exchange), colors.text],
+    ["H", formatStockCurrency(last.high, stock.exchange), colors.text],
+    ["L", formatStockCurrency(last.low, stock.exchange), colors.text],
+    ["C", formatStockCurrency(last.close, stock.exchange), colors.text],
+    ["", changeText, isPositive ? colors.success : colors.danger],
+    ["V", formatCompactVolume(last.volume), colors.text],
+  ];
+  let cursorX = x;
+
+  context.font = "12px Arial, sans-serif";
+  for (const [label, value, color] of details) {
+    context.fillStyle = label ? colors.muted : color;
+    if (label) {
+      context.fillText(label, cursorX, detailY);
+      cursorX += context.measureText(label).width + 4;
+    }
+    context.fillStyle = color;
+    context.fillText(value, cursorX, detailY);
+    cursorX += context.measureText(value).width + 15;
+  }
+  context.restore();
+}
+
+function drawBacktestStatsScreenshotOverlay(
+  context: CanvasRenderingContext2D,
+  stats: ScannerBacktestStats | null,
+  rect: DOMRect,
+  theme: ScannerTheme
+) {
+  if (!stats) return;
+
+  const colors = getScreenshotTextColors(theme);
+  const rows = [
+    ["Hit Ratio", `${stats.hitRatePct.toFixed(1)}%`, colors.text],
+    [
+      "Total Return",
+      `${stats.totalReturnPct >= 0 ? "+" : ""}${stats.totalReturnPct.toFixed(1)}%`,
+      stats.totalReturnPct >= 0 ? colors.success : colors.danger,
+    ],
+    ["Max Drawdown", `${stats.maxDrawdownPct.toFixed(1)}%`, colors.danger],
+    ["Profit Factor", stats.profitFactor === null ? "inf" : stats.profitFactor.toFixed(2), colors.text],
+    ["Signals Generated", String(stats.signalsGenerated), colors.text],
+    ["Avg Holding", `${Math.round(stats.avgHoldingDays)} Days`, colors.text],
+    ["Largest Winner", `+${stats.largestWinnerPct.toFixed(1)}%`, colors.success],
+    ["Largest Loser", `${stats.largestLoserPct.toFixed(1)}%`, colors.danger],
+  ];
+
+  const width = 210;
+  const rowHeight = 22;
+  const height = 24 + rows.length * rowHeight;
+  const x = 14;
+  const y = Math.max(74, rect.height / 2 - height / 2);
+
+  context.save();
+  drawRoundedRect(context, x, y, width, height, 8);
+  context.fillStyle = colors.panel;
+  context.fill();
+  context.strokeStyle = colors.border;
+  context.lineWidth = 1;
+  context.stroke();
+
+  context.font = "12px Arial, sans-serif";
+  rows.forEach(([label, value, valueColor], index) => {
+    const rowY = y + 24 + index * rowHeight;
+    context.fillStyle = colors.muted;
+    context.fillText(`${label}:`, x + 14, rowY);
+    context.font = "700 12px Arial, sans-serif";
+    context.fillStyle = valueColor;
+    context.fillText(value, x + 138, rowY);
+    context.font = "12px Arial, sans-serif";
+  });
+  context.restore();
+}
+
 async function drawCenteredScreenshotWatermark(
   context: CanvasRenderingContext2D,
   rect: DOMRect,
@@ -371,68 +561,6 @@ async function drawCenteredScreenshotWatermark(
   }
 }
 
-async function drawScreenshotWatermark(
-  context: CanvasRenderingContext2D,
-  rect: DOMRect,
-  theme: ScannerTheme
-) {
-  const padding = 10;
-
-  context.save();
-  const logoWidth = Math.min(160, Math.max(110, rect.width * 0.13));
-  let logoHeight = 34;
-
-  try {
-    const image = await loadImage(getBrandLogoPath(theme));
-    const imageWidth = image.naturalWidth || image.width;
-    const imageHeight = image.naturalHeight || image.height;
-    logoHeight = logoWidth * (imageHeight / imageWidth);
-
-    const width = logoWidth + padding * 2;
-    const height = logoHeight + padding * 2;
-    const x = Math.max(10, rect.width - width - 14);
-    const y = Math.max(10, rect.height - height - 12);
-
-    context.globalAlpha = 0.92;
-    context.fillStyle =
-      theme === "dark" ? "rgba(8,13,18,0.72)" : "rgba(255,255,255,0.78)";
-    context.strokeStyle =
-      theme === "dark" ? "rgba(255,255,255,0.16)" : "rgba(15,23,42,0.12)";
-    roundedRect(context, x, y, width, height, 7);
-    context.fill();
-    context.stroke();
-
-    context.drawImage(
-      image,
-      x + padding,
-      y + padding,
-      logoWidth,
-      logoHeight
-    );
-  } catch {
-    const font = "600 12px Arial, sans-serif";
-    const text = "Stock Harvesting";
-    context.font = font;
-    const width = context.measureText(text).width + padding * 2;
-    const height = 34;
-    const x = Math.max(10, rect.width - width - 14);
-    const y = Math.max(10, rect.height - height - 12);
-
-    context.globalAlpha = 0.92;
-    context.fillStyle =
-      theme === "dark" ? "rgba(8,13,18,0.72)" : "rgba(255,255,255,0.78)";
-    context.strokeStyle =
-      theme === "dark" ? "rgba(255,255,255,0.16)" : "rgba(15,23,42,0.12)";
-    roundedRect(context, x, y, width, height, 7);
-    context.fill();
-    context.stroke();
-    context.globalAlpha = 1;
-    context.fillStyle = "#F5B800";
-    context.fillText(text, x + padding, y + 21);
-  }
-  context.restore();
-}
-
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -440,25 +568,4 @@ function loadImage(src: string) {
     image.onerror = reject;
     image.src = src;
   });
-}
-
-function roundedRect(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-) {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.closePath();
 }

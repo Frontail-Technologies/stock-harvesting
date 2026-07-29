@@ -77,10 +77,15 @@ export function patchScannerDrawing(input: {
   );
 }
 
-export function getScannerBacktest(input: { symbol: string; exchange?: string }) {
+export function getScannerBacktest(input: {
+  symbol: string;
+  exchange?: string;
+  lookback?: ScannerLookbackMultiplier;
+}) {
   return apiFetch<ScannerBacktestResponse>(
     withQuery(API_ROUTES.scanner.backtest(input.symbol), {
       exchange: input.exchange,
+      lookback: input.lookback,
     })
   );
 }

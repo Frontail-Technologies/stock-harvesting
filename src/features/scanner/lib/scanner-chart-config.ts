@@ -33,7 +33,7 @@ export const SCANNER_CHART_THEMES: Record<
     crosshair: "rgba(226,232,240,0.58)",
     volumeGreen: "rgba(34,197,94,0.38)",
     volumeRed: "rgba(239,68,68,0.34)",
-    gridLine: "rgba(255,255,255,0.03)",
+    gridLine: "rgba(255,255,255,0.055)",
   },
   light: {
     panelBackground: "#F8FAFC",

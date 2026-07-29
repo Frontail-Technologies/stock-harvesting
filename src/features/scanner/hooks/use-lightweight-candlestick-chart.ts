@@ -239,6 +239,8 @@ export function useLightweightCandlestickChart({
     if (!chart || !priceSeries || !volumeSeries) return;
 
     try {
+      const chartOptions = createScannerChartOptions(latestThemeRef.current);
+      chart.applyOptions({ grid: chartOptions.grid });
       setPriceSeriesData(priceSeries, data, chartType);
       volumeSeries.setData(data.volumeRenderData);
       if (!latestAutoScaleRef.current) {
@@ -263,6 +265,7 @@ export function useLightweightCandlestickChart({
       const chartOptions = createScannerChartOptions(theme);
       chart.applyOptions({
         layout: chartOptions.layout,
+        grid: chartOptions.grid,
         rightPriceScale: chartOptions.rightPriceScale,
         timeScale: chartOptions.timeScale,
         crosshair: scannerCrosshairOptions(crosshairActive, theme),
