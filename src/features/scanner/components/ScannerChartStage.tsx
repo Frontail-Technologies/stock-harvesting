@@ -308,6 +308,7 @@ async function captureStageImage(
   }
 
   await drawCenteredScreenshotWatermark(context, rect, theme);
+  await drawBottomRightScreenshotLogo(context, rect, theme);
   drawChartInfoScreenshotOverlay(
     context,
     stock,
@@ -563,7 +564,32 @@ async function drawCenteredScreenshotWatermark(
     const y = (rect.height - height) / 2;
 
     context.save();
-    context.globalAlpha = 0.12;
+    context.globalAlpha = 0.22;
+    context.drawImage(image, x, y, width, height);
+    context.restore();
+  } catch {
+  }
+}
+
+async function drawBottomRightScreenshotLogo(
+  context: CanvasRenderingContext2D,
+  rect: DOMRect,
+  theme: ScannerTheme
+) {
+  try {
+    const image = await loadImage(getBrandLogoPath(theme));
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const maxWidth = Math.min(rect.width * 0.13, 210);
+    const maxHeight = Math.min(rect.height * 0.07, 58);
+    const scale = Math.min(maxWidth / imageWidth, maxHeight / imageHeight);
+    const width = imageWidth * scale;
+    const height = imageHeight * scale;
+    const x = rect.width - width - 72;
+    const y = rect.height - height - 42;
+
+    context.save();
+    context.globalAlpha = 0.92;
     context.drawImage(image, x, y, width, height);
     context.restore();
   } catch {
