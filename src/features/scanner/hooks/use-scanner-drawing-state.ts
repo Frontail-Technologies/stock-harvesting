@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SCANNER_DRAWINGS_STORAGE_PREFIX } from "../constants/storage-keys";
 import { DEFAULT_CURSOR_TOOL } from "../tools/cursor-tool-config";
 import { defaultDrawingStyle } from "../tools/drawing-style-config";
 import type {
@@ -31,7 +32,7 @@ export function createDrawingBase() {
 }
 
 function storageKey(symbol: string, timeframe: Timeframe) {
-  return `stock-harvesting:scanner-drawings:${symbol}:${timeframe}`;
+  return `${SCANNER_DRAWINGS_STORAGE_PREFIX}:${symbol}:${timeframe}`;
 }
 
 function isEditableKeyboardTarget(target: EventTarget | null) {
@@ -97,6 +98,14 @@ export function useScannerDrawingState(
     },
     [pushHistory]
   );
+
+  const replaceDrawings = useCallback((nextDrawings: DrawingElement[]) => {
+    setDrawings(nextDrawings);
+    setDraftDrawing(null);
+    setSelectedDrawingId(null);
+    setPast([]);
+    setFuture([]);
+  }, []);
 
   const beginEdit = useCallback(() => {
     setDrawings((current) => {
@@ -296,6 +305,7 @@ export function useScannerDrawingState(
     toggleCrosshair: () => setCrosshairActive((current) => !current),
     toggleMagnet: () => setMagnetActive((current) => !current),
     setDraftDrawing,
+    replaceDrawings,
     commitDrawing,
     cancelDraft: () => setDraftDrawing(null),
     selectDrawing: setSelectedDrawingId,

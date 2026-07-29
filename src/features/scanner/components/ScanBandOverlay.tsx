@@ -1,23 +1,42 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import type { IChartApi } from "lightweight-charts";
+import { useEffect, useMemo, useState, type RefObject } from "react";
+import type { IChartApi, Logical, Time } from "lightweight-charts";
 import type { ScanBand } from "@/types/market";
 import type { ScannerPriceSeries } from "../hooks/use-lightweight-candlestick-chart";
 
 const WIDTH_MULTIPLIER = 0.92;
+const MIN_COLUMN_WIDTH = 1;
+const DEFAULT_COLUMN_WIDTH = 8;
 
 type ScanBandOverlayProps = {
   chart: IChartApi;
   series: ScannerPriceSeries;
   bands: ScanBand[];
   candleTimes: string[];
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
 };
 
 type HighlightColumn = {
-  id: string;
   time: string;
+  logicalIndex: number;
+};
+
+type HighlightRun = {
+  id: string;
+  startIndex: number;
+  endIndex: number;
+};
+
+type VisibleRun = {
+  id: string;
+  left: number;
+  width: number;
+};
+
+type OverlayFrame = {
+  width: number;
+  height: number;
 };
 
 export function ScanBandOverlay({
@@ -26,143 +45,177 @@ export function ScanBandOverlay({
   candleTimes,
   containerRef,
 }: ScanBandOverlayProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const columnRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const rafScheduled = useRef(false);
+  const [layoutVersion, setLayoutVersion] = useState(0);
+  const [overlayFrame, setOverlayFrame] = useState<OverlayFrame>({
+    height: 0,
+    width: 0,
+  });
   const candleIndexByTime = useMemo(
     () => new Map(candleTimes.map((time, index) => [time, index])),
+    [candleTimes]
+  );
+  const candleTimeByDate = useMemo(
+    () => new Map(candleTimes.map((time) => [toDateKey(time), time])),
     [candleTimes]
   );
   const highlightColumns = useMemo<HighlightColumn[]>(() => {
     const seen = new Set<string>();
 
     return bands.flatMap((scanBand) => {
-      const times = scanBand.highlightTimes ?? [];
+      const rawTimes =
+        scanBand.highlightTimes && scanBand.highlightTimes.length > 0
+          ? scanBand.highlightTimes
+          : candleTimes.filter(
+              (time) => time >= scanBand.startTime && time <= scanBand.endTime
+            );
 
-      return times
+      return rawTimes
+        .map((time) => resolveCandleTime(time, candleIndexByTime, candleTimeByDate))
+        .filter((time): time is string => Boolean(time))
         .filter((time) => {
           if (seen.has(time)) return false;
           seen.add(time);
           return true;
         })
         .map((time) => ({
-          id: `${scanBand.id}:${time}`,
           time,
+          logicalIndex: candleIndexByTime.get(time) ?? 0,
         }));
     });
-  }, [bands]);
+  }, [bands, candleIndexByTime, candleTimeByDate, candleTimes]);
+
+  // Highlighted candles are merged into contiguous runs so a multi-week
+  // signal renders as one clean band instead of one bordered/textured box
+  // per candle — per-candle boxes each tiled their own background pattern
+  // from their own left edge, so adjacent boxes fell out of phase with each
+  // other and with the chart as it panned, producing a shimmering, glitchy
+  // strip of seams instead of a single steady highlight.
+  const highlightRuns = useMemo<HighlightRun[]>(() => {
+    const sortedIndexes = [...new Set(highlightColumns.map((column) => column.logicalIndex))].sort(
+      (a, b) => a - b
+    );
+    const runs: HighlightRun[] = [];
+
+    for (const index of sortedIndexes) {
+      const lastRun = runs[runs.length - 1];
+      if (lastRun && index === lastRun.endIndex + 1) {
+        lastRun.endIndex = index;
+      } else {
+        runs.push({ id: `run:${index}`, startIndex: index, endIndex: index });
+      }
+    }
+
+    return runs;
+  }, [highlightColumns]);
 
   useEffect(() => {
     let disposed = false;
-    let animationFrameId: number | null = null;
+    let frameId = 0;
 
-    const recalculate = () => {
-      if (disposed) return;
-      const container = containerRef.current;
-      if (!container) return;
-      const paneSize = getPaneSize(chart);
-      if (!paneSize) return;
-      const plotWidth = paneSize.width;
-      const plotHeight = paneSize.height;
-      const overlay = overlayRef.current;
+    const queueLayoutUpdate = () => {
+      if (disposed || frameId) return;
 
-      if (overlay) {
-        overlay.style.width = `${plotWidth}px`;
-        overlay.style.height = `${plotHeight}px`;
-      }
-
-      for (const column of highlightColumns) {
-        const element = columnRefs.current.get(column.id);
-        if (!element) continue;
-
-        const x = safeTimeToCoordinate(chart, column.time);
-
-        if (x === null) {
-          element.style.display = "none";
-          continue;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        if (!disposed) {
+          setOverlayFrame(getOverlayFrame(chart, containerRef.current));
+          setLayoutVersion((version) => version + 1);
         }
-
-        const width = getColumnWidth(chart, candleTimes, candleIndexByTime, column.time, x);
-        const rawLeft = x - width / 2;
-        const left = Math.max(rawLeft, 0);
-        const right = Math.min(rawLeft + width, plotWidth);
-        const visibleWidth = right - left;
-
-        if (visibleWidth <= 0) {
-          element.style.display = "none";
-          continue;
-        }
-
-        element.style.display = "block";
-        element.style.left = `${left}px`;
-        element.style.width = `${visibleWidth}px`;
-        element.style.top = "0px";
-        element.style.height = `${plotHeight}px`;
-      }
-    };
-
-    const scheduleRecalculate = () => {
-      if (disposed || rafScheduled.current) return;
-      rafScheduled.current = true;
-      animationFrameId = requestAnimationFrame(() => {
-        animationFrameId = null;
-        rafScheduled.current = false;
-        recalculate();
       });
     };
 
-    scheduleRecalculate();
+    queueLayoutUpdate();
+    const timeoutId = window.setTimeout(queueLayoutUpdate, 80);
 
     try {
-      chart.timeScale().subscribeVisibleTimeRangeChange(scheduleRecalculate);
-      chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleRecalculate);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(queueLayoutUpdate);
     } catch {
     }
 
     const container = containerRef.current;
-    const resizeObserver = new ResizeObserver(scheduleRecalculate);
-    if (container) {
-      resizeObserver.observe(container);
-    }
-
-    window.addEventListener("resize", scheduleRecalculate);
+    const resizeObserver = container ? new ResizeObserver(queueLayoutUpdate) : null;
+    if (container && resizeObserver) resizeObserver.observe(container);
+    window.addEventListener("resize", queueLayoutUpdate);
 
     return () => {
       disposed = true;
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", queueLayoutUpdate);
       try {
-        chart.timeScale().unsubscribeVisibleTimeRangeChange(scheduleRecalculate);
-        chart.timeScale().unsubscribeVisibleLogicalRangeChange(scheduleRecalculate);
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(queueLayoutUpdate);
       } catch {
       }
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", scheduleRecalculate);
     };
-  }, [candleIndexByTime, candleTimes, chart, containerRef, highlightColumns]);
+  }, [chart, containerRef]);
+
+  const visibleRuns = useMemo<VisibleRun[]>(() => {
+    void layoutVersion;
+
+    if (overlayFrame.width <= 0 || overlayFrame.height <= 0) return [];
+
+    const candleCoordinates = candleTimes.map((time, index) => ({
+      index,
+      x: timeToCoordinate(chart, time, index),
+    }));
+    const fallbackWidth = getFallbackColumnWidth(candleCoordinates);
+
+    return highlightRuns
+      .map((run) => {
+        const startX = candleCoordinates[run.startIndex]?.x ?? null;
+        const endX = candleCoordinates[run.endIndex]?.x ?? null;
+        if (startX === null || endX === null) return null;
+
+        const startHalfWidth =
+          (Math.max(
+            getNearestCandleDistance(candleCoordinates, run.startIndex, fallbackWidth) *
+              WIDTH_MULTIPLIER,
+            MIN_COLUMN_WIDTH
+          )) / 2;
+        const endHalfWidth =
+          (Math.max(
+            getNearestCandleDistance(candleCoordinates, run.endIndex, fallbackWidth) *
+              WIDTH_MULTIPLIER,
+            MIN_COLUMN_WIDTH
+          )) / 2;
+
+        const left = startX - startHalfWidth;
+        const right = endX + endHalfWidth;
+
+        if (right <= 0 || left >= overlayFrame.width) return null;
+
+        return {
+          id: run.id,
+          left: Math.max(left, 0),
+          width: Math.min(right, overlayFrame.width) - Math.max(left, 0),
+        };
+      })
+      .filter((run): run is VisibleRun => Boolean(run));
+  }, [candleTimes, chart, highlightRuns, layoutVersion, overlayFrame]);
 
   return (
     <div
-      ref={overlayRef}
       className="pointer-events-none absolute left-0 top-0 overflow-hidden"
-      style={{ zIndex: 2 }}
+      style={{
+        height: overlayFrame.height,
+        width: overlayFrame.width,
+        zIndex: 11,
+      }}
     >
-      {highlightColumns.map((column) => (
+      {visibleRuns.map((run) => (
         <div
-          key={column.id}
+          key={run.id}
           data-scan-band="true"
-          ref={(el) => {
-            columnRefs.current.set(column.id, el);
-          }}
           className="pointer-events-none absolute"
           style={{
             backgroundColor: "var(--scanner-highlight-fill)",
-            backgroundImage:
-              "linear-gradient(var(--scanner-highlight-grid) 1px, transparent 1px), linear-gradient(90deg, var(--scanner-highlight-grid) 1px, transparent 1px)",
-            backgroundSize: "72px 54px",
             boxShadow:
               "inset 1px 0 0 var(--scanner-highlight-edge), inset -1px 0 0 var(--scanner-highlight-edge)",
+            bottom: 0,
+            left: run.left,
+            top: 0,
+            width: run.width,
           }}
         />
       ))}
@@ -170,57 +223,112 @@ export function ScanBandOverlay({
   );
 }
 
-function getColumnWidth(
-  chart: IChartApi,
-  candleTimes: string[],
-  candleIndexByTime: Map<string, number>,
+function resolveCandleTime(
   time: string,
-  coordinate: number
+  candleIndexByTime: Map<string, number>,
+  candleTimeByDate: Map<string, string>
 ) {
-  const index = candleIndexByTime.get(time);
-  const neighborDistances: number[] = [];
-
-  if (index !== undefined) {
-    const previousTime = candleTimes[index - 1];
-    const nextTime = candleTimes[index + 1];
-    const previousCoordinate = previousTime
-      ? safeTimeToCoordinate(chart, previousTime)
-      : null;
-    const nextCoordinate = nextTime ? safeTimeToCoordinate(chart, nextTime) : null;
-
-    if (previousCoordinate !== null) {
-      neighborDistances.push(Math.abs(coordinate - previousCoordinate));
-    }
-    if (nextCoordinate !== null) {
-      neighborDistances.push(Math.abs(nextCoordinate - coordinate));
-    }
-  }
-
-  const candleSpacing =
-    neighborDistances.length > 0 ? Math.min(...neighborDistances) : 8;
-
-  return Math.max(candleSpacing * WIDTH_MULTIPLIER, 1);
+  if (candleIndexByTime.has(time)) return time;
+  return candleTimeByDate.get(toDateKey(time)) ?? null;
 }
 
-function getPaneSize(chart: IChartApi) {
+function toDateKey(time: string) {
+  return time.slice(0, 10);
+}
+
+function getOverlayFrame(chart: IChartApi, container: HTMLDivElement | null): OverlayFrame {
   try {
     const paneSize = chart.paneSize();
-    const width = paneSize.width;
-    const height = paneSize.height;
-
-    if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
-    if (width <= 0 || height <= 0) return null;
-
-    return { width, height };
+    if (
+      paneSize &&
+      Number.isFinite(paneSize.width) &&
+      Number.isFinite(paneSize.height) &&
+      paneSize.width > 0 &&
+      paneSize.height > 0
+    ) {
+      return paneSize;
+    }
   } catch {
-    return null;
   }
+
+  return {
+    width: container?.clientWidth ?? 0,
+    height: container?.clientHeight ?? 0,
+  };
 }
 
-function safeTimeToCoordinate(chart: IChartApi, time: string) {
+function timeToCoordinate(
+  chart: IChartApi,
+  time: string,
+  logicalIndex: number
+) {
   try {
-    return chart.timeScale().timeToCoordinate(time);
+    const x = chart.timeScale().timeToCoordinate(time as Time);
+    if (x !== null && Number.isFinite(x)) return x;
   } catch {
-    return null;
   }
+
+  try {
+    const x = chart.timeScale().logicalToCoordinate(logicalIndex as Logical);
+    if (x !== null && Number.isFinite(x)) return x;
+  } catch {
+  }
+
+  return null;
+}
+
+function getFallbackColumnWidth(
+  candleCoordinates: Array<{ index: number; x: number | null }>
+) {
+  const distances: number[] = [];
+
+  for (let index = 1; index < candleCoordinates.length; index++) {
+    const previous = candleCoordinates[index - 1];
+    const current = candleCoordinates[index];
+
+    if (previous.x === null || current.x === null) continue;
+
+    const distance = Math.abs(current.x - previous.x);
+    if (Number.isFinite(distance) && distance > 0) distances.push(distance);
+  }
+
+  if (distances.length === 0) return DEFAULT_COLUMN_WIDTH;
+  distances.sort((a, b) => a - b);
+  return distances[Math.floor(distances.length / 2)] ?? DEFAULT_COLUMN_WIDTH;
+}
+
+function getNearestCandleDistance(
+  candleCoordinates: Array<{ index: number; x: number | null }>,
+  logicalIndex: number,
+  fallbackWidth: number
+) {
+  const current = candleCoordinates[logicalIndex];
+  if (!current || current.x === null) return fallbackWidth;
+
+  const previous = findCoordinate(candleCoordinates, logicalIndex, -1);
+  const next = findCoordinate(candleCoordinates, logicalIndex, 1);
+  const distances = [previous, next]
+    .filter((coordinate): coordinate is number => coordinate !== null)
+    .map((coordinate) => Math.abs(coordinate - current.x!))
+    .filter((distance) => Number.isFinite(distance) && distance > 0);
+
+  if (distances.length === 0) return fallbackWidth;
+  return Math.min(...distances);
+}
+
+function findCoordinate(
+  candleCoordinates: Array<{ index: number; x: number | null }>,
+  startIndex: number,
+  direction: -1 | 1
+) {
+  for (
+    let index = startIndex + direction;
+    index >= 0 && index < candleCoordinates.length;
+    index += direction
+  ) {
+    const x = candleCoordinates[index]?.x;
+    if (x !== null && x !== undefined) return x;
+  }
+
+  return null;
 }

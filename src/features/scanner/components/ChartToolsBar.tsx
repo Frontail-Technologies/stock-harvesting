@@ -10,6 +10,7 @@ import {
   Send,
   Trash2,
 } from "lucide-react";
+import type { Stock } from "@/types/market";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/utils/cn";
 import {
@@ -23,15 +24,25 @@ import type {
   ToolbarGroup,
 } from "../tools/chart-tool-types";
 import type { DrawingController } from "../types";
+import type { Timeframe } from "../types";
+import { AiSummaryButton } from "./AiSummaryButton";
 import { ScannerIconButton } from "./ScannerIconButton";
 
 type ChartToolsBarProps = {
   drawing: DrawingController;
+  stock: Stock;
+  timeframe: Timeframe;
   onScreenshot: () => void;
   onSend: () => void;
 };
 
-export function ChartToolsBar({ drawing, onScreenshot, onSend }: ChartToolsBarProps) {
+export function ChartToolsBar({
+  drawing,
+  stock,
+  timeframe,
+  onScreenshot,
+  onSend,
+}: ChartToolsBarProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const hasSelectedDrawing = Boolean(drawing.selectedDrawingId);
   const canUseVisibility = drawing.drawings.length > 0;
@@ -93,7 +104,29 @@ export function ChartToolsBar({ drawing, onScreenshot, onSend }: ChartToolsBarPr
   };
 
   return (
-    <div className="relative z-40 order-2 flex h-12 w-full shrink-0 items-center gap-1 overflow-x-auto border-t border-border bg-background px-2 py-1 md:order-none md:h-auto md:w-11 md:flex-col md:overflow-visible md:border-r md:border-t-0 md:px-0 md:py-2">
+    <div className="relative z-40 flex h-auto w-11 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-border bg-background px-0 py-2">
+      <div className="flex flex-col items-center gap-1 sm:hidden">
+        <AiSummaryButton
+          stock={stock}
+          timeframe={timeframe}
+          compact
+          className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        />
+        <ScannerIconButton
+          label="Screenshot"
+          icon={Camera}
+          className="sm:hidden"
+          onClick={onScreenshot}
+        />
+        <ScannerIconButton
+          label="Send"
+          icon={Send}
+          className="sm:hidden"
+          onClick={onSend}
+        />
+        <Separator className="my-1 h-px w-6 bg-border" />
+      </div>
+
       {groups.map((group) => (
         <ScannerIconButton
           key={group.id}
@@ -104,31 +137,20 @@ export function ChartToolsBar({ drawing, onScreenshot, onSend }: ChartToolsBarPr
         />
       ))}
 
-      <Separator className="mx-1 h-6 w-px bg-border md:my-1 md:h-px md:w-6" />
-
-      <ScannerIconButton
-        label="Screenshot"
-        icon={Camera}
-        onClick={onScreenshot}
-      />
-      <ScannerIconButton
-        label="Send"
-        icon={Send}
-        onClick={onSend}
-      />
-
-      <Separator className="mx-1 h-6 w-px bg-border md:my-1 md:h-px md:w-6" />
+      <Separator className="my-1 h-px w-6 bg-border" />
 
       <ScannerIconButton
         label="Undo"
         icon={RotateCcw}
         active={drawing.canUndo}
+        className="hidden md:flex"
         onClick={drawing.undo}
       />
       <ScannerIconButton
         label="Redo"
         icon={RotateCw}
         active={drawing.canRedo}
+        className="hidden md:flex"
         onClick={drawing.redo}
       />
       <ScannerIconButton
@@ -142,11 +164,12 @@ export function ChartToolsBar({ drawing, onScreenshot, onSend }: ChartToolsBarPr
         label="Delete"
         icon={Trash2}
         active={hasSelectedDrawing}
+        className="hidden md:flex"
         onClick={drawing.deleteSelected}
       />
 
       {openGroup && (
-        <div className="fixed inset-x-2 bottom-14 max-h-[45dvh] overflow-y-auto rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-flyout-bg)] p-1 shadow-2xl md:absolute md:inset-auto md:left-[3.25rem] md:top-2 md:max-h-[calc(100dvh-5rem)] md:w-64">
+        <div className="fixed bottom-12 left-12 top-14 w-[min(16rem,calc(100vw-4rem))] overflow-y-auto rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-flyout-bg)] p-1 shadow-2xl md:absolute md:bottom-auto md:left-[3.25rem] md:top-2 md:max-h-[calc(100dvh-5rem)] md:w-64">
           {openGroup.sections.map((section) => (
             <div key={section.label} className="py-0.5">
               <div className="px-2 pb-0.5 pt-1 text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">

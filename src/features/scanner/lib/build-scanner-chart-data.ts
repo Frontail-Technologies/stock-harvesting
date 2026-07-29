@@ -56,6 +56,26 @@ export function buildScannerChartData(
   theme: ScannerTheme = "dark"
 ): ScannerChartData {
   const chartTheme = getScannerChartTheme(theme);
+
+  if (candles.length === 0) {
+    return {
+      candleRenderData: [],
+      hollowCandleRenderData: [],
+      barRenderData: [],
+      hlcBarRenderData: [],
+      lineRenderData: [],
+      volumeRenderData: [],
+      priceRange: {
+        from: 0,
+        to: 1,
+      },
+      visibleLogicalRange: {
+        from: 0,
+        to: 1,
+      },
+    };
+  }
+
   const lastRealCandle = candles[candles.length - 1];
   const futureWhitespace = generateFutureWhitespaceBars(
     lastRealCandle.time,

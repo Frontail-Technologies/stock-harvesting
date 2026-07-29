@@ -1,6 +1,8 @@
 import { ColorType, CrosshairMode, LineStyle, LineType } from "lightweight-charts";
 import type { ScannerChartType, ScannerTheme } from "../types";
 
+export type ScannerPriceFormatter = (price: number) => string;
+
 export const SCANNER_CHART_COLORS = {
   green: "#22C55E",
   red: "#EF4444",
@@ -21,6 +23,7 @@ export const SCANNER_CHART_THEMES: Record<
     crosshair: string;
     volumeGreen: string;
     volumeRed: string;
+    gridLine: string;
   }
 > = {
   dark: {
@@ -30,14 +33,16 @@ export const SCANNER_CHART_THEMES: Record<
     crosshair: "rgba(226,232,240,0.58)",
     volumeGreen: "rgba(34,197,94,0.38)",
     volumeRed: "rgba(239,68,68,0.34)",
+    gridLine: "rgba(255,255,255,0.03)",
   },
   light: {
-    panelBackground: "#FFFFFF",
-    text: "#475569",
-    scaleBorder: "rgba(15,23,42,0.14)",
-    crosshair: "rgba(51,65,85,0.58)",
+    panelBackground: "#F8FAFC",
+    text: "#334155",
+    scaleBorder: "rgba(15,23,42,0.22)",
+    crosshair: "rgba(30,41,59,0.64)",
     volumeGreen: "rgba(22,163,74,0.28)",
     volumeRed: "rgba(220,38,38,0.24)",
+    gridLine: "rgba(15,23,42,0.14)",
   },
 };
 
@@ -91,8 +96,8 @@ export function createScannerChartOptions(theme: ScannerTheme = "dark") {
       textColor: colors.text,
     },
     grid: {
-      vertLines: { visible: false },
-      horzLines: { visible: false },
+      vertLines: { visible: true, color: colors.gridLine, style: LineStyle.Solid },
+      horzLines: { visible: true, color: colors.gridLine, style: LineStyle.Solid },
     },
     rightPriceScale: { borderColor: colors.scaleBorder },
     timeScale: { borderColor: colors.scaleBorder },
@@ -114,7 +119,21 @@ export function createScannerChartOptions(theme: ScannerTheme = "dark") {
 
 export const scannerChartOptions = createScannerChartOptions("dark");
 
-export function createScannerCandleSeriesOptions() {
+function createScannerPriceFormat(priceFormatter?: ScannerPriceFormatter) {
+  if (!priceFormatter) {
+    return { type: "price" as const, precision: 2, minMove: 0.01 };
+  }
+
+  return {
+    type: "custom" as const,
+    minMove: 0.01,
+    formatter: priceFormatter,
+  };
+}
+
+export function createScannerCandleSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
     upColor: SCANNER_CHART_COLORS.green,
     downColor: SCANNER_CHART_COLORS.red,
@@ -124,14 +143,17 @@ export function createScannerCandleSeriesOptions() {
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }
 
 export const scannerCandleSeriesOptions = createScannerCandleSeriesOptions();
 
-export function createScannerHollowCandleSeriesOptions() {
+export function createScannerHollowCandleSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
-    ...createScannerCandleSeriesOptions(),
+    ...createScannerCandleSeriesOptions(priceFormatter),
     upColor: "rgba(255,255,255,0)",
     borderVisible: true,
     borderUpColor: SCANNER_CHART_COLORS.green,
@@ -142,7 +164,9 @@ export function createScannerHollowCandleSeriesOptions() {
 export const scannerHollowCandleSeriesOptions =
   createScannerHollowCandleSeriesOptions();
 
-export function createScannerBarSeriesOptions() {
+export function createScannerBarSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
     upColor: SCANNER_CHART_COLORS.green,
     downColor: SCANNER_CHART_COLORS.red,
@@ -151,21 +175,26 @@ export function createScannerBarSeriesOptions() {
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }
 
 export const scannerBarSeriesOptions = createScannerBarSeriesOptions();
 
-export function createScannerHlcBarSeriesOptions() {
+export function createScannerHlcBarSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
-    ...createScannerBarSeriesOptions(),
+    ...createScannerBarSeriesOptions(priceFormatter),
     openVisible: false,
   };
 }
 
 export const scannerHlcBarSeriesOptions = createScannerHlcBarSeriesOptions();
 
-export function createScannerLineSeriesOptions() {
+export function createScannerLineSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
     color: SCANNER_CHART_COLORS.gold,
     lineWidth: 2 as const,
@@ -175,14 +204,17 @@ export function createScannerLineSeriesOptions() {
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }
 
 export const scannerLineSeriesOptions = createScannerLineSeriesOptions();
 
-export function createScannerLineWithMarkersSeriesOptions() {
+export function createScannerLineWithMarkersSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
-    ...createScannerLineSeriesOptions(),
+    ...createScannerLineSeriesOptions(priceFormatter),
     pointMarkersVisible: true,
     pointMarkersRadius: 3,
   };
@@ -191,9 +223,11 @@ export function createScannerLineWithMarkersSeriesOptions() {
 export const scannerLineWithMarkersSeriesOptions =
   createScannerLineWithMarkersSeriesOptions();
 
-export function createScannerStepLineSeriesOptions() {
+export function createScannerStepLineSeriesOptions(
+  priceFormatter?: ScannerPriceFormatter
+) {
   return {
-    ...createScannerLineSeriesOptions(),
+    ...createScannerLineSeriesOptions(priceFormatter),
     lineType: LineType.WithSteps,
   };
 }
@@ -202,19 +236,26 @@ export const scannerStepLineSeriesOptions = createScannerStepLineSeriesOptions()
 
 export function createScannerSeriesOptions(
   _theme: ScannerTheme,
-  chartType: ScannerChartType
+  chartType: ScannerChartType,
+  priceFormatter?: ScannerPriceFormatter
 ) {
-  if (chartType === "bar-ohlc") return createScannerBarSeriesOptions();
-  if (chartType === "bar-hlc") return createScannerHlcBarSeriesOptions();
-  if (chartType === "line") return createScannerLineSeriesOptions();
+  if (chartType === "bar-ohlc") {
+    return createScannerBarSeriesOptions(priceFormatter);
+  }
+  if (chartType === "bar-hlc") {
+    return createScannerHlcBarSeriesOptions(priceFormatter);
+  }
+  if (chartType === "line") return createScannerLineSeriesOptions(priceFormatter);
   if (chartType === "line-markers") {
-    return createScannerLineWithMarkersSeriesOptions();
+    return createScannerLineWithMarkersSeriesOptions(priceFormatter);
   }
-  if (chartType === "step-line") return createScannerStepLineSeriesOptions();
+  if (chartType === "step-line") {
+    return createScannerStepLineSeriesOptions(priceFormatter);
+  }
   if (chartType === "hollow-candles") {
-    return createScannerHollowCandleSeriesOptions();
+    return createScannerHollowCandleSeriesOptions(priceFormatter);
   }
-  return createScannerCandleSeriesOptions();
+  return createScannerCandleSeriesOptions(priceFormatter);
 }
 
 export const scannerVolumeSeriesOptions = {

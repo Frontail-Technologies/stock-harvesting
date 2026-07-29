@@ -6,9 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { ThemeWhoosh } from "@/components/ui/theme-whoosh";
 import { THEME_STORAGE_KEY, themes } from "../constants";
 import type { Theme } from "../types";
 
@@ -83,9 +86,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     getThemeSnapshot,
     getServerThemeSnapshot
   );
+  const [whooshActive, setWhooshActive] = useState(false);
+  const previousThemeRef = useRef<Theme | null>(null);
 
   useEffect(() => {
     applyTheme(theme);
+
+    if (previousThemeRef.current === null) {
+      previousThemeRef.current = theme;
+      return;
+    }
+    if (previousThemeRef.current === theme) return;
+
+    previousThemeRef.current = theme;
+    setWhooshActive(true);
+    const timeoutId = window.setTimeout(() => setWhooshActive(false), 420);
+    return () => window.clearTimeout(timeoutId);
   }, [theme]);
 
   const setTheme = useCallback((nextTheme: Theme) => {
@@ -110,7 +126,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [setTheme, theme, toggleTheme]
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>
+      {children}
+      <ThemeWhoosh active={whooshActive} />
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

@@ -1,36 +1,128 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/utils/cn";
 import { SCANNER_RANGE_FILTERS, type ScannerRangeFilter } from "../types";
+import { ChartScaleControls } from "./ChartScaleControls";
 
 type RangeFilterTabsProps = {
   value: ScannerRangeFilter;
   onChange: (value: ScannerRangeFilter) => void;
+  autoScale: boolean;
+  percentageScale: boolean;
+  onToggleAutoScale: () => void;
+  onTogglePercentageScale: () => void;
 };
 
-export function RangeFilterTabs({ value, onChange }: RangeFilterTabsProps) {
+const RANGE_LABELS: Record<ScannerRangeFilter, string> = {
+  "1D": "1 day",
+  "2D": "2 days",
+  "3D": "3 days",
+  "5D": "5 days",
+  "10D": "10 days",
+  "1M": "1 month",
+  "2M": "2 months",
+  "3M": "3 months",
+  "4M": "4 months",
+  "6M": "6 months",
+  "9M": "9 months",
+  "1Y": "1 year",
+  "2Y": "2 years",
+  "3Y": "3 years",
+  "5Y": "5 years",
+  "8Y": "8 years",
+  ALL: "All data",
+};
+
+export function RangeFilterTabs({
+  value,
+  onChange,
+  autoScale,
+  percentageScale,
+  onToggleAutoScale,
+  onTogglePercentageScale,
+}: RangeFilterTabsProps) {
   return (
-    <div className="h-10 shrink-0 overflow-x-auto border-t border-border bg-background md:h-9">
-      <div className="flex min-w-max items-center gap-2 px-2 py-1.5">
+    <div className="h-10 shrink-0 border-t border-border bg-background md:h-9">
+      <div className="flex items-center justify-between gap-3 overflow-x-auto px-2 py-1.5">
+        <MobileRangeDropdown value={value} onChange={onChange} />
+
+        <div className="hidden shrink-0 items-center gap-2 sm:flex">
+          {SCANNER_RANGE_FILTERS.map((filter) => {
+            const active = value === filter;
+
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => onChange(filter)}
+                className={`h-7 shrink-0 rounded-sm px-2.5 text-xs font-medium transition-colors md:h-6 ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/35"
+                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+
+        <ChartScaleControls
+          autoScale={autoScale}
+          percentageScale={percentageScale}
+          onToggleAutoScale={onToggleAutoScale}
+          onTogglePercentageScale={onTogglePercentageScale}
+        />
+      </div>
+      <div className="h-0.5 bg-primary" />
+    </div>
+  );
+}
+
+function MobileRangeDropdown({
+  value,
+  onChange,
+}: {
+  value: ScannerRangeFilter;
+  onChange: (value: ScannerRangeFilter) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-sm bg-muted px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-accent sm:hidden">
+        Date Range
+        <ChevronDown className="size-3 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        side="top"
+        className="scanner-portal w-56 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl"
+      >
         {SCANNER_RANGE_FILTERS.map((filter) => {
           const active = value === filter;
 
           return (
-            <button
+            <DropdownMenuItem
               key={filter}
-              type="button"
               onClick={() => onChange(filter)}
-              className={`h-7 rounded-sm px-2.5 text-xs font-medium transition-colors md:h-6 ${
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/35"
-                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+              className={cn(
+                "flex h-8 cursor-pointer items-center justify-between rounded-md px-2 text-sm font-medium text-muted-foreground focus:bg-muted focus:text-foreground",
+                active &&
+                  "border border-primary/45 bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground"
+              )}
             >
-              {filter}
-            </button>
+              <span>{RANGE_LABELS[filter]}</span>
+              <span className="text-xs opacity-70">{filter}</span>
+            </DropdownMenuItem>
           );
         })}
-      </div>
-      <div className="h-0.5 bg-primary" />
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

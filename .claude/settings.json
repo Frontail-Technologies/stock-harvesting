@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('src/features/admin/components/overview/ProviderStatusCard.tsx','utf8'\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('src/features/admin/hooks/use-admin-data-provider.ts','utf8'\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('src/features/admin/types.ts','utf8'\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('backend/src/modules/data-provider/adapters/zerodha-data-provider.adapter.ts','utf8'\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('backend/src/db/schema/data-provider.ts','utf8'\\)\\)\")",
+      "Bash(powershell -NoProfile -Command \"\\(Invoke-WebRequest -Uri http://localhost:4000/api/health -UseBasicParsing -TimeoutSec 3\\).StatusCode\")",
+      "Bash(node -e \"console.log\\(require\\('fs'\\).readFileSync\\('src/features/stocks/components/StocksTableSkeleton.tsx','utf8'\\)\\)\")"
+    ]
+  }
+}

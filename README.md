@@ -10,6 +10,9 @@ Stock Harvesting is a UI-first prototype for an India-only stock scanner and cha
 - Tailwind CSS 4
 - shadcn-style UI primitives
 - lightweight-charts
+- Express backend under `backend/`
+- Drizzle ORM + PostgreSQL
+- Redis + BullMQ for backend jobs
 
 ## Routes
 
@@ -29,6 +32,18 @@ Then open `http://localhost:3000`.
 
 On Windows PowerShell, use `npm.cmd` if the local execution policy blocks `npm.ps1`.
 
+Backend:
+
+```bash
+cd backend
+npm.cmd install
+copy .env.example .env
+npm.cmd run db:migrate
+npm.cmd run dev
+```
+
+The frontend uses `NEXT_PUBLIC_API_BASE_URL` and defaults to `http://localhost:4000`.
+
 ## Checks
 
 ```bash
@@ -37,8 +52,18 @@ npx.cmd tsc --noEmit
 npm.cmd run build
 ```
 
+Backend checks:
+
+```bash
+cd backend
+npm.cmd run lint
+npm.cmd run test
+npm.cmd run build
+npm.cmd audit --omit=dev
+```
+
 The app uses system font fallbacks instead of `next/font/google` so builds do not require network access to Google Fonts.
 
 ## Current Scope
 
-This phase focuses on a polished frontend experience with deterministic mock candles and mock NSE stock data. Keep API keys and broker integrations server-only when backend work begins.
+The frontend remains usable with mock fallbacks while backend integration comes online. Keep broker credentials, OAuth secrets, refresh tokens, and provider tokens server-only.

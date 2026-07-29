@@ -1,10 +1,12 @@
-export type UserPlan = "Free" | "Pro" | "Enterprise";
+export type UserPlan = "free" | "pro";
 
 export type UserProfile = {
+  id?: string;
   name: string;
   email: string;
   plan: UserPlan;
-  renewsOn: string;
+  role?: "user" | "admin";
+  renewsOn?: string;
   avatarInitials: string;
 };
 

@@ -1,10 +1,24 @@
+"use client";
+
 import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { UserProfile } from "@/types/user";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { useLogout } from "@/features/auth";
 
 export function ProfileOverview({ user }: { user: UserProfile }) {
+  const router = useRouter();
+  const logout = useLogout();
+  const planLabel = user.plan === "pro" ? "Pro" : "Free";
+
+  const handleLogout = async () => {
+    await logout.mutateAsync().catch(() => undefined);
+    router.replace("/login");
+  };
+
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-6 text-center text-card-foreground shadow-sm dark:shadow-none">
       <Avatar size="lg" className="size-16">
@@ -18,20 +32,27 @@ export function ProfileOverview({ user }: { user: UserProfile }) {
         <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
-      <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-        {user.plan} Plan
+      <Badge
+        variant="outline"
+        className="border-brand-gold/40 bg-brand-gold/10 text-brand-gold"
+      >
+        {planLabel} Plan
       </Badge>
 
-      <p className="text-xs text-muted-foreground">Renews on {user.renewsOn}</p>
+      {user.renewsOn && (
+        <p className="text-xs text-muted-foreground">{user.renewsOn}</p>
+      )}
 
       <Separator className="my-1" />
 
       <button
         type="button"
-        className="flex items-center gap-1.5 text-sm font-medium text-danger transition-colors hover:text-danger/80"
+        disabled={logout.isPending}
+        onClick={handleLogout}
+        className="flex items-center gap-1.5 text-sm font-medium text-danger transition-colors hover:text-danger/80 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <LogOut className="size-4" />
-        Log Out
+        {logout.isPending ? <Spinner size="sm" /> : <LogOut className="size-4" />}
+        {logout.isPending ? "Logging out..." : "Log Out"}
       </button>
     </div>
   );

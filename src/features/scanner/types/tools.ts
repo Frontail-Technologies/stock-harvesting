@@ -1,0 +1,46 @@
+export type CursorToolId =
+  | "cursor-cross"
+  | "cursor-dot"
+  | "cursor-arrow"
+  | "cursor-demo"
+  | "cursor-laser";
+
+export type DrawingToolId =
+  | CursorToolId
+  | "trendline"
+  | "ray"
+  | "horizontal-line"
+  | "vertical-line"
+  | "date-range"
+  | "price-range"
+  | "date-price-range"
+  | "rectangle"
+  | "rotated-rectangle"
+  | "circle"
+  | "ellipse"
+  | "triangle"
+  | "arc"
+  | "brush"
+  | "pencil"
+  | "highlighter"
+  | "path"
+  | "curve"
+  | "polyline"
+  | "double-curve"
+  | "text"
+  | "anchored-text"
+  | "note"
+  | "anchored-note"
+  | "comment"
+  | "signpost"
+  | "callout"
+  | "price-label"
+  | "price-note"
+  | "arrow-mark-left"
+  | "arrow-mark-right"
+  | "arrow-mark-up"
+  | "arrow-mark-down"
+  | "flag-mark"
+  | "pin";
+
+export type ToolId = DrawingToolId;

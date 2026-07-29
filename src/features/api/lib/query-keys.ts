@@ -1,0 +1,105 @@
+export const queryKeys = {
+  auth: {
+    currentUser: ["auth", "current-user"] as const,
+  },
+  profile: {
+    current: ["profile", "current"] as const,
+  },
+  marketData: {
+    stocks: (input: {
+      q?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: "symbol" | "name" | "close" | "changePct" | "volume";
+      sortDirection?: "asc" | "desc";
+      exchange?: string;
+      moveFilter?: "all" | "gainers" | "decliners" | "unchanged";
+      minVolume?: number;
+      includeUnpriced?: boolean;
+    }) => ["market-data", "stocks", input] as const,
+    infiniteStocks: (input: {
+      q?: string;
+      limit?: number;
+      sortBy?: "symbol" | "name" | "close" | "changePct" | "volume";
+      sortDirection?: "asc" | "desc";
+      exchange?: string;
+      moveFilter?: "all" | "gainers" | "decliners" | "unchanged";
+      minVolume?: number;
+      includeUnpriced?: boolean;
+    }) => ["market-data", "stocks", "infinite", input] as const,
+    stockSearch: (input: { query: string; limit?: number; exchange?: string }) =>
+      ["market-data", "stock-search", input] as const,
+    candles: (input: {
+      symbol: string;
+      timeframe: string;
+      from?: string;
+      to?: string;
+      exchange?: string;
+    }) => ["market-data", "candles", input] as const,
+    exchanges: ["market-data", "exchanges"] as const,
+    exchangeRates: ["market-data", "exchange-rates"] as const,
+  },
+  marketCollections: {
+    list: (input: { exchange?: string }) => ["market-collections", "list", input] as const,
+    members: (input: {
+      code: string;
+      page: number;
+      limit: number;
+      q?: string;
+      sortBy?: string;
+      sortDirection?: string;
+    }) => ["market-collections", "members", input] as const,
+    relativeStrength: (input: { code: string; limit?: number }) =>
+      ["market-collections", "relative-strength", input] as const,
+    weeklyStrongStocks: (input: { code: string }) =>
+      ["market-collections", "weekly-strong-stocks", input] as const,
+    weeklyStrongStocksBacktest: (input: { code: string; weeks?: number }) =>
+      ["market-collections", "weekly-strong-stocks-backtest", input] as const,
+    admin: {
+      list: ["admin", "market-collections"] as const,
+      detail: (id: string) => ["admin", "market-collections", id] as const,
+      members: (input: {
+        id: string;
+        page: number;
+        limit: number;
+        q?: string;
+        sortBy?: string;
+        sortDirection?: string;
+      }) => ["admin", "market-collections", input.id, "members", input] as const,
+    },
+  },
+  scanner: {
+    results: (input: {
+      symbol: string;
+      timeframe: string;
+      rule?: string;
+      limit?: number;
+      exchange?: string;
+      lookback?: string;
+    }) => ["scanner", "results", input] as const,
+    workspaceDrawings: (input: { symbol: string; timeframe: string }) =>
+      ["scanner", "workspace-drawings", input] as const,
+    backtest: (input: { symbol: string; exchange?: string }) =>
+      ["scanner", "backtest", input] as const,
+    defaultStock: (exchange: string) => ["scanner", "default-stock", exchange] as const,
+  },
+  admin: {
+    usersRoot: ["admin", "users"] as const,
+    users: (input: {
+      q?: string;
+      role?: string;
+      plan?: string;
+      page: number;
+      limit: number;
+      sort: string;
+      direction: string;
+    }) => ["admin", "users", input] as const,
+    branding: ["admin", "branding"] as const,
+    dataProviderStatus: ["admin", "data-provider-status"] as const,
+    dataProviderStatuses: ["admin", "data-provider-statuses"] as const,
+    dataProviderConnect: ["admin", "data-provider-connect"] as const,
+    aiSettings: ["admin", "ai-settings"] as const,
+    aiSettingsKey: ["admin", "ai-settings", "key"] as const,
+    jobs: ["admin", "jobs"] as const,
+  },
+} as const;

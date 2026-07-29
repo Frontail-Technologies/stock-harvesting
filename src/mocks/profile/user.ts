@@ -3,7 +3,7 @@ import type { UsageStats, UserProfile } from "@/types/user";
 export const mockUser: UserProfile = {
   name: "Rahul Sharma",
   email: "rahul.sharma@example.com",
-  plan: "Pro",
+  plan: "pro",
   renewsOn: "24 Aug 2026",
   avatarInitials: "RS",
 };

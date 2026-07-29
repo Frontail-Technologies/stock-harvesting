@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Stock } from "@/types/market";
-import { mockScanBands, mockWeeklyCandles } from "@/mocks/market/candles";
+import { useCurrency } from "@/features/currency";
+import type { Candle, ScanBand, Stock } from "@/types/market";
 import { useLightweightCandlestickChart } from "../hooks/use-lightweight-candlestick-chart";
-import { useNearHighScanOverlayData } from "../hooks/use-near-high-scan-overlay-data";
+import { useScannerBacktest } from "../hooks/use-scanner-data";
 import { buildScannerChartData } from "../lib/build-scanner-chart-data";
 import type {
   ChartCaptureRequest,
@@ -18,6 +18,9 @@ import { ScannerChartStage } from "./ScannerChartStage";
 
 type ScannerChartProps = {
   stock: Stock;
+  candles: Candle[];
+  baseScanBands: ScanBand[];
+  loading: boolean;
   chartType: ScannerChartType;
   rangeFilter: ScannerRangeFilter;
   theme: ScannerTheme;
@@ -25,10 +28,15 @@ type ScannerChartProps = {
   crosshairActive: boolean;
   captureRequest: ChartCaptureRequest | null;
   drawing: DrawingController;
+  autoScale: boolean;
+  percentageScale: boolean;
 };
 
 export function ScannerChart({
   stock,
+  candles,
+  baseScanBands,
+  loading,
   chartType,
   rangeFilter,
   theme,
@@ -36,27 +44,37 @@ export function ScannerChart({
   crosshairActive,
   captureRequest,
   drawing,
+  autoScale,
+  percentageScale,
 }: ScannerChartProps) {
+  const { formatStockCurrency } = useCurrency();
   const chartData = useMemo(
-    () => buildScannerChartData(mockWeeklyCandles, rangeFilter, theme),
-    [rangeFilter, theme]
+    () => buildScannerChartData(candles, rangeFilter, theme),
+    [candles, rangeFilter, theme]
+  );
+  const priceFormatter = useMemo(
+    () => (price: number) => formatStockCurrency(price, stock.exchange),
+    [formatStockCurrency, stock.exchange]
   );
   const candleTimes = useMemo(
-    () => mockWeeklyCandles.map((candle) => candle.time),
-    []
+    () => candles.map((candle) => candle.time),
+    [candles]
+  );
+  const hasHistoricalCandles = candles.length > 1;
+  const { stats: backtestStats } = useScannerBacktest(
+    stock.symbol,
+    timeframe === "1W" && hasHistoricalCandles,
+    stock.exchange
   );
   const { containerRef, chartHandles } = useLightweightCandlestickChart({
     data: chartData,
     chartType,
     crosshairActive,
+    priceFormatter,
     theme,
+    autoScale,
+    percentageScale,
   });
-  const { scanBands } =
-    useNearHighScanOverlayData({
-      symbol: stock.symbol,
-      candles: mockWeeklyCandles,
-      baseScanBands: mockScanBands,
-    });
 
   return (
     <ScannerChartStage
@@ -64,11 +82,14 @@ export function ScannerChart({
       chartHandles={chartHandles}
       stock={stock}
       timeframe={timeframe}
+      candles={candles}
       candleTimes={candleTimes}
-      scanBands={scanBands}
+      scanBands={baseScanBands}
+      loading={loading}
       captureRequest={captureRequest}
       drawing={drawing}
       theme={theme}
+      backtestStats={hasHistoricalCandles ? backtestStats : null}
     />
   );
 }

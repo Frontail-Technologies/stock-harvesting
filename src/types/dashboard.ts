@@ -11,6 +11,8 @@ export type DashboardItem = {
   label: string;
   value: number;
   color: DashboardItemColor;
+  metric?: "change" | "volume" | "price";
+  exchange?: string;
 };
 
 export type DashboardCardVariant = "category" | "stockList";

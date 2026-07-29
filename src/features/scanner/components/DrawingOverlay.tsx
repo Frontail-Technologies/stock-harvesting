@@ -11,7 +11,7 @@ import {
 } from "react";
 import { Check } from "lucide-react";
 import type { IChartApi, Logical } from "lightweight-charts";
-import { formatCurrency } from "@/utils/formatters";
+import { useCurrency } from "@/features/currency";
 import { createDrawingBase } from "../hooks/use-scanner-drawing-state";
 import type { ScannerPriceSeries } from "../hooks/use-lightweight-candlestick-chart";
 import {
@@ -50,6 +50,7 @@ type DrawingOverlayProps = {
   series: ScannerPriceSeries;
   containerRef: RefObject<HTMLDivElement | null>;
   drawing: DrawingController;
+  exchange: string;
 };
 
 type ScreenPoint = {
@@ -107,6 +108,7 @@ type TextEditorState = {
 const SELECTED_STROKE = "var(--scanner-handle-stroke)";
 const DRAFT_STROKE = "#facc15";
 const HIT_STROKE = "rgba(255, 255, 255, 0)";
+type PriceFormatter = (value: number) => string;
 
 function normalizeTime(time: unknown): string | null {
   if (typeof time === "string") return time;
@@ -130,6 +132,29 @@ function distance(a: ScreenPoint, b: ScreenPoint) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getDrawingOverlaySize(chart: IChartApi, container: HTMLDivElement) {
+  try {
+    const paneSize = chart.paneSize();
+    if (
+      Number.isFinite(paneSize.width) &&
+      Number.isFinite(paneSize.height) &&
+      paneSize.width > 0 &&
+      paneSize.height > 0
+    ) {
+      return {
+        width: paneSize.width,
+        height: paneSize.height,
+      };
+    }
+  } catch {
+  }
+
+  return {
+    width: container.clientWidth,
+    height: container.clientHeight,
+  };
 }
 
 function isTwoPointDrawing(drawing: DrawingElement): drawing is TwoPointDrawing {
@@ -317,6 +342,7 @@ function createFreehandDrawing(
 function createPointDrawing(
   tool: DrawingToolId,
   point: DrawingPoint,
+  formatPrice: PriceFormatter,
   text?: string
 ): DrawingElement | null {
   if (tool === "horizontal-line" || tool === "vertical-line") {
@@ -335,14 +361,18 @@ function createPointDrawing(
       ...createDrawingBase(),
       type: tool,
       point,
-      text: text ?? (tool === "price-label" ? formatCurrency(point.price) : undefined),
+      text: text ?? (tool === "price-label" ? formatPrice(point.price) : undefined),
     };
   }
   return null;
 }
 
-function defaultTextValue(tool: TextDrawing["type"], point: DrawingPoint) {
-  return tool === "price-note" ? formatCurrency(point.price) : "";
+function defaultTextValue(
+  tool: TextDrawing["type"],
+  point: DrawingPoint,
+  formatPrice: PriceFormatter
+) {
+  return tool === "price-note" ? formatPrice(point.price) : "";
 }
 
 function createTextDrawing(
@@ -715,6 +745,7 @@ function DrawingElementView({
   selectedDrawingId,
   draftDrawingId,
   pointToScreen,
+  formatPrice,
   onPointerDown,
 }: {
   item: DrawingElement;
@@ -722,6 +753,7 @@ function DrawingElementView({
   selectedDrawingId: string | null;
   draftDrawingId: string | null;
   pointToScreen: (point: DrawingPoint) => ScreenPoint | null;
+  formatPrice: PriceFormatter;
   onPointerDown: DrawingPointerHandler;
 }) {
   const isDraft = item.id === draftDrawingId;
@@ -1226,7 +1258,7 @@ function DrawingElementView({
     );
   }
 
-  const labelText = item.text ?? formatCurrency(item.point.price);
+  const labelText = item.text ?? formatPrice(item.point.price);
   const labelWidth = Math.max(74, labelText.length * style.fontSize * 0.58 + 16);
   const labelHeight = style.fontSize + 10;
 
@@ -1260,10 +1292,18 @@ export function DrawingOverlay({
   series,
   containerRef,
   drawing,
+  exchange,
 }: DrawingOverlayProps) {
+  const { formatStockCurrency } = useCurrency();
+  const formatPrice = (value: number) => formatStockCurrency(value, exchange);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [renderTick, setRenderTick] = useState(0);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
+  // Drives the "grab" -> "grabbing" cursor swap while a drawing element is
+  // being repositioned (move or handle drag). Also mirrored onto
+  // document.body during the drag so the closed-hand cursor stays visible
+  // even if a fast drag briefly carries the pointer outside the SVG.
+  const [isDraggingDrawing, setIsDraggingDrawing] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const textEditorOpen = Boolean(textEditor);
@@ -1277,10 +1317,7 @@ export function DrawingOverlay({
 
     const recalculate = () => {
       if (disposed) return;
-      setSize({
-        width: container.clientWidth,
-        height: container.clientHeight,
-      });
+      setSize(getDrawingOverlaySize(chart, container));
       setRenderTick((current) => current + 1);
     };
 
@@ -1514,6 +1551,11 @@ export function DrawingOverlay({
       const drag = dragRef.current;
       if (!drag) return;
 
+      // Reset up front so the grabbing cursor always clears on pointerup,
+      // even if one of the early returns below fires.
+      setIsDraggingDrawing(false);
+      document.body.style.cursor = "";
+
       const container = containerRef.current;
       if (!container) return;
 
@@ -1553,6 +1595,10 @@ export function DrawingOverlay({
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      // Safety net: if this overlay unmounts mid-drag (e.g. the stock or
+      // timeframe changes while a drawing is being repositioned), don't
+      // leave the whole page stuck with a "grabbing" cursor.
+      if (dragRef.current) document.body.style.cursor = "";
     };
   });
 
@@ -1611,13 +1657,13 @@ export function DrawingOverlay({
         point: chartPoint,
         x: screenPoint.x,
         y: screenPoint.y,
-        value: defaultTextValue(tool, chartPoint),
+        value: defaultTextValue(tool, chartPoint, formatPrice),
       });
       return;
     }
 
     if (pointDrawingTools.has(drawing.activeTool)) {
-      const next = createPointDrawing(drawing.activeTool, chartPoint);
+      const next = createPointDrawing(drawing.activeTool, chartPoint, formatPrice);
       if (next) drawing.commitDrawing(next);
       return;
     }
@@ -1676,6 +1722,9 @@ export function DrawingOverlay({
     dragRef.current = handle
       ? { kind: "handle", id: item.id, handle, original: item }
       : { kind: "move", id: item.id, original: item, origin };
+
+    setIsDraggingDrawing(true);
+    document.body.style.cursor = "grabbing";
   };
 
   const drawingsToRender = useMemo(
@@ -1765,15 +1814,34 @@ export function DrawingOverlay({
           onPointerDown={handleCreatePointerDown}
         />
         {drawingsToRender.map((item) => (
-          <DrawingElementView
+          // The cursor is set here (not per-shape) and relies on normal SVG
+          // CSS inheritance to reach every pointerEvents="auto" hit-area and
+          // handle circle inside DrawingElementView — "grab" while an
+          // unlocked drawing can be repositioned with the cursor tool
+          // active, "grabbing" while a move/handle drag is in progress (see
+          // isDraggingDrawing state below).
+          <g
             key={item.id}
-            item={item}
-            size={size}
-            selectedDrawingId={drawing.selectedDrawingId}
-            draftDrawingId={drawing.draftDrawing?.id ?? null}
-            pointToScreen={pointToScreen}
-            onPointerDown={handleDrawingPointerDown}
-          />
+            style={{
+              cursor: isCursorTool(drawing.activeTool)
+                ? item.locked
+                  ? "default"
+                  : isDraggingDrawing
+                    ? "grabbing"
+                    : "grab"
+                : undefined,
+            }}
+          >
+            <DrawingElementView
+              item={item}
+              size={size}
+              selectedDrawingId={drawing.selectedDrawingId}
+              draftDrawingId={drawing.draftDrawing?.id ?? null}
+              pointToScreen={pointToScreen}
+              formatPrice={formatPrice}
+              onPointerDown={handleDrawingPointerDown}
+            />
+          </g>
         ))}
       </svg>
 

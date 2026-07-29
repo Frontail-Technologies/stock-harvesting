@@ -10,10 +10,12 @@ export type Candle = {
 export type Stock = {
   symbol: string;
   name: string;
-  exchange: "NSE";
+  exchange: string;
   close: number;
-  changePct: number;
+  changePct: number | null;
   volume: number;
+  open?: number;
+  hasMarketData?: boolean;
 };
 
 export type ScanBand = {
@@ -21,5 +23,6 @@ export type ScanBand = {
   startTime: string;
   endTime: string;
   label: string;
+  latestMatched?: boolean;
   highlightTimes?: string[];
 };
