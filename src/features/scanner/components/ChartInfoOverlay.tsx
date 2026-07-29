@@ -13,6 +13,7 @@ type ChartInfoOverlayProps = {
   stock: Stock;
   timeframe: Timeframe;
   candles: Candle[];
+  activeCandle?: Candle | null;
   latestSignalActive: boolean;
 };
 
@@ -20,11 +21,15 @@ export function ChartInfoOverlay({
   stock,
   timeframe,
   candles,
+  activeCandle,
   latestSignalActive,
 }: ChartInfoOverlayProps) {
   const { formatStockCurrency } = useCurrency();
-  const last = candles[candles.length - 1];
-  const prev = candles[candles.length - 2] ?? last;
+  const activeIndex = activeCandle
+    ? candles.findIndex((candle) => candle.time === activeCandle.time)
+    : candles.length - 1;
+  const last = activeIndex >= 0 ? candles[activeIndex] : candles[candles.length - 1];
+  const prev = candles[Math.max(0, activeIndex - 1)] ?? last;
 
   if (!last) return null;
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import type { Time } from "lightweight-charts";
 import NextImage from "next/image";
 import type { Candle, ScanBand, Stock } from "@/types/market";
 import { getBrandLogoPath } from "@/components/ui/brand-logo-paths";
@@ -54,9 +55,17 @@ export function ScannerChartStage({
   const chartCursor = getChartCursorCss(drawing.activeTool);
   const chartTheme = getScannerChartTheme(theme);
   const { formatStockCurrency } = useCurrency();
+  const [hoveredCandleTime, setHoveredCandleTime] = useState<string | null>(null);
   const latestSignalActive = scanBands.some(
     (band) => band.latestMatched === true
   );
+  const candleByTime = useMemo(
+    () => new Map(candles.map((candle) => [candle.time, candle])),
+    [candles]
+  );
+  const hoveredCandle = hoveredCandleTime
+    ? candleByTime.get(hoveredCandleTime) ?? null
+    : null;
 
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
@@ -161,6 +170,29 @@ export function ScannerChartStage({
     };
   }, [chartCursor, chartHandles, containerRef]);
 
+  useEffect(() => {
+    const chart = chartHandles?.chart;
+    if (!chart) return;
+
+    const handleCrosshairMove = (param: { time?: Time }) => {
+      const nextTime = normalizeChartTime(param.time);
+      setHoveredCandleTime((current) => (current === nextTime ? current : nextTime));
+    };
+
+    try {
+      chart.subscribeCrosshairMove(handleCrosshairMove);
+    } catch {
+      return;
+    }
+
+    return () => {
+      try {
+        chart.unsubscribeCrosshairMove(handleCrosshairMove);
+      } catch {
+      }
+    };
+  }, [chartHandles]);
+
   return (
     <div
       ref={stageRef}
@@ -185,6 +217,7 @@ export function ScannerChartStage({
         stock={stock}
         timeframe={timeframe}
         candles={candles}
+        activeCandle={hoveredCandle}
         latestSignalActive={latestSignalActive}
       />
       <ScannerBacktestStatsOverlay stats={backtestStats} />
@@ -420,6 +453,13 @@ function drawRoundedRect(
   context.lineTo(x, y + radius);
   context.quadraticCurveTo(x, y, x + radius, y);
   context.closePath();
+}
+
+function normalizeChartTime(time: Time | undefined) {
+  if (!time) return null;
+  if (typeof time === "string") return time;
+  if (typeof time === "number") return String(time);
+  return `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
 }
 
 function drawChartInfoScreenshotOverlay(
