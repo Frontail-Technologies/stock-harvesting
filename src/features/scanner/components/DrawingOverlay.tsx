@@ -1794,25 +1794,34 @@ export function DrawingOverlay({
 
   return (
     <div className="pointer-events-none absolute inset-0" style={{ zIndex: 14 }}>
+      {!isCursorTool(drawing.activeTool) && (
+        <svg
+          width={size.width}
+          height={size.height}
+          viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 1)}`}
+          className="pointer-events-auto absolute inset-0"
+        >
+          <rect
+            x={0}
+            y={0}
+            width={size.width}
+            height={size.height}
+            fill="transparent"
+            pointerEvents="all"
+            onPointerMove={handleOverlayPointerMove}
+            onPointerLeave={handleOverlayPointerLeave}
+            onPointerDown={handleCreatePointerDown}
+          />
+        </svg>
+      )}
+
       <svg
         data-drawing-overlay="true"
         width={size.width}
         height={size.height}
         viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 1)}`}
-        className="absolute inset-0"
-        style={{ pointerEvents: "none" }}
+        className="pointer-events-none absolute inset-0"
       >
-        <rect
-          x={0}
-          y={0}
-          width={size.width}
-          height={size.height}
-          fill="transparent"
-          pointerEvents={isCursorTool(drawing.activeTool) ? "none" : "all"}
-          onPointerMove={handleOverlayPointerMove}
-          onPointerLeave={handleOverlayPointerLeave}
-          onPointerDown={handleCreatePointerDown}
-        />
         {drawingsToRender.map((item) => (
           // The cursor is set here (not per-shape) and relies on normal SVG
           // CSS inheritance to reach every pointerEvents="auto" hit-area and
