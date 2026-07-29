@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import type { ComponentType, SVGProps } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
@@ -10,7 +11,7 @@ type ScannerIconButtonProps = {
   active?: boolean;
   className?: string;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: (event: MouseEvent<HTMLElement>) => void;
 };
 
 export function ScannerIconButton({

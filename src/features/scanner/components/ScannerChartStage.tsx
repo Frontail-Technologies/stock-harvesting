@@ -171,7 +171,7 @@ export function ScannerChartStage({
       }}
     >
       <div ref={containerRef} className="relative z-10 h-full w-full" />
-      <div className="pointer-events-none absolute bottom-12 right-24 z-20 flex max-w-[180px] select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-28">
+      <div className="pointer-events-none absolute bottom-12 right-14 z-20 flex max-w-[180px] select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-20">
         <NextImage
           src={getBrandLogoPath(theme)}
           alt=""
@@ -439,19 +439,23 @@ function drawChartInfoScreenshotOverlay(
   const changePct = prev.close ? (change / prev.close) * 100 : 0;
   const { text: changeText, isPositive } = formatSignedChange(change, changePct);
   const x = 14;
-  const y = 16;
+  const y = 19;
 
   context.save();
   context.font = "700 15px Arial, sans-serif";
   context.fillStyle = colors.text;
   context.fillText(stock.symbol, x, y);
+  const symbolWidth = context.measureText(stock.symbol).width;
 
   context.font = "12px Arial, sans-serif";
   context.fillStyle = colors.muted;
-  context.fillText(`${TIMEFRAME_LABEL[timeframe]} - ${stock.exchange}`, x + 54, y);
+  const metaText = `${TIMEFRAME_LABEL[timeframe]} - ${stock.exchange}`;
+  const metaX = x + symbolWidth + 8;
+  context.fillText(metaText, metaX, y);
+  const metaWidth = context.measureText(metaText).width;
 
   if (latestSignalActive) {
-    const badgeX = x + 148;
+    const badgeX = metaX + metaWidth + 10;
     drawRoundedRect(context, badgeX, y - 14, 44, 19, 4);
     context.fillStyle = "rgba(248, 184, 0, 0.16)";
     context.fill();
@@ -509,11 +513,13 @@ function drawBacktestStatsScreenshotOverlay(
     ["Largest Loser", `${stats.largestLoserPct.toFixed(1)}%`, colors.danger],
   ];
 
-  const width = 210;
-  const rowHeight = 22;
-  const height = 24 + rows.length * rowHeight;
+  const width = 236;
+  const rowHeight = 21;
+  const paddingX = 14;
+  const topPadding = 22;
+  const height = topPadding + rows.length * rowHeight + 10;
   const x = 14;
-  const y = Math.max(74, rect.height / 2 - height / 2);
+  const y = Math.max(76, Math.min(rect.height - height - 80, rect.height / 2 - height / 2));
 
   context.save();
   drawRoundedRect(context, x, y, width, height, 8);
@@ -523,16 +529,19 @@ function drawBacktestStatsScreenshotOverlay(
   context.lineWidth = 1;
   context.stroke();
 
-  context.font = "12px Arial, sans-serif";
   rows.forEach(([label, value, valueColor], index) => {
-    const rowY = y + 24 + index * rowHeight;
+    const rowY = y + topPadding + index * rowHeight;
+    context.textAlign = "left";
+    context.font = "12px Arial, sans-serif";
     context.fillStyle = colors.muted;
-    context.fillText(`${label}:`, x + 14, rowY);
+    context.fillText(`${label}:`, x + paddingX, rowY);
+
+    context.textAlign = "right";
     context.font = "700 12px Arial, sans-serif";
     context.fillStyle = valueColor;
-    context.fillText(value, x + 138, rowY);
-    context.font = "12px Arial, sans-serif";
+    context.fillText(value, x + width - paddingX, rowY);
   });
+  context.textAlign = "left";
   context.restore();
 }
 

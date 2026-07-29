@@ -44,6 +44,7 @@ export function ChartToolsBar({
   onSend,
 }: ChartToolsBarProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [flyoutTop, setFlyoutTop] = useState(56);
   const hasSelectedDrawing = Boolean(drawing.selectedDrawingId);
   const canUseVisibility = drawing.drawings.length > 0;
   const visibilityIcon = drawing.allDrawingsHidden ? Eye : EyeOff;
@@ -92,16 +93,6 @@ export function ChartToolsBar({
     return null;
   };
 
-  const getDefaultToolItem = (group: ToolbarGroup): ToolMenuItem | null => {
-    for (const section of group.sections) {
-      const tool = section.items.find(
-        (item): item is ToolMenuItem => item.kind === "tool"
-      );
-      if (tool) return tool;
-    }
-    return null;
-  };
-
   const getRailIcon = (group: ToolbarGroup) => {
     const activeToolItem = getActiveToolItem(group);
     if (group.id === "select") return getCursorToolIcon(drawing.activeTool);
@@ -142,12 +133,11 @@ export function ChartToolsBar({
           key={group.id}
           label={getRailLabel(group)}
           icon={getRailIcon(group)}
-          active={isGroupActive(group) || openGroupId === group.id}
-          onClick={() => {
-            const defaultTool = getDefaultToolItem(group);
-            if (defaultTool && !group.toolIds.includes(drawing.activeTool)) {
-              drawing.setActiveTool(defaultTool.id);
-            }
+          active={isGroupActive(group)}
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const maxTop = Math.max(8, window.innerHeight - 360);
+            setFlyoutTop(Math.min(Math.max(8, rect.top), maxTop));
             setOpenGroupId((current) => (current === group.id ? null : group.id));
           }}
         />
@@ -185,7 +175,10 @@ export function ChartToolsBar({
       />
 
       {openGroup && (
-        <div className="fixed bottom-12 left-12 top-14 w-[min(16rem,calc(100vw-4rem))] overflow-y-auto rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-flyout-bg)] p-1 shadow-2xl md:absolute md:bottom-auto md:left-[3.25rem] md:top-2 md:max-h-[calc(100dvh-5rem)] md:w-64">
+        <div
+          className="fixed left-12 z-[9999] max-h-[min(34rem,calc(100dvh-1rem))] w-[min(16rem,calc(100vw-4rem))] overflow-y-auto rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-flyout-bg)] p-1 shadow-2xl"
+          style={{ top: flyoutTop }}
+        >
           {openGroup.sections.map((section) => (
             <div key={section.label} className="py-0.5">
               <div className="px-2 pb-0.5 pt-1 text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">
