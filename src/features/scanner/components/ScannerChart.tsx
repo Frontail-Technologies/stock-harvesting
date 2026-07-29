@@ -5,6 +5,7 @@ import { useCurrency } from "@/features/currency";
 import type { Candle, ScanBand, Stock } from "@/types/market";
 import { useLightweightCandlestickChart } from "../hooks/use-lightweight-candlestick-chart";
 import { useScannerBacktest } from "../hooks/use-scanner-data";
+import { buildBacktestStatsFromCandles } from "../lib/build-backtest-stats-from-candles";
 import { buildScannerChartData } from "../lib/build-scanner-chart-data";
 import { isCursorTool } from "../tools/cursor-tool-config";
 import type {
@@ -64,14 +65,21 @@ export function ScannerChart({
     () => candles.map((candle) => candle.time),
     [candles]
   );
-  const hasHistoricalCandles = candles.length > 1;
+  const fallbackBacktestStats = useMemo(
+    () =>
+      timeframe === "1W"
+        ? buildBacktestStatsFromCandles(candles, lookbackMultiplier)
+        : null,
+    [candles, lookbackMultiplier, timeframe]
+  );
   const effectiveCrosshairActive = crosshairActive && isCursorTool(drawing.activeTool);
   const { stats: backtestStats } = useScannerBacktest(
     stock.symbol,
-    timeframe === "1W" && hasHistoricalCandles,
+    timeframe === "1W",
     stock.exchange,
     lookbackMultiplier
   );
+  const visibleBacktestStats = backtestStats ?? fallbackBacktestStats;
   const { containerRef, chartHandles } = useLightweightCandlestickChart({
     data: chartData,
     chartType,
@@ -95,7 +103,7 @@ export function ScannerChart({
       captureRequest={captureRequest}
       drawing={drawing}
       theme={theme}
-      backtestStats={hasHistoricalCandles ? backtestStats : null}
+      backtestStats={visibleBacktestStats}
     />
   );
 }
