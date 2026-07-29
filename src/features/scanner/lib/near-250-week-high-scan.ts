@@ -34,8 +34,8 @@ export function buildNear250WeekHighScanBand({
 
   const latestWindow = sortedCandles.slice(-effectiveLookbackWeeks);
   const latest = latestWindow[latestWindow.length - 1];
-  const highestHigh = Math.max(...latestWindow.map((candle) => candle.high));
-  const threshold85 = highestHigh * THRESHOLD_MULTIPLIER;
+  const highestClose = Math.max(...latestWindow.map((candle) => candle.close));
+  const threshold85 = highestClose * THRESHOLD_MULTIPLIER;
   const latestMatched = latest.close >= threshold85;
 
   return {
@@ -53,8 +53,8 @@ function getRollingHighlightTimes(candles: Candle[], lookbackWeeks: number) {
 
   for (let index = lookbackWeeks - 1; index < candles.length; index++) {
     const window = candles.slice(index - lookbackWeeks + 1, index + 1);
-    const highestHigh = Math.max(...window.map((candle) => candle.high));
-    const threshold = highestHigh * THRESHOLD_MULTIPLIER;
+    const highestClose = Math.max(...window.map((candle) => candle.close));
+    const threshold = highestClose * THRESHOLD_MULTIPLIER;
     const candle = candles[index];
 
     if (candle.close >= threshold) {

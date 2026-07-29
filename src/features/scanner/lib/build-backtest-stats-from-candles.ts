@@ -26,13 +26,13 @@ export function buildBacktestStatsFromCandles(
 
   if (!lookbackWeeks || sortedCandles.length < 2) return null;
 
-  const highs = sortedCandles.map((candle) => candle.high);
-  const rollingHighs = rollingMax(highs, lookbackWeeks);
+  const closes = sortedCandles.map((candle) => candle.close);
+  const rollingCloses = rollingMax(closes, lookbackWeeks);
   const matched = sortedCandles.map(
-    (candle, index) => candle.close >= rollingHighs[index] * NEAR_HIGH_THRESHOLD
+    (candle, index) => candle.close >= rollingCloses[index] * NEAR_HIGH_THRESHOLD
   );
-  const signalsGenerated = matched.filter(Boolean).length;
   const trades = buildTrades(sortedCandles, matched);
+  const signalsGenerated = trades.length;
 
   if (trades.length === 0) {
     return {
