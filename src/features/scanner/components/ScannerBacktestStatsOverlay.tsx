@@ -62,44 +62,10 @@ export function ScannerBacktestStatsOverlay({
       tone: "negative",
     },
   ];
-  const compactRows = [
-    { label: "HR", value: formatPct(stats.hitRatePct) },
-    {
-      label: "Ret",
-      value: formatPct(stats.totalReturnPct, true),
-      tone: stats.totalReturnPct >= 0 ? "positive" : "negative",
-    },
-    { label: "DD", value: formatPct(stats.maxDrawdownPct), tone: "negative" },
-    { label: "PF", value: formatProfitFactor(stats.profitFactor) },
-    { label: "Sig", value: String(stats.signalsGenerated) },
-  ] satisfies Array<{
-    label: string;
-    value: string;
-    tone?: "positive" | "negative";
-  }>;
 
   return (
-    <div className="pointer-events-none absolute left-2 top-16 z-20 select-none sm:left-3 sm:top-1/2 sm:-translate-y-1/2">
-      <div className="pointer-events-auto grid grid-cols-2 gap-x-2 gap-y-0.5 rounded-md border border-border bg-popover/90 px-2 py-1.5 text-[0.625rem] text-popover-foreground shadow-lg backdrop-blur-sm sm:hidden">
-        {compactRows.map((row) => (
-          <div key={row.label} className="flex items-center gap-1 whitespace-nowrap">
-            <span className="text-muted-foreground">{row.label}</span>
-            <span
-              className={
-                row.tone === "positive"
-                  ? "font-semibold text-success"
-                  : row.tone === "negative"
-                    ? "font-semibold text-danger"
-                    : "font-semibold text-foreground"
-              }
-            >
-              {row.value}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="pointer-events-auto hidden flex-col gap-1.5 rounded-lg border border-border bg-popover/90 px-3 py-2.5 text-popover-foreground shadow-lg backdrop-blur-sm sm:flex">
+    <div className="pointer-events-none absolute left-2 top-16 z-20 hidden select-none sm:left-3 sm:top-1/2 sm:block sm:-translate-y-1/2">
+      <div className="pointer-events-auto flex flex-col gap-1.5 rounded-lg border border-border bg-popover/90 px-3 py-2.5 text-popover-foreground shadow-lg backdrop-blur-sm">
         {rows.map((row) => {
           const Icon = row.icon;
           const iconClass =

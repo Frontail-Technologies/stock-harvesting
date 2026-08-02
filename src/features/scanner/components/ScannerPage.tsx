@@ -160,6 +160,8 @@ export function ScannerPage() {
   const percentageScale = useScannerUiStore((state) => state.percentageScale);
   const toggleAutoScale = useScannerUiStore((state) => state.toggleAutoScale);
   const togglePercentageScale = useScannerUiStore((state) => state.togglePercentageScale);
+  const showBacktestStats = useScannerUiStore((state) => state.showBacktestStats);
+  const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
   const selectedStock = useMemo<Stock>(() => {
     if (isSameMarketStock(selectedStockSnapshot, selectedSymbol, selectedExchange)) {
       return selectedStockSnapshot;
@@ -287,11 +289,14 @@ export function ScannerPage() {
           captureRequest={captureRequest}
           autoScale={autoScale}
           percentageScale={percentageScale}
+          showBacktestStats={showBacktestStats}
+          onChartTypeChange={setChartType}
           onScreenshot={() => requestCapture("download")}
           onSend={() => requestCapture("share")}
           onRangeFilterChange={setRangeFilter}
           onToggleAutoScale={toggleAutoScale}
           onTogglePercentageScale={togglePercentageScale}
+          onToggleBacktestStats={toggleBacktestStats}
         />
       </div>
     </AuthGuard>
@@ -308,11 +313,14 @@ type ScannerDrawingWorkspaceProps = {
   captureRequest: ChartCaptureRequest | null;
   autoScale: boolean;
   percentageScale: boolean;
+  showBacktestStats: boolean;
+  onChartTypeChange: (chartType: ScannerChartType) => void;
   onScreenshot: () => void;
   onSend: () => void;
   onRangeFilterChange: (rangeFilter: ScannerRangeFilter) => void;
   onToggleAutoScale: () => void;
   onTogglePercentageScale: () => void;
+  onToggleBacktestStats: () => void;
 };
 
 function ScannerDrawingWorkspace({
@@ -325,11 +333,14 @@ function ScannerDrawingWorkspace({
   captureRequest,
   autoScale,
   percentageScale,
+  showBacktestStats,
+  onChartTypeChange,
   onScreenshot,
   onSend,
   onRangeFilterChange,
   onToggleAutoScale,
   onTogglePercentageScale,
+  onToggleBacktestStats,
 }: ScannerDrawingWorkspaceProps) {
   const queryClient = useQueryClient();
   const drawing = useScannerDrawingState(stock.symbol, timeframe);
@@ -479,6 +490,8 @@ function ScannerDrawingWorkspace({
         drawing={drawing}
         stock={stock}
         timeframe={timeframe}
+        chartType={chartType}
+        onChartTypeChange={onChartTypeChange}
         onScreenshot={onScreenshot}
         onSend={onSend}
       />
@@ -500,6 +513,7 @@ function ScannerDrawingWorkspace({
             drawing={drawing}
             autoScale={autoScale}
             percentageScale={percentageScale}
+            showBacktestStats={showBacktestStats}
           />
         </div>
         <RangeFilterTabs
@@ -507,8 +521,10 @@ function ScannerDrawingWorkspace({
           onChange={onRangeFilterChange}
           autoScale={autoScale}
           percentageScale={percentageScale}
+          showBacktestStats={showBacktestStats}
           onToggleAutoScale={onToggleAutoScale}
           onTogglePercentageScale={onTogglePercentageScale}
+          onToggleBacktestStats={onToggleBacktestStats}
         />
       </div>
     </div>

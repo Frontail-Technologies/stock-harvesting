@@ -34,6 +34,7 @@ type ScannerChartProps = {
   drawing: DrawingController;
   autoScale: boolean;
   percentageScale: boolean;
+  showBacktestStats: boolean;
 };
 
 export function ScannerChart({
@@ -51,6 +52,7 @@ export function ScannerChart({
   drawing,
   autoScale,
   percentageScale,
+  showBacktestStats,
 }: ScannerChartProps) {
   const { formatStockCurrency } = useCurrency();
   const chartData = useMemo(
@@ -80,6 +82,16 @@ export function ScannerChart({
     lookbackMultiplier
   );
   const visibleBacktestStats = backtestStats ?? fallbackBacktestStats;
+  // Include whether real candle data has arrived yet: on first mount candles
+  // are still empty (query in flight), so the chart renders a trivial
+  // placeholder range. Once real candles land, the identity portion below
+  // hasn't changed (same symbol/timeframe/range-filter) — without this flag
+  // that transition would be treated as a no-op "live update" and the
+  // correct range would never get applied, leaving the chart on whatever
+  // the library defaults to (looks like a fully-zoomed-out "ALL" view).
+  const viewResetKey = `${stock.exchange}:${stock.symbol}:${timeframe}:${rangeFilter}:${
+    candles.length > 0 ? "loaded" : "empty"
+  }`;
   const { containerRef, chartHandles } = useLightweightCandlestickChart({
     data: chartData,
     chartType,
@@ -88,6 +100,7 @@ export function ScannerChart({
     theme,
     autoScale,
     percentageScale,
+    viewResetKey,
   });
 
   return (
@@ -103,7 +116,7 @@ export function ScannerChart({
       captureRequest={captureRequest}
       drawing={drawing}
       theme={theme}
-      backtestStats={visibleBacktestStats}
+      backtestStats={showBacktestStats ? visibleBacktestStats : null}
     />
   );
 }

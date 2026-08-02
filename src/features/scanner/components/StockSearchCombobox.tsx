@@ -12,12 +12,14 @@ type StockSearchComboboxProps = {
   selectedStock: Stock;
   exchange: string;
   onSelectStock: (stock: Stock) => void;
+  autoFocus?: boolean;
 };
 
 export function StockSearchCombobox({
   selectedStock,
   exchange,
   onSelectStock,
+  autoFocus,
 }: StockSearchComboboxProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -28,6 +30,13 @@ export function StockSearchCombobox({
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+    // Only meant to focus once, when this instance mounts (e.g. the mobile
+    // search overlay opening) — not on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const trimmedQuery = query.trim();
   const stockSearchQuery = useScannerStockSearch(
     query,

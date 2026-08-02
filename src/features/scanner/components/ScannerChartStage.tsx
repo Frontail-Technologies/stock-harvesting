@@ -55,16 +55,18 @@ export function ScannerChartStage({
   const chartCursor = getChartCursorCss(drawing.activeTool);
   const chartTheme = getScannerChartTheme(theme);
   const { formatStockCurrency } = useCurrency();
-  const [hoveredCandleTime, setHoveredCandleTime] = useState<string | null>(null);
+  const [hoveredCandleTime, setHoveredCandleTime] = useState<string | null>(
+    null,
+  );
   const latestSignalActive = scanBands.some(
-    (band) => band.latestMatched === true
+    (band) => band.latestMatched === true,
   );
   const candleByTime = useMemo(
     () => new Map(candles.map((candle) => [candle.time, candle])),
-    [candles]
+    [candles],
   );
   const hoveredCandle = hoveredCandleTime
-    ? candleByTime.get(hoveredCandleTime) ?? null
+    ? (candleByTime.get(hoveredCandleTime) ?? null)
     : null;
 
   useEffect(() => {
@@ -72,17 +74,17 @@ export function ScannerChartStage({
 
     void captureStageImage(
       stageRef.current,
-        `${stock.symbol}-${timeframe}-scanner.jpg`,
-        captureRequest.mode,
-        theme,
-        buildShareText(stock, timeframe, candles, formatStockCurrency),
-        stock,
-        timeframe,
-        candles,
-        latestSignalActive,
-        backtestStats,
-        formatStockCurrency
-      );
+      `${stock.symbol}-${timeframe}-scanner.jpg`,
+      captureRequest.mode,
+      theme,
+      buildShareText(stock, timeframe, candles, formatStockCurrency),
+      stock,
+      timeframe,
+      candles,
+      latestSignalActive,
+      backtestStats,
+      formatStockCurrency,
+    );
   }, [
     backtestStats,
     candles,
@@ -108,11 +110,9 @@ export function ScannerChartStage({
 
     const applyCursor = () => {
       container.style.cursor = activeCursor;
-      container
-        .querySelectorAll<HTMLElement>("canvas")
-        .forEach((element) => {
-          element.style.cursor = activeCursor;
-        });
+      container.querySelectorAll<HTMLElement>("canvas").forEach((element) => {
+        element.style.cursor = activeCursor;
+      });
     };
 
     const resolveCursorForPoint = (clientX: number, clientY: number) => {
@@ -125,8 +125,10 @@ export function ScannerChartStage({
         const y = clientY - rect.top;
         const priceScaleWidth = chart.priceScale("right").width();
         const timeScaleHeight = chart.timeScale().height();
-        const overPriceAxis = priceScaleWidth > 0 && x >= rect.width - priceScaleWidth;
-        const overTimeAxis = timeScaleHeight > 0 && y >= rect.height - timeScaleHeight;
+        const overPriceAxis =
+          priceScaleWidth > 0 && x >= rect.width - priceScaleWidth;
+        const overTimeAxis =
+          timeScaleHeight > 0 && y >= rect.height - timeScaleHeight;
 
         if (overPriceAxis && overTimeAxis) return "nwse-resize";
         if (overPriceAxis) return "ns-resize";
@@ -162,11 +164,9 @@ export function ScannerChartStage({
       container.removeEventListener("pointermove", handlePointerMove);
       container.removeEventListener("pointerleave", handlePointerLeave);
       container.style.cursor = "";
-      container
-        .querySelectorAll<HTMLElement>("canvas")
-        .forEach((element) => {
-          element.style.cursor = "";
-        });
+      container.querySelectorAll<HTMLElement>("canvas").forEach((element) => {
+        element.style.cursor = "";
+      });
     };
   }, [chartCursor, chartHandles, containerRef]);
 
@@ -176,7 +176,9 @@ export function ScannerChartStage({
 
     const handleCrosshairMove = (param: { time?: Time }) => {
       const nextTime = normalizeChartTime(param.time);
-      setHoveredCandleTime((current) => (current === nextTime ? current : nextTime));
+      setHoveredCandleTime((current) =>
+        current === nextTime ? current : nextTime,
+      );
     };
 
     try {
@@ -188,8 +190,7 @@ export function ScannerChartStage({
     return () => {
       try {
         chart.unsubscribeCrosshairMove(handleCrosshairMove);
-      } catch {
-      }
+      } catch {}
     };
   }, [chartHandles]);
 
@@ -203,13 +204,13 @@ export function ScannerChartStage({
       }}
     >
       <div ref={containerRef} className="relative z-10 h-full w-full" />
-      <div className="pointer-events-none absolute bottom-12 right-14 z-20 flex max-w-[180px] select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-20">
+      <div className="pointer-events-none absolute bottom-9 right-20 z-20 flex max-w-27.5 select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-20 sm:max-w-45">
         <NextImage
           src={getBrandLogoPath(theme)}
           alt=""
           width={220}
           height={70}
-          className="h-8 w-auto object-contain sm:h-9"
+          className="h-6 w-auto object-contain sm:h-9"
           unoptimized
         />
       </div>
@@ -275,7 +276,7 @@ async function captureStageImage(
   candles: Candle[],
   latestSignalActive: boolean,
   backtestStats: ScannerBacktestStats | null,
-  formatStockCurrency: (value: number, exchange: string) => string
+  formatStockCurrency: (value: number, exchange: string) => string,
 ) {
   const rect = stage.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -297,22 +298,26 @@ async function captureStageImage(
       canvasRect.left - rect.left,
       canvasRect.top - rect.top,
       canvasRect.width,
-      canvasRect.height
+      canvasRect.height,
     );
   }
 
-  for (const band of Array.from(stage.querySelectorAll<HTMLElement>("[data-scan-band]"))) {
+  for (const band of Array.from(
+    stage.querySelectorAll<HTMLElement>("[data-scan-band]"),
+  )) {
     const bandRect = band.getBoundingClientRect();
     context.fillStyle = window.getComputedStyle(band).backgroundColor;
     context.fillRect(
       bandRect.left - rect.left,
       bandRect.top - rect.top,
       bandRect.width,
-      bandRect.height
+      bandRect.height,
     );
   }
 
-  for (const svg of Array.from(stage.querySelectorAll<SVGSVGElement>("[data-drawing-overlay]"))) {
+  for (const svg of Array.from(
+    stage.querySelectorAll<SVGSVGElement>("[data-drawing-overlay]"),
+  )) {
     const svgRect = svg.getBoundingClientRect();
     const clone = svg.cloneNode(true) as SVGSVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -335,7 +340,7 @@ async function captureStageImage(
       svgRect.left - rect.left,
       svgRect.top - rect.top,
       svgRect.width,
-      svgRect.height
+      svgRect.height,
     );
     URL.revokeObjectURL(url);
   }
@@ -349,12 +354,12 @@ async function captureStageImage(
     candles,
     latestSignalActive,
     theme,
-    formatStockCurrency
+    formatStockCurrency,
   );
   drawBacktestStatsScreenshotOverlay(context, backtestStats, rect, theme);
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    output.toBlob(resolve, "image/jpeg", 0.92)
+    output.toBlob(resolve, "image/jpeg", 0.92),
   );
   if (!blob) return;
 
@@ -375,7 +380,8 @@ async function captureStageImage(
         await nav.share(shareData);
         return;
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
       }
     }
   }
@@ -387,7 +393,7 @@ function buildShareText(
   stock: Stock,
   timeframe: Timeframe,
   candles: Candle[],
-  formatStockCurrency: (value: number, exchange: string) => string
+  formatStockCurrency: (value: number, exchange: string) => string,
 ) {
   const latest = candles[candles.length - 1];
   const previous = candles[candles.length - 2] ?? latest;
@@ -440,14 +446,19 @@ function drawRoundedRect(
   y: number,
   width: number,
   height: number,
-  radius: number
+  radius: number,
 ) {
   context.beginPath();
   context.moveTo(x + radius, y);
   context.lineTo(x + width - radius, y);
   context.quadraticCurveTo(x + width, y, x + width, y + radius);
   context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.quadraticCurveTo(
+    x + width,
+    y + height,
+    x + width - radius,
+    y + height,
+  );
   context.lineTo(x + radius, y + height);
   context.quadraticCurveTo(x, y + height, x, y + height - radius);
   context.lineTo(x, y + radius);
@@ -469,7 +480,7 @@ function drawChartInfoScreenshotOverlay(
   candles: Candle[],
   latestSignalActive: boolean,
   theme: ScannerTheme,
-  formatStockCurrency: (value: number, exchange: string) => string
+  formatStockCurrency: (value: number, exchange: string) => string,
 ) {
   const last = candles[candles.length - 1];
   const prev = candles[candles.length - 2] ?? last;
@@ -478,7 +489,10 @@ function drawChartInfoScreenshotOverlay(
   const colors = getScreenshotTextColors(theme);
   const change = last.close - prev.close;
   const changePct = prev.close ? (change / prev.close) * 100 : 0;
-  const { text: changeText, isPositive } = formatSignedChange(change, changePct);
+  const { text: changeText, isPositive } = formatSignedChange(
+    change,
+    changePct,
+  );
   const x = 14;
   const y = 19;
 
@@ -534,7 +548,7 @@ function drawBacktestStatsScreenshotOverlay(
   context: CanvasRenderingContext2D,
   stats: ScannerBacktestStats | null,
   rect: DOMRect,
-  theme: ScannerTheme
+  theme: ScannerTheme,
 ) {
   if (!stats) return;
 
@@ -547,10 +561,18 @@ function drawBacktestStatsScreenshotOverlay(
       stats.totalReturnPct >= 0 ? colors.success : colors.danger,
     ],
     ["Max Drawdown", `${stats.maxDrawdownPct.toFixed(1)}%`, colors.danger],
-    ["Profit Factor", stats.profitFactor === null ? "inf" : stats.profitFactor.toFixed(2), colors.text],
+    [
+      "Profit Factor",
+      stats.profitFactor === null ? "inf" : stats.profitFactor.toFixed(2),
+      colors.text,
+    ],
     ["Signals Generated", String(stats.signalsGenerated), colors.text],
     ["Avg Holding", `${Math.round(stats.avgHoldingDays)} Days`, colors.text],
-    ["Largest Winner", `+${stats.largestWinnerPct.toFixed(1)}%`, colors.success],
+    [
+      "Largest Winner",
+      `+${stats.largestWinnerPct.toFixed(1)}%`,
+      colors.success,
+    ],
     ["Largest Loser", `${stats.largestLoserPct.toFixed(1)}%`, colors.danger],
   ];
 
@@ -560,7 +582,10 @@ function drawBacktestStatsScreenshotOverlay(
   const topPadding = 22;
   const height = topPadding + rows.length * rowHeight + 10;
   const x = 14;
-  const y = Math.max(76, Math.min(rect.height - height - 80, rect.height / 2 - height / 2));
+  const y = Math.max(
+    76,
+    Math.min(rect.height - height - 80, rect.height / 2 - height / 2),
+  );
 
   context.save();
   drawRoundedRect(context, x, y, width, height, 8);
@@ -589,7 +614,7 @@ function drawBacktestStatsScreenshotOverlay(
 async function drawCenteredScreenshotWatermark(
   context: CanvasRenderingContext2D,
   rect: DOMRect,
-  theme: ScannerTheme
+  theme: ScannerTheme,
 ) {
   try {
     const image = await loadImage(getBrandLogoPath(theme));
@@ -607,14 +632,13 @@ async function drawCenteredScreenshotWatermark(
     context.globalAlpha = 0.22;
     context.drawImage(image, x, y, width, height);
     context.restore();
-  } catch {
-  }
+  } catch {}
 }
 
 async function drawBottomRightScreenshotLogo(
   context: CanvasRenderingContext2D,
   rect: DOMRect,
-  theme: ScannerTheme
+  theme: ScannerTheme,
 ) {
   try {
     const image = await loadImage(getBrandLogoPath(theme));
@@ -632,8 +656,7 @@ async function drawBottomRightScreenshotLogo(
     context.globalAlpha = 0.92;
     context.drawImage(image, x, y, width, height);
     context.restore();
-  } catch {
-  }
+  } catch {}
 }
 
 function loadImage(src: string) {

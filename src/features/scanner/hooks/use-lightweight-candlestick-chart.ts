@@ -47,6 +47,12 @@ type UseLightweightCandlestickChartArgs = {
   theme: ScannerTheme;
   autoScale: boolean;
   percentageScale: boolean;
+  // Identifies "this is logically a different chart" (symbol/timeframe/range
+  // filter changed) as opposed to "the same chart's data was patched" (a
+  // live tick updating/appending a candle). Only the former should snap the
+  // visible range back to the default — otherwise every live price update
+  // yanks the user back to the latest bar mid-scroll.
+  viewResetKey: string;
 };
 
 export function useLightweightCandlestickChart({
@@ -57,6 +63,7 @@ export function useLightweightCandlestickChart({
   theme,
   autoScale,
   percentageScale,
+  viewResetKey,
 }: UseLightweightCandlestickChartArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -75,6 +82,7 @@ export function useLightweightCandlestickChart({
   const appliedCrosshairRef = useRef<boolean | null>(null);
   const appliedAutoScaleRef = useRef<boolean | null>(null);
   const appliedPercentageScaleRef = useRef<boolean | null>(null);
+  const appliedViewResetKeyRef = useRef<string | null>(null);
   const [chartHandles, setChartHandles] = useState<ScannerChartHandles | null>(null);
 
   useEffect(() => {
@@ -167,6 +175,7 @@ export function useLightweightCandlestickChart({
     appliedCrosshairRef.current = initialCrosshairActive;
     appliedAutoScaleRef.current = initialAutoScale;
     appliedPercentageScaleRef.current = initialPercentageScale;
+    appliedViewResetKeyRef.current = viewResetKey;
     setChartHandles({ chart, series: priceSeries });
 
     const resizeChart = () => {
@@ -243,13 +252,21 @@ export function useLightweightCandlestickChart({
       chart.applyOptions({ grid: chartOptions.grid });
       setPriceSeriesData(priceSeries, data, chartType);
       volumeSeries.setData(data.volumeRenderData);
-      if (!latestAutoScaleRef.current) {
-        chart.priceScale("right").setVisibleRange(data.priceRange);
+
+      // Only snap the viewport back to the default range when this is
+      // actually a new chart (symbol/timeframe/range-filter changed) — a
+      // live-tick data patch should update in place without moving the
+      // user's current scroll/zoom position.
+      if (appliedViewResetKeyRef.current !== viewResetKey) {
+        if (!latestAutoScaleRef.current) {
+          chart.priceScale("right").setVisibleRange(data.priceRange);
+        }
+        chart.timeScale().setVisibleLogicalRange(data.visibleLogicalRange);
+        appliedViewResetKeyRef.current = viewResetKey;
       }
-      chart.timeScale().setVisibleLogicalRange(data.visibleLogicalRange);
     } catch {
     }
-  }, [chartType, data]);
+  }, [chartType, data, viewResetKey]);
 
   useEffect(() => {
     const chart = chartRef.current;

@@ -16,8 +16,10 @@ type RangeFilterTabsProps = {
   onChange: (value: ScannerRangeFilter) => void;
   autoScale: boolean;
   percentageScale: boolean;
+  showBacktestStats: boolean;
   onToggleAutoScale: () => void;
   onTogglePercentageScale: () => void;
+  onToggleBacktestStats: () => void;
 };
 
 const RANGE_LABELS: Record<ScannerRangeFilter, string> = {
@@ -45,8 +47,10 @@ export function RangeFilterTabs({
   onChange,
   autoScale,
   percentageScale,
+  showBacktestStats,
   onToggleAutoScale,
   onTogglePercentageScale,
+  onToggleBacktestStats,
 }: RangeFilterTabsProps) {
   return (
     <div className="h-10 shrink-0 border-t border-border bg-background md:h-9">
@@ -77,8 +81,10 @@ export function RangeFilterTabs({
         <ChartScaleControls
           autoScale={autoScale}
           percentageScale={percentageScale}
+          showBacktestStats={showBacktestStats}
           onToggleAutoScale={onToggleAutoScale}
           onTogglePercentageScale={onTogglePercentageScale}
+          onToggleBacktestStats={onToggleBacktestStats}
         />
       </div>
       <div className="h-0.5 bg-primary" />

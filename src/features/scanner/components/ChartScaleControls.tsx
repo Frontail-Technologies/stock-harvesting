@@ -5,8 +5,10 @@ import { cn } from "@/utils/cn";
 type ChartScaleControlsProps = {
   autoScale: boolean;
   percentageScale: boolean;
+  showBacktestStats: boolean;
   onToggleAutoScale: () => void;
   onTogglePercentageScale: () => void;
+  onToggleBacktestStats: () => void;
 };
 
 function ScaleToggle({
@@ -41,8 +43,10 @@ function ScaleToggle({
 export function ChartScaleControls({
   autoScale,
   percentageScale,
+  showBacktestStats,
   onToggleAutoScale,
   onTogglePercentageScale,
+  onToggleBacktestStats,
 }: ChartScaleControlsProps) {
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-(--scanner-toolbar-border) bg-(--scanner-toolbar-bg) p-0.5">
@@ -57,6 +61,12 @@ export function ChartScaleControls({
         title={percentageScale ? "Percentage scale: on" : "Percentage scale: off"}
         active={percentageScale}
         onClick={onTogglePercentageScale}
+      />
+      <ScaleToggle
+        label="Stats"
+        title={showBacktestStats ? "Hide backtest stats" : "Show backtest stats"}
+        active={showBacktestStats}
+        onClick={onToggleBacktestStats}
       />
     </div>
   );

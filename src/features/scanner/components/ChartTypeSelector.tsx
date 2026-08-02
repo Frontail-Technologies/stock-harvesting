@@ -23,6 +23,7 @@ import {
 type ChartTypeSelectorProps = {
   value: ScannerChartType;
   onChange: (value: ScannerChartType) => void;
+  compact?: boolean;
 };
 
 const chartTypeIcon: Record<ScannerChartType, typeof ChartCandlestick> = {
@@ -35,18 +36,29 @@ const chartTypeIcon: Record<ScannerChartType, typeof ChartCandlestick> = {
   "hollow-candles": ChartCandlestick,
 };
 
-export function ChartTypeSelector({ value, onChange }: ChartTypeSelectorProps) {
+export function ChartTypeSelector({ value, onChange, compact }: ChartTypeSelectorProps) {
   const ActiveIcon = chartTypeIcon[value];
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-        <ActiveIcon className="size-3.5 text-primary" />
-        <span className="hidden sm:inline">{SCANNER_CHART_TYPE_LABEL[value]}</span>
-        <ChevronDown className="size-3 text-muted-foreground" />
-      </DropdownMenuTrigger>
+      {compact ? (
+        <DropdownMenuTrigger
+          title={SCANNER_CHART_TYPE_LABEL[value]}
+          aria-label={`Chart type: ${SCANNER_CHART_TYPE_LABEL[value]}`}
+          className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ActiveIcon className="size-4" />
+        </DropdownMenuTrigger>
+      ) : (
+        <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+          <ActiveIcon className="size-3.5 text-primary" />
+          <span className="hidden sm:inline">{SCANNER_CHART_TYPE_LABEL[value]}</span>
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </DropdownMenuTrigger>
+      )}
       <DropdownMenuContent
         align="start"
+        side={compact ? "right" : "bottom"}
         className="scanner-portal w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl"
       >
         {SCANNER_CHART_TYPES.map((chartType) => {

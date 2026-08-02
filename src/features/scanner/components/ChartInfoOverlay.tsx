@@ -38,7 +38,7 @@ export function ChartInfoOverlay({
   const { text: changeText, isPositive } = formatSignedChange(change, changePct);
 
   return (
-    <div className="pointer-events-none absolute left-2 top-2 z-30 max-w-[calc(100%-1rem)] select-none sm:left-3">
+    <div className="pointer-events-none absolute left-2 top-2 z-30 max-w-[calc(100%-4.5rem)] select-none sm:left-3">
       <div className="pointer-events-auto flex flex-wrap items-center gap-x-1.5 gap-y-0.5 sm:gap-2">
         <span className="text-xs font-semibold text-foreground sm:text-sm">{stock.symbol}</span>
         <span className="text-[0.6875rem] text-muted-foreground sm:text-xs">

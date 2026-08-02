@@ -72,7 +72,22 @@ export function MarketSelector({
     const updateMenuRect = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setMenuRect({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 260) });
+      const margin = 8;
+      const viewportWidth = window.innerWidth;
+      const isMobile = viewportWidth < 640;
+
+      if (isMobile) {
+        setMenuRect({
+          top: rect.bottom + 4,
+          left: margin,
+          width: Math.max(1, viewportWidth - margin * 2),
+        });
+        return;
+      }
+
+      const width = Math.max(rect.width, 260);
+      const left = Math.min(rect.left, viewportWidth - width - margin);
+      setMenuRect({ top: rect.bottom + 4, left: Math.max(margin, left), width });
     };
 
     updateMenuRect();
@@ -171,7 +186,7 @@ export function MarketSelector({
                         aria-selected={isSelected}
                         onClick={() => handleSelect(exchange.code)}
                         className={cn(
-                          "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
+                          "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors sm:px-2.5 sm:py-1.5",
                           isSelected
                             ? "bg-primary text-primary-foreground"
                             : "text-popover-foreground hover:bg-muted"
