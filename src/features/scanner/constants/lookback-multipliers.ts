@@ -20,11 +20,14 @@ export function getEffectiveScannerLookbackWeeks(
   requestedWeeks: number,
   availableWeeks: number
 ) {
-  if (availableWeeks >= requestedWeeks) return requestedWeeks;
+  if (availableWeeks <= 0) return null;
 
-  const fallback = [...SCANNER_LOOKBACK_OPTIONS]
-    .sort((a, b) => b.weeks - a.weeks)
-    .find((option) => availableWeeks >= option.weeks);
-
-  return fallback?.weeks ?? null;
+  // Clamp to what's actually available instead of snapping down to the next
+  // smaller preset (50/150/250) — snapping made 3x and 5x collapse to the
+  // same 1x value for any stock with less than 150 weeks of history, so
+  // switching the lookback did nothing for it. Clamping to the real
+  // available week count still lets shorter-history stocks differ between
+  // presets (e.g. 80 weeks available: 1x -> 50, 3x/5x -> 80), and only
+  // 3x/5x collapse into each other once both genuinely exceed what's there.
+  return Math.min(requestedWeeks, availableWeeks);
 }

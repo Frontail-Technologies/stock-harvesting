@@ -50,7 +50,7 @@ export function BrandLogo({
           alt=""
           width={420}
           height={160}
-          priority
+          loading="eager"
           className={cn("h-full w-auto max-w-none object-contain", classes.image)}
         />
       </span>

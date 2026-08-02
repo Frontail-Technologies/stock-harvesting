@@ -24,6 +24,8 @@ export const SCANNER_CHART_THEMES: Record<
     volumeGreen: string;
     volumeRed: string;
     gridLine: string;
+    highlightFill: string;
+    highlightEdge: string;
   }
 > = {
   dark: {
@@ -34,6 +36,12 @@ export const SCANNER_CHART_THEMES: Record<
     volumeGreen: "rgba(34,197,94,0.38)",
     volumeRed: "rgba(239,68,68,0.34)",
     gridLine: "rgba(255,255,255,0.055)",
+    // Mirrors --scanner-highlight-fill / --scanner-highlight-edge in
+    // globals.css — canvas fillStyle can't read CSS custom properties, so
+    // the scan-band primitive (which paints on the chart's own canvas)
+    // needs these as literal values kept in sync with that file.
+    highlightFill: "rgba(250,240,88,0.22)",
+    highlightEdge: "rgba(250,204,21,0.12)",
   },
   light: {
     panelBackground: "#F8FAFC",
@@ -43,6 +51,8 @@ export const SCANNER_CHART_THEMES: Record<
     volumeGreen: "rgba(22,163,74,0.28)",
     volumeRed: "rgba(220,38,38,0.24)",
     gridLine: "rgba(15,23,42,0.14)",
+    highlightFill: "rgba(250,240,88,0.3)",
+    highlightEdge: "rgba(217,119,6,0.16)",
   },
 };
 

@@ -5,6 +5,7 @@ import type { Candle, ScanBand, Stock } from "@/types/market";
 import { getBrandLogoPath } from "@/components/ui/brand-logo-paths";
 import { Spinner } from "@/components/ui/spinner";
 import { useCurrency } from "@/features/currency";
+import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { formatCompactVolume, formatSignedChange } from "@/utils/formatters";
 import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-chart";
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
@@ -68,6 +69,10 @@ export function ScannerChartStage({
   const hoveredCandle = hoveredCandleTime
     ? (candleByTime.get(hoveredCandleTime) ?? null)
     : null;
+  // Most candle fetches are cache hits (10min+ staleTime) — only show the
+  // loading card if it's genuinely still fetching after a beat, so a
+  // symbol/timeframe switch doesn't flash a spinner it doesn't need to.
+  const showChartLoading = useDelayedFlag(loading && candles.length === 0);
 
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
@@ -222,7 +227,7 @@ export function ScannerChartStage({
         latestSignalActive={latestSignalActive}
       />
       <ScannerBacktestStatsOverlay stats={backtestStats} />
-      {loading && candles.length === 0 && (
+      {showChartLoading && (
         <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-background/35">
           <div className="flex items-center gap-2 rounded-lg border border-border bg-popover/90 px-4 py-3 text-sm font-medium text-foreground shadow-lg">
             <Spinner size="sm" />
@@ -234,11 +239,10 @@ export function ScannerChartStage({
       {chartHandles && (
         <>
           <ScanBandOverlay
-            chart={chartHandles.chart}
             series={chartHandles.series}
             bands={scanBands}
             candleTimes={candleTimes}
-            containerRef={containerRef}
+            theme={theme}
           />
           <DrawingOverlay
             chart={chartHandles.chart}

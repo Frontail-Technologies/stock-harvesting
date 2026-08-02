@@ -93,7 +93,7 @@ export function LoginScreen() {
             src="/images/login/left.png"
             alt=""
             fill
-            priority
+            loading="eager"
             sizes="(min-width: 768px) 52vw, 0vw"
             className="object-cover"
           />
