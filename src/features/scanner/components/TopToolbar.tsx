@@ -1,7 +1,7 @@
 "use client";
 
 import type { Stock } from "@/types/market";
-import { Camera, ChevronDown, Send } from "lucide-react";
+import { Camera, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,18 +17,16 @@ import {
   SCANNER_LOOKBACK_OPTIONS,
   type ScannerChartType,
   type ScannerLookbackMultiplier,
-  type Timeframe,
 } from "../types";
-import { AiSummaryButton } from "./AiSummaryButton";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
+import { ShareMenu } from "./ShareMenu";
 import { StockSearchCombobox } from "./StockSearchCombobox";
 
 type TopToolbarProps = {
   stock: Stock;
   chartType: ScannerChartType;
   lookbackMultiplier: ScannerLookbackMultiplier;
-  timeframe: Timeframe;
   exchange: MarketExchangeCode;
   onChartTypeChange: (chartType: ScannerChartType) => void;
   onLookbackMultiplierChange: (value: ScannerLookbackMultiplier) => void;
@@ -85,7 +83,6 @@ export function TopToolbar({
   stock,
   chartType,
   lookbackMultiplier,
-  timeframe,
   exchange,
   onChartTypeChange,
   onLookbackMultiplierChange,
@@ -107,11 +104,10 @@ export function TopToolbar({
         />
       </div>
 
-      {/* Desktop-only left cluster: chart type, AI summary, lookback. */}
+      {/* Desktop-only left cluster: chart type, lookback. */}
       <div className="hidden items-center gap-1.5 sm:flex">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} />
         <Separator orientation="vertical" className="mx-1 h-5" />
-        <AiSummaryButton stock={stock} timeframe={timeframe} />
         <LookbackDropdown
           lookbackMultiplier={lookbackMultiplier}
           onLookbackMultiplierChange={onLookbackMultiplierChange}
@@ -141,16 +137,7 @@ export function TopToolbar({
         >
           <Camera className="size-4" />
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Send"
-          title="Send"
-          onClick={onSend}
-        >
-          <Send className="size-4" />
-        </Button>
+        <ShareMenu stock={stock} onNativeShare={onSend} onDownload={onScreenshot} />
         <MarketSelector compact onExchangeChange={onExchangeChange} />
         <ThemeToggle />
         <StockSearchCombobox

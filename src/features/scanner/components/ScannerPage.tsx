@@ -268,7 +268,6 @@ export function ScannerPage() {
           stock={selectedStock}
           chartType={chartType}
           lookbackMultiplier={lookbackMultiplier}
-          timeframe={timeframe}
           exchange={selectedExchange}
           onChartTypeChange={setChartType}
           onLookbackMultiplierChange={setLookbackMultiplier}
@@ -489,7 +488,6 @@ function ScannerDrawingWorkspace({
       <ChartToolsBar
         drawing={drawing}
         stock={stock}
-        timeframe={timeframe}
         chartType={chartType}
         onChartTypeChange={onChartTypeChange}
         onScreenshot={onScreenshot}

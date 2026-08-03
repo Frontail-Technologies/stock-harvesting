@@ -367,6 +367,10 @@ async function captureStageImage(
   );
   if (!blob) return;
 
+  // Sharing must never silently fall back to downloading the file — a user
+  // picking "Share via device" only expects the native share sheet to open,
+  // not an unprompted download if that sheet fails or isn't actually
+  // supported. Download is its own explicit menu action (mode === "download").
   if (mode === "share") {
     const file = new File([blob], filename, { type: "image/jpeg" });
     const shareData = {
@@ -382,12 +386,11 @@ async function captureStageImage(
     if (nav.share && (!nav.canShare || nav.canShare(shareData))) {
       try {
         await nav.share(shareData);
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
+      } catch {
       }
     }
+
+    return;
   }
 
   downloadBlob(blob, filename);
