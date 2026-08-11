@@ -13,6 +13,7 @@ export const API_ROUTES = {
     stockSearch: "/api/market-data/stocks/search",
     candles: (symbol: string) =>
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
+    historyRange: "/api/market-data/history-range",
     exchanges: "/api/market-data/exchanges",
     exchangeRates: "/api/market-data/exchange-rates",
     indexRelativeStrength: "/api/market-data/index-relative-strength",
@@ -69,3 +70,4 @@ export const API_ROUTES = {
     ask: (symbol: string) => `/api/ai/scanner/${encodeURIComponent(symbol)}/ask`,
   },
 } as const;
+

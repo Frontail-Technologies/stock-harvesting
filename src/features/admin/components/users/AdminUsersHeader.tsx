@@ -1,7 +1,6 @@
 "use client";
 
 import { Download, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 type AdminUsersHeaderProps = {
@@ -20,33 +19,38 @@ export function AdminUsersHeader({
   onExport,
 }: AdminUsersHeaderProps) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Users</h1>
-        <p className="text-sm text-muted-foreground">
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+          Admin
+        </div>
+        <h1 className="mt-1 text-2xl font-semibold uppercase tracking-[0.04em] text-foreground">
+          Users
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Search users, update roles, and manage free or pro plans.
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="bg-card">
-          {totalUsers} total
-        </Badge>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex h-8 items-center rounded-md border border-border bg-[var(--admin-elevated)] px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {totalUsers} Users
+        </span>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5"
+          className="h-8 gap-1.5 rounded-md border-border bg-[var(--admin-elevated)] text-foreground hover:bg-accent"
           onClick={onExport}
           disabled={exporting}
         >
           <Download className="size-3.5" />
-          {exporting ? "Exporting..." : "Export CSV"}
+          {exporting ? "Exporting" : "Export CSV"}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5"
+          className="h-8 gap-1.5 rounded-md border-border bg-[var(--admin-elevated)] text-foreground hover:bg-accent"
           onClick={onRefresh}
           disabled={refreshing}
         >
@@ -54,6 +58,7 @@ export function AdminUsersHeader({
           Refresh
         </Button>
       </div>
-    </div>
+    </header>
   );
 }
+

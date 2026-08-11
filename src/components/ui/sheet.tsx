@@ -36,13 +36,15 @@ function SheetOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) {
   )
 }
 
-type SheetSide = "right" | "left"
+type SheetSide = "right" | "left" | "bottom"
 
 const sheetSideClasses: Record<SheetSide, string> = {
   right:
     "right-0 top-0 h-dvh w-full max-w-md border-l data-open:slide-in-from-right data-closed:slide-out-to-right",
   left:
     "left-0 top-0 h-dvh w-full max-w-md border-r data-open:slide-in-from-left data-closed:slide-out-to-left",
+  bottom:
+    "bottom-0 left-0 max-h-[85dvh] w-full rounded-t-lg border-t data-open:slide-in-from-bottom data-closed:slide-out-to-bottom",
 }
 
 function SheetContent({
@@ -136,3 +138,5 @@ export {
   SheetTitle,
   SheetTrigger,
 }
+
+

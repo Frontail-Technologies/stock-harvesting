@@ -1,7 +1,6 @@
 "use client";
 
 import { Pencil } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -12,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/utils/cn";
 import {
   formatAdminDate,
   formatUserPlan,
@@ -35,82 +35,71 @@ export function AdminUsersTable({
   onEditUser,
 }: AdminUsersTableProps) {
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card text-card-foreground">
+    <div className="overflow-hidden rounded-md border border-border bg-[var(--admin-table)] text-card-foreground">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="w-14 border-r border-border px-4 text-right text-xs font-semibold">
+          <TableRow className="border-border bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
+            <TableHead className="w-14 border-r border-border/70 px-3 text-right font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               No.
             </TableHead>
-            <TableHead className="min-w-52 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="min-w-52 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Name
             </TableHead>
-            <TableHead className="min-w-64 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="min-w-64 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Email
             </TableHead>
-            <TableHead className="w-32 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="w-32 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Role
             </TableHead>
-            <TableHead className="w-32 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="w-32 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Plan
             </TableHead>
-            <TableHead className="w-44 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="w-44 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Created
             </TableHead>
-            <TableHead className="w-28 px-4 text-xs font-semibold">
+            <TableHead className="w-20 px-4 text-right font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Actions
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user, index) => (
-            <TableRow key={user.id} className="hover:bg-muted/30">
-              <TableCell className="border-r border-border px-4 text-right text-muted-foreground">
+            <TableRow
+              key={user.id}
+              className="h-11 border-border/70 hover:bg-[var(--admin-row-hover)]"
+            >
+              <TableCell className="border-r border-border/70 px-3 text-right font-mono text-xs text-muted-foreground">
                 {startIndex + index + 1}
               </TableCell>
-              <TableCell className="border-r border-border px-4">
+              <TableCell className="border-r border-border/70 px-4">
                 <div className="font-medium text-foreground">{user.name}</div>
               </TableCell>
-              <TableCell className="border-r border-border px-4 text-muted-foreground">
+              <TableCell className="border-r border-border/70 px-4 text-muted-foreground">
                 {user.email}
               </TableCell>
-              <TableCell className="border-r border-border px-4">
-                <Badge
-                  variant="outline"
-                  className={
-                    user.role === "admin"
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  }
-                >
+              <TableCell className="border-r border-border/70 px-4">
+                <AdminUserTag tone={user.role === "admin" ? "accent" : "neutral"}>
                   {formatUserRole(user.role)}
-                </Badge>
+                </AdminUserTag>
               </TableCell>
-              <TableCell className="border-r border-border px-4">
-                <Badge
-                  variant="outline"
-                  className={
-                    user.plan === "pro"
-                      ? "border-success/30 bg-success/10 text-success"
-                      : "bg-muted text-muted-foreground"
-                  }
-                >
+              <TableCell className="border-r border-border/70 px-4">
+                <AdminUserTag tone={user.plan === "pro" ? "accent" : "neutral"}>
                   {formatUserPlan(user.plan)}
-                </Badge>
+                </AdminUserTag>
               </TableCell>
-              <TableCell className="border-r border-border px-4 text-muted-foreground">
+              <TableCell className="border-r border-border/70 px-4 font-mono text-xs text-muted-foreground">
                 {formatAdminDate(user.createdAt)}
               </TableCell>
-              <TableCell className="px-4">
+              <TableCell className="px-4 text-right">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${user.name || user.email}`}
+                  className="rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => onEditUser(user)}
                 >
                   <Pencil className="size-3.5" />
-                  Edit
                 </Button>
               </TableCell>
             </TableRow>
@@ -120,7 +109,7 @@ export function AdminUsersTable({
             <TableRow>
               <TableCell
                 colSpan={7}
-                className="py-10 text-center text-sm text-muted-foreground"
+                className="py-12 text-center text-sm text-muted-foreground"
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -140,3 +129,25 @@ export function AdminUsersTable({
     </div>
   );
 }
+
+function AdminUserTag({
+  children,
+  tone,
+}: {
+  children: string;
+  tone: "accent" | "neutral";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center rounded-[4px] border px-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]",
+        tone === "accent"
+          ? "border-primary/35 bg-primary/10 text-foreground"
+          : "border-border bg-[var(--admin-elevated)] text-muted-foreground"
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+

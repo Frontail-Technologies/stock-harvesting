@@ -1,16 +1,14 @@
-"use client";
-
 import { AU, CA, GB, IN, JP, SG, US } from "country-flag-icons/string/3x2";
 import { cn } from "@/utils/cn";
 import { Reveal } from "./Reveal";
 
-// Flags ship as standalone SVG strings — embed as data URIs so each renders
+// Flags ship as standalone SVG strings â€” embed as data URIs so each renders
 // as a small <img> in the coverage table without an external CDN.
 const FLAG_SVG: Record<string, string> = { IN, US, JP, GB, AU, CA, SG };
 const flagUri = (code: string) =>
   `data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}`;
 
-// Only India (NSE + BSE) and US markets are confirmed/active — real, wired
+// Only India (NSE + BSE) and US markets are confirmed/active â€” real, wired
 // integrations. Everything else is broader coverage still being built, shown
 // honestly as "Expanding" rather than implied live.
 const MARKET_STATUS = [
@@ -117,3 +115,4 @@ export function MarketCoverageSection() {
     </section>
   );
 }
+

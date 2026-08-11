@@ -39,6 +39,11 @@ export type ScannerChartHandles = {
   series: ScannerPriceSeries;
 };
 
+function getInitialScannerTheme(fallbackTheme: ScannerTheme): ScannerTheme {
+  if (typeof document === "undefined") return fallbackTheme;
+  return document.documentElement.classList.contains("dark") ? "dark" : fallbackTheme;
+}
+
 type UseLightweightCandlestickChartArgs = {
   data: ScannerChartData;
   chartType: ScannerChartType;
@@ -114,7 +119,7 @@ export function useLightweightCandlestickChart({
     if (!container) return;
     let disposed = false;
 
-    const initialTheme = latestThemeRef.current;
+    const initialTheme = getInitialScannerTheme(latestThemeRef.current);
     const initialCrosshairActive = latestCrosshairRef.current;
     const chartOptions = createScannerChartOptions(initialTheme);
     const chart = createChart(container, {

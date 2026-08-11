@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Time } from "lightweight-charts";
 import NextImage from "next/image";
 import type { Candle, ScanBand, Stock } from "@/types/market";
@@ -12,7 +12,6 @@ import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-c
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
 import { getScannerChartTheme } from "../lib/scanner-chart-config";
 import { getChartCursorCss } from "../tools/cursor-tool-config";
-import { TIMEFRAME_LABEL } from "../types";
 import type {
   ChartCaptureRequest,
   DrawingController,
@@ -37,6 +36,7 @@ type ScannerChartStageProps = {
   drawing: DrawingController;
   theme: ScannerTheme;
   backtestStats: ScannerBacktestStats | null;
+  scannerHighlightsVisible: boolean;
 };
 
 export function ScannerChartStage({
@@ -52,6 +52,7 @@ export function ScannerChartStage({
   drawing,
   theme,
   backtestStats,
+  scannerHighlightsVisible,
 }: ScannerChartStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const chartCursor = getChartCursorCss(drawing.activeTool);
@@ -70,7 +71,7 @@ export function ScannerChartStage({
   const hoveredCandle = hoveredCandleTime
     ? (candleByTime.get(hoveredCandleTime) ?? null)
     : null;
-  // Most candle fetches are cache hits (10min+ staleTime) — only show the
+  // Most candle fetches are cache hits (10min+ staleTime) â€” only show the
   // loading card if it's genuinely still fetching after a beat, so a
   // symbol/timeframe switch doesn't flash a spinner it doesn't need to.
   const showChartLoading = useDelayedFlag(loading && candles.length === 0);
@@ -81,7 +82,7 @@ export function ScannerChartStage({
     if (!captureRequest || !stageRef.current) return;
     // captureRequest is never reset to null once set, and this effect's
     // other deps (candles, backtestStats, ...) change on their own from
-    // live price ticks — without this guard, every subsequent tick would
+    // live price ticks â€” without this guard, every subsequent tick would
     // silently re-run the same capture again (an unwanted "automatic"
     // download/share on every update, not just the actual button click).
     if (processedCaptureIdRef.current === captureRequest.id) return;
@@ -117,7 +118,7 @@ export function ScannerChartStage({
 
     // Hovering the price scale (right strip) or time scale (bottom strip)
     // shows a resize/"stretch" cursor, since dragging there scales that axis
-    // (lightweight-charts' own axisPressedMouseMove behavior) — everywhere
+    // (lightweight-charts' own axisPressedMouseMove behavior) â€” everywhere
     // else keeps the active drawing tool's cursor. A MutationObserver keeps
     // re-applying the current cursor to newly (re)created canvases, since
     // lightweight-charts recreates its canvas elements on internal updates.
@@ -249,13 +250,15 @@ export function ScannerChartStage({
 
       {chartHandles && (
         <>
-          <ScanBandOverlay
-            series={chartHandles.series}
-            bands={scanBands}
-            candleTimes={candleTimes}
-            theme={theme}
-            hoveredTime={hoveredCandleTime}
-          />
+          {scannerHighlightsVisible && (
+            <ScanBandOverlay
+              series={chartHandles.series}
+              bands={scanBands}
+              candleTimes={candleTimes}
+              theme={theme}
+              hoveredTime={hoveredCandleTime}
+            />
+          )}
           <DrawingOverlay
             chart={chartHandles.chart}
             series={chartHandles.series}
@@ -368,7 +371,7 @@ async function captureStageImage(
   );
   if (!blob) return;
 
-  // Sharing must never silently fall back to downloading the file — a user
+  // Sharing must never silently fall back to downloading the file â€” a user
   // picking "Share via device" only expects the native share sheet to open,
   // not an unprompted download if that sheet fails or isn't actually
   // supported. Download is its own explicit menu action (mode === "download").
@@ -512,7 +515,7 @@ function drawChartInfoScreenshotOverlay(
 
   context.font = "12px Arial, sans-serif";
   context.fillStyle = colors.muted;
-  const metaText = `${TIMEFRAME_LABEL[timeframe]} - ${stock.exchange}`;
+  const metaText = stock.exchange;
   const metaX = x + symbolWidth + 8;
   context.fillText(metaText, metaX, y);
   const metaWidth = context.measureText(metaText).width;
@@ -527,7 +530,7 @@ function drawChartInfoScreenshotOverlay(
     context.fillText("Signal", badgeX + 7, y);
   }
 
-  // Price row: the largest, most prominent number in the block — mirrors
+  // Price row: the largest, most prominent number in the block â€” mirrors
   // the on-screen ChartInfoOverlay's symbol/price/metadata hierarchy.
   const priceY = y + 24;
   const priceText = formatStockCurrency(last.close, stock.exchange);
@@ -706,3 +709,7 @@ function loadImage(src: string) {
     image.src = src;
   });
 }
+
+
+
+

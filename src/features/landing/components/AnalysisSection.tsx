@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Reveal, Stagger, StaggerItem } from "./Reveal";
 
 const SUPPORTING_ROWS = [
@@ -14,7 +11,7 @@ const SUPPORTING_ROWS = [
   },
 ];
 
-// Deterministic, not Math.random() — identical output on server and client
+// Deterministic, not Math.random() â€” identical output on server and client
 // avoids a hydration mismatch on this SVG. Noise thins out toward the
 // lower-right, where the selected observations sit.
 const NOISE_POINTS = Array.from({ length: 46 }, (_, i) => {
@@ -39,7 +36,7 @@ const FOCUS_POINTS = [
 ];
 
 // A few labeled top data points act as the "sources" feeding the detected
-// area — each carries a mono annotation and a thin line narrowing down into
+// area â€” each carries a mono annotation and a thin line narrowing down into
 // the lower-right focus zone. These are high-level market dimensions only;
 // no methodology, weighting or logic is implied.
 const LABELED_SOURCES = [
@@ -159,11 +156,7 @@ export function AnalysisSection() {
                 </g>
               ))}
 
-              <motion.g
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.7, delay: 0.35 }}
+              <g
                 filter="url(#analysis-glow)"
               >
                 {FOCUS_POINTS.map((p) => (
@@ -176,7 +169,7 @@ export function AnalysisSection() {
                     fill="var(--brand-gold)"
                   />
                 ))}
-              </motion.g>
+              </g>
 
               <text x="18" y="20" className="landing-analysis-label">
                 MARKET DATA
@@ -195,3 +188,4 @@ export function AnalysisSection() {
     </section>
   );
 }
+

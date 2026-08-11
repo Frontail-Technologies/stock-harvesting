@@ -1,13 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { useLandingCta } from "../hooks/use-landing-cta";
 import { Reveal } from "./Reveal";
 
 export function FinalCtaSection() {
-  const cta = useLandingCta();
-
   return (
     <section
       id="cta"
@@ -29,17 +23,17 @@ export function FinalCtaSection() {
 
           <p className="landing-eyebrow">Ready to Review?</p>
           <h2 id="cta-heading" className="landing-cta-heading text-balance">
-            Start with the scanner
+            Open the workspace
           </h2>
           <p className="landing-cta-copy">
-            Search a stock, review what Stock Harvesting surfaces, and
-            inspect the result directly in your chart workspace.
+            Search a stock, review the surfaced market context, and inspect
+            the result directly in your chart workspace.
           </p>
 
           <div className="mt-9 flex justify-center">
-            <Link href={cta.href} className="landing-btn-primary landing-btn-lg gap-2 inline-flex items-center">
-              {cta.label}
-              <ArrowRight className="w-4 h-4" />
+            <Link href="/login" className="landing-btn-primary landing-btn-lg gap-2 inline-flex items-center">
+              Open Workspace
+              <span aria-hidden="true">-&gt;</span>
             </Link>
           </div>
         </Reveal>

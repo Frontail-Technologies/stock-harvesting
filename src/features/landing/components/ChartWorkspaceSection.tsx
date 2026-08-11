@@ -1,10 +1,7 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Reveal } from "./Reveal";
 
 // Illustrations are abstractions of real Stock Harvesting capabilities
-// (candles + scanner highlights, capture/export, sharing a saved review) —
+// (candles + analysis highlights, capture/export, sharing a saved review) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
 // not literal screenshots. Coordinates are deterministic (sine-based, not
 // Math.random) so server and client render identical markup.
 
@@ -31,14 +28,14 @@ const HIGHLIGHT_RANGES = [
   { from: 17, to: 19 },
 ];
 
-// 01 / Chart Review — the dominant visual, unchanged concept.
+// 01 / Chart Review ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the dominant visual, unchanged concept.
 function ChartReviewIllustration() {
   return (
     <svg
       viewBox="0 0 640 300"
       className="relative w-full h-full"
       role="img"
-      aria-label="Illustration of a weekly candlestick chart with a few scanner-detected regions highlighted"
+      aria-label="Illustration of a weekly candlestick chart with a few detected areas highlighted"
     >
       {HIGHLIGHT_RANGES.map((range) => {
         const from = CHART_CANDLES[range.from].x - 10;
@@ -60,11 +57,7 @@ function ChartReviewIllustration() {
         <line key={y} x1="624" y1={y} x2="636" y2={y} stroke="rgb(255 255 255 / 0.22)" />
       ))}
 
-      <motion.g
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.6 }}
+      <g
       >
         {CHART_CANDLES.map((c) => (
           <g key={c.x}>
@@ -93,10 +86,10 @@ function ChartReviewIllustration() {
             />
           </g>
         ))}
-      </motion.g>
+      </g>
 
       <text x="16" y="18" className="landing-analysis-label">
-        O · H · L · C · WEEKLY
+        O ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· H ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· L ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· C ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· WEEKLY
       </text>
       <text x="490" y="18" className="landing-analysis-label landing-analysis-label-active">
         CHART CONTEXT
@@ -105,7 +98,7 @@ function ChartReviewIllustration() {
   );
 }
 
-// A tiny abstract chart snapshot drawn inside a framed rectangle — used by
+// A tiny abstract chart snapshot drawn inside a framed rectangle ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â used by
 // both right-side illustrations so a "saved chart view" reads consistently.
 function MiniChartMarks({ frame }: { frame: { x: number; y: number; width: number; height: number } }) {
   const centerY = frame.y + frame.height / 2;
@@ -131,7 +124,7 @@ function MiniChartMarks({ frame }: { frame: { x: number; y: number; width: numbe
   );
 }
 
-// 02 / Save & Export — chart view → capture → saved/exported view.
+// 02 / Save & Export ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â chart view ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ capture ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ saved/exported view.
 function SaveExportIllustration() {
   const frame = { x: 20, y: 34, width: 132, height: 82 };
   const out = { x: 288, y: 46, width: 108, height: 58 };
@@ -157,20 +150,16 @@ function SaveExportIllustration() {
       />
       <MiniChartMarks frame={frame} />
 
-      <motion.g
+      <g
         stroke="var(--brand-gold)"
         strokeWidth="1.5"
         fill="none"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 0.85 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5 }}
       >
         <path d={`M${frame.x - 6} ${frame.y - 6 + corner} V${frame.y - 6} H${frame.x - 6 + corner}`} />
         <path d={`M${frame.x + frame.width + 6 - corner} ${frame.y - 6} H${frame.x + frame.width + 6} V${frame.y - 6 + corner}`} />
         <path d={`M${frame.x - 6} ${frame.y + frame.height + 6 - corner} V${frame.y + frame.height + 6} H${frame.x - 6 + corner}`} />
         <path d={`M${frame.x + frame.width + 6 - corner} ${frame.y + frame.height + 6} H${frame.x + frame.width + 6} V${frame.y + frame.height + 6 - corner}`} />
-      </motion.g>
+      </g>
 
       <line
         x1={connectStart}
@@ -180,27 +169,19 @@ function SaveExportIllustration() {
         stroke="rgb(255 255 255 / 0.3)"
         strokeDasharray="3 3"
       />
-      <motion.rect
+      <rect
         x={midX - 3}
         y={midY - 3}
         width="6"
         height="6"
         fill="var(--brand-gold)"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.3, delay: 0.4 }}
       />
 
-      <motion.g
-        initial={{ opacity: 0, x: -8 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
+      <g
       >
         <rect x={out.x} y={out.y} width={out.width} height={out.height} fill="none" stroke="rgb(255 255 255 / 0.28)" />
         <rect x={out.x + out.width / 2 - 3} y={out.y + out.height / 2 - 3} width="6" height="6" fill="var(--brand-gold)" />
-      </motion.g>
+      </g>
 
       <text x={frame.x} y="24" className="landing-analysis-label landing-analysis-label-active">
         CAPTURE
@@ -215,7 +196,7 @@ function SaveExportIllustration() {
   );
 }
 
-// 03 / Share Review — a saved review distributed through thin structural
+// 03 / Share Review ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a saved review distributed through thin structural
 // lines to a few neutral reviewer nodes. Technical, not social.
 const REVIEWER_NODES = [
   { x: 326, y: 46 },
@@ -246,40 +227,27 @@ function ShareReviewIllustration() {
       />
       <MiniChartMarks frame={frame} />
 
-      <motion.g
+      <g
         stroke="rgb(255 255 255 / 0.28)"
         strokeWidth="1"
         fill="none"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.6, delay: 0.35 }}
       >
         <line x1={frame.x + frame.width} y1={centerY} x2={trunkEnd} y2={centerY} />
         <line x1={trunkEnd} y1={REVIEWER_NODES[0].y} x2={trunkEnd} y2={REVIEWER_NODES[2].y} />
         {REVIEWER_NODES.map((n) => (
           <line key={n.y} x1={trunkEnd} y1={n.y} x2={branchX} y2={n.y} />
         ))}
-      </motion.g>
+      </g>
 
-      <motion.rect
+      <rect
         x={frame.x + frame.width - 3}
         y={centerY - 3}
         width="6"
         height="6"
         fill="var(--brand-gold)"
-        initial={{ opacity: 0, scale: 0.5 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        style={{ transformOrigin: `${frame.x + frame.width}px ${centerY}px` }}
       />
 
-      <motion.g
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
+      <g
       >
         {REVIEWER_NODES.map((n) => (
           <g key={n.y}>
@@ -287,7 +255,7 @@ function ShareReviewIllustration() {
             <circle cx={n.x} cy={n.y} r="1.6" fill="rgb(255 255 255 / 0.45)" />
           </g>
         ))}
-      </motion.g>
+      </g>
 
       <text x={frame.x} y="20" className="landing-analysis-label landing-analysis-label-active">
         SHARED REVIEW
@@ -342,8 +310,7 @@ export function ChartWorkspaceSection() {
             <div className="landing-workspace-block-body">
               <p className="landing-workspace-block-label">01 / Chart Review</p>
               <p className="landing-workspace-block-text">
-                Review scanner output with the surrounding chart and market
-                context in one focused workspace.
+                Review surfaced market context with the surrounding chart in one focused workspace.
               </p>
             </div>
           </Reveal>
@@ -386,3 +353,4 @@ export function ChartWorkspaceSection() {
     </section>
   );
 }
+

@@ -19,7 +19,12 @@ function withQuery(path: string, query: Record<string, string | number | undefin
   const queryString = params.toString();
   return queryString ? `${path}?${queryString}` : path;
 }
-
+function toApiTimeframe(timeframe?: string) {
+  if (timeframe === "1D") return "1d";
+  if (timeframe === "1W") return "1w";
+  if (timeframe === "1M") return "1mo";
+  return timeframe;
+}
 export function getScannerResults(input: {
   symbol: string;
   timeframe: Timeframe;
@@ -30,7 +35,7 @@ export function getScannerResults(input: {
 }) {
   return apiFetch<ScannerResultsResponse>(
     withQuery(API_ROUTES.scanner.symbolResults(input.symbol), {
-      timeframe: input.timeframe,
+      timeframe: toApiTimeframe(input.timeframe),
       rule: input.rule,
       limit: input.limit ?? 50,
       exchange: input.exchange,

@@ -12,13 +12,14 @@ import { searchStocks } from "@/utils/stock-search";
 import { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "../constants";
 import {
   getCandles,
+  getHistoryRange,
   getIndexRelativeStrength,
   getStocks,
   searchStocksApi,
 } from "../api/market-data-api";
 import { normalizeStocks } from "../lib/stock-mappers";
 import { useMarketDataCacheStore } from "../stores/market-data-cache-store";
-import type { CandleListInput, StockListInput } from "../types";
+import type { CandleListInput, HistoryRangeInput, StockListInput } from "../types";
 import type { Stock } from "@/types/market";
 
 const STOCK_SEARCH_STALE_TIME_MS = 10 * 60_000;
@@ -252,6 +253,21 @@ export function useStockSearch(
   };
 }
 
+export function useHistoryRange(input: HistoryRangeInput) {
+  const authStatus = useSessionStore((state) => state.status);
+
+  return useQuery({
+    queryKey: queryKeys.marketData.historyRange(input),
+    queryFn: () => getHistoryRange(input),
+    enabled:
+      authStatus === "authenticated" &&
+      Boolean(input.symbol) &&
+      Boolean(input.exchange),
+    retry: false,
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
 export function useCandles(input: CandleListInput) {
   const authStatus = useSessionStore((state) => state.status);
 
@@ -289,3 +305,4 @@ export function useIndexRelativeStrength(limit?: number, exchange?: string) {
 
   return { ...query, metrics: query.data ?? [] };
 }
+

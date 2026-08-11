@@ -174,7 +174,7 @@ export function AdminDataProviderPage() {
               className="gap-1.5"
               disabled={sectorClassificationMutation.isPending}
               onClick={handleSectorClassificationSync}
-              title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE/BSE instruments — independent of the Zerodha connection above"
+              title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE/BSE instruments - independent of the Zerodha connection above"
             >
               {sectorClassificationMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -190,7 +190,7 @@ export function AdminDataProviderPage() {
               className="gap-1.5"
               disabled={!status?.connected || indexSyncMutation.isPending}
               onClick={handleIndexSync}
-              title="Sync NSE indices (NIFTY AUTO, BANKNIFTY, NIFTY IT, ...) as instruments, filtered out of the regular equity sync — run this before Backfill Index History"
+              title="Sync NSE indices (NIFTY AUTO, BANKNIFTY, NIFTY IT, ...) as instruments, filtered out of the regular equity sync - run this before Backfill Index History"
             >
               {indexSyncMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -206,7 +206,7 @@ export function AdminDataProviderPage() {
               className="gap-1.5"
               disabled={!status?.connected || indexBackfillMutation.isPending}
               onClick={handleIndexBackfill}
-              title="Backfill full price history for every synced NSE index — needed before the dashboard's Relative Strength Index box has real data"
+              title="Backfill full price history for every synced NSE index - needed before the dashboard's Relative Strength Index box has real data"
             >
               {indexBackfillMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -298,7 +298,7 @@ export function AdminDataProviderPage() {
         {priceRefreshMutation.isSuccess ? (
           <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
             Price refresh started for every known NSE instrument. This can take
-            a while for the full market — check Jobs for progress.
+            a while for the full market - check Jobs for progress.
           </div>
         ) : null}
         {priceRefreshMutation.isError ? (
@@ -323,7 +323,7 @@ export function AdminDataProviderPage() {
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 BSE market data and indices use this connection. No OAuth
-                required — just the API keys already configured in backend
+                required - just the API keys already configured in backend
                 env.
               </p>
             </div>
@@ -335,7 +335,7 @@ export function AdminDataProviderPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={bseSyncMutation.isPending}
+              disabled={!globalDatafeedsStatus?.connected || bseSyncMutation.isPending}
               onClick={handleBseSync}
               title="Sync BSE equity instruments from GlobalDataFeeds"
             >
@@ -351,7 +351,7 @@ export function AdminDataProviderPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={bsePriceRefreshMutation.isPending}
+              disabled={!globalDatafeedsStatus?.connected || bsePriceRefreshMutation.isPending}
               onClick={handleBsePriceRefresh}
               title="Refresh latest close/change%/volume for every known BSE instrument"
             >
@@ -367,9 +367,9 @@ export function AdminDataProviderPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={bseIndexSyncMutation.isPending}
+              disabled={!globalDatafeedsStatus?.connected || bseIndexSyncMutation.isPending}
               onClick={handleBseIndexSync}
-              title="Sync BSE indices as instruments — run before Backfill BSE Index History"
+              title="Sync BSE indices as instruments - run before Backfill BSE Index History"
             >
               {bseIndexSyncMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -383,9 +383,9 @@ export function AdminDataProviderPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={bseIndexBackfillMutation.isPending}
+              disabled={!globalDatafeedsStatus?.connected || bseIndexBackfillMutation.isPending}
               onClick={handleBseIndexBackfill}
-              title="Backfill full price history for every synced BSE index — needed before the BSE dashboard's Relative Strength Index box has real data"
+              title="Backfill full price history for every synced BSE index - needed before the BSE dashboard's Relative Strength Index box has real data"
             >
               {bseIndexBackfillMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -399,8 +399,8 @@ export function AdminDataProviderPage() {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Sector/industry classification (which also auto-populates the
-          &quot;BSE — Classified Universe&quot; dashboard collection) is
-          synced from the &quot;Sync Sector Data&quot; button above — it
+          &quot;BSE - Classified Universe&quot; dashboard collection) is
+          synced from the &quot;Sync Sector Data&quot; button above - it
           covers both NSE and BSE in one pass.
         </p>
 

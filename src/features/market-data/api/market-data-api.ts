@@ -2,6 +2,8 @@ import { apiFetch, API_ROUTES } from "@/features/api";
 import type {
   CandleListInput,
   CandleListResponse,
+  HistoryRangeInput,
+  HistoryRangeResponse,
   IndexRelativeStrengthResponse,
   StockListInput,
   StockListResponse,
@@ -24,7 +26,12 @@ function withQuery(
   const queryString = params.toString();
   return queryString ? `${path}?${queryString}` : path;
 }
-
+function toApiTimeframe(timeframe?: string) {
+  if (timeframe === "1D") return "1d";
+  if (timeframe === "1W") return "1w";
+  if (timeframe === "1M") return "1mo";
+  return timeframe;
+}
 export async function getStocks(input: StockListInput = {}) {
   return apiFetch<StockListResponse>(
     withQuery(API_ROUTES.marketData.stocks, {
@@ -60,7 +67,7 @@ export async function searchStocksApi(input: StockListInput = {}) {
 export async function getCandles(input: CandleListInput) {
   return apiFetch<CandleListResponse>(
     withQuery(API_ROUTES.marketData.candles(input.symbol), {
-      timeframe: input.timeframe,
+      timeframe: toApiTimeframe(input.timeframe),
       from: input.from,
       to: input.to,
       exchange: input.exchange,
@@ -68,8 +75,18 @@ export async function getCandles(input: CandleListInput) {
   );
 }
 
+export async function getHistoryRange(input: HistoryRangeInput) {
+  return apiFetch<HistoryRangeResponse>(
+    withQuery(API_ROUTES.marketData.historyRange, {
+      symbol: input.symbol,
+      timeframe: toApiTimeframe(input.timeframe),
+      exchange: input.exchange,
+    })
+  );
+}
 export async function getIndexRelativeStrength(limit?: number, exchange?: string) {
   return apiFetch<IndexRelativeStrengthResponse>(
     withQuery(API_ROUTES.marketData.indexRelativeStrength, { limit, exchange })
   );
 }
+

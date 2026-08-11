@@ -3,7 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
-import { getStocks, useCandles, useStockSearch } from "@/features/market-data";
+import {
+  getStocks,
+  useCandles,
+  useHistoryRange,
+  useStockSearch,
+} from "@/features/market-data";
 import type { Stock } from "@/types/market";
 import type { DrawingElement, ScannerLookbackMultiplier, Timeframe } from "../types";
 import {
@@ -55,6 +60,14 @@ export function useScannerStockRecommendations(exchange: string, enabled = true)
   });
 }
 
+export function useScannerHistoryRange(
+  symbol: string,
+  timeframe: Timeframe,
+  exchange?: string
+) {
+  return useHistoryRange({ symbol, timeframe, exchange });
+}
+
 export function useScannerCandles(
   symbol: string,
   timeframe: Timeframe,
@@ -95,15 +108,8 @@ export function useScannerResults(
   };
 }
 
-// Alphabetically-first-by-name tends to surface ETPs/warrants/micro-caps
-// with numeric-leading codes (e.g. "21Shares Bitcoin Core ETP", "029 GROUP
-// SE") rather than a normal common-stock ticker — this is a light filter
-// for "looks like a plain equity symbol" (letter-led, no odd punctuation).
 const PLAUSIBLE_EQUITY_SYMBOL_PATTERN = /^[A-Z][A-Z0-9.-]{0,9}$/;
 
-// For exchanges without a hand-picked default (everything besides US/NSE —
-// see DEFAULT_STOCK_BY_EXCHANGE in ScannerPage.tsx), fetch a real symbol
-// from that exchange instead of showing an empty chart on first visit.
 export function useExchangeDefaultStock(exchange: string, enabled: boolean) {
   const authStatus = useSessionStore((state) => state.status);
   const query = useQuery({
@@ -196,3 +202,4 @@ export function useSaveScannerDrawings(symbol: string, timeframe: Timeframe) {
     },
   });
 }
+

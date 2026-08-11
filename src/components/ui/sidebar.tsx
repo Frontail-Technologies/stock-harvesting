@@ -89,7 +89,7 @@ function SidebarHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex h-16 shrink-0 items-center border-b border-sidebar-border px-2",
+        "flex h-[4.5rem] shrink-0 items-center border-b border-sidebar-border px-3",
         collapsed ? "justify-center" : "justify-start",
         className
       )}
@@ -113,7 +113,7 @@ function SidebarFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col gap-2 border-t border-sidebar-border px-2 py-4",
+        "flex shrink-0 flex-col gap-3 border-t border-sidebar-border px-2 py-3",
         collapsed ? "items-center" : "items-stretch",
         className
       )}
@@ -134,7 +134,7 @@ function SidebarTrigger({ className }: { className?: string }) {
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       onClick={toggle}
       className={cn(
-        "size-9 rounded-xl text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "size-8 rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         className
       )}
     >
@@ -144,7 +144,7 @@ function SidebarTrigger({ className }: { className?: string }) {
 }
 
 function SidebarMenu({ className, ...props }: ComponentProps<"nav">) {
-  return <nav className={cn("flex flex-col gap-2", className)} {...props} />;
+  return <nav className={cn("flex flex-col gap-1", className)} {...props} />;
 }
 
 function SidebarMenuItem({
@@ -163,13 +163,14 @@ function SidebarMenuItem({
       data-active={active}
       data-disabled={disabled}
       className={cn(
-        "flex h-10 items-center rounded-xl text-sm font-medium transition-colors",
+        "relative flex h-9 items-center rounded-md text-[13px] font-medium transition-colors duration-150",
         collapsed ? "justify-center px-0" : "justify-start gap-3 px-3",
-        active && "bg-sidebar-accent text-sidebar-accent-foreground",
+        active &&
+          "bg-sidebar-accent/80 text-sidebar-accent-foreground before:absolute before:left-0 before:top-1.5 before:h-6 before:w-0.5 before:rounded-full before:bg-primary",
         !active &&
           !disabled &&
-          "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        disabled && "cursor-not-allowed text-sidebar-foreground/30",
+          "text-sidebar-foreground/62 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+        disabled && "cursor-not-allowed text-sidebar-foreground/25",
         className
       )}
       {...props}
@@ -196,3 +197,4 @@ export {
   SidebarTrigger,
   useSidebar,
 };
+

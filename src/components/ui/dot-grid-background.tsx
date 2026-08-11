@@ -9,7 +9,7 @@ type DotGridBackgroundProps = {
   dotSize?: number;
   gap?: number;
   glowRadius?: number;
-  /** Base (non-glow) dot color — override for use on dark surfaces. */
+  /** Base dot color; override for dark surfaces. */
   dotColor?: string;
 };
 
@@ -19,7 +19,7 @@ export function DotGridBackground({
   dotSize = 1.5,
   gap = 24,
   glowRadius = 220,
-  dotColor = "#e2e8f0",
+  dotColor = "#d8d3c8",
 }: DotGridBackgroundProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +61,7 @@ export function DotGridBackground({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 opacity-60"
         style={{
-          // Explicit color rather than the theme-aware --border token — the
+          // Explicit color rather than the theme-aware --border token; the
           // callers of this component are permanently light or permanently
           // dark (never following the app-wide dark-mode toggle), so the
           // dot color is passed in rather than derived from theme state.

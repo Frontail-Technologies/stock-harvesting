@@ -30,7 +30,8 @@ export function ScannerIconButton({
         aria-label={label}
         title={label}
         className={cn(
-          "relative flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          "relative flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors",
+          !disabled && "cursor-pointer hover:bg-muted hover:text-foreground",
           active &&
             "bg-muted text-primary after:absolute after:top-1/2 after:left-0 after:h-4 after:w-0.5 after:-translate-y-1/2 after:rounded-full after:bg-primary",
           disabled && "cursor-not-allowed opacity-35 hover:bg-transparent hover:text-muted-foreground",

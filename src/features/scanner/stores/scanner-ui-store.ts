@@ -24,6 +24,7 @@ type ScannerUiState = {
   autoScale: boolean;
   percentageScale: boolean;
   showBacktestStats: boolean;
+  scannerHighlightsVisible: boolean;
   setSelectedSymbol: (symbol: string) => void;
   setSelectedStock: (stock: Stock) => void;
   setTimeframe: (timeframe: Timeframe) => void;
@@ -34,6 +35,7 @@ type ScannerUiState = {
   toggleAutoScale: () => void;
   togglePercentageScale: () => void;
   toggleBacktestStats: () => void;
+  toggleScannerHighlights: () => void;
 };
 
 export const useScannerUiStore = create<ScannerUiState>()(
@@ -49,6 +51,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
       autoScale: true,
       percentageScale: false,
       showBacktestStats: true,
+      scannerHighlightsVisible: true,
       setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
       setSelectedStock: (selectedStock) =>
         set({
@@ -71,6 +74,10 @@ export const useScannerUiStore = create<ScannerUiState>()(
         set((state) => ({ percentageScale: !state.percentageScale })),
       toggleBacktestStats: () =>
         set((state) => ({ showBacktestStats: !state.showBacktestStats })),
+      toggleScannerHighlights: () =>
+        set((state) => ({
+          scannerHighlightsVisible: !state.scannerHighlightsVisible,
+        })),
     }),
     {
       name: "stock-harvesting-scanner-ui",
@@ -83,6 +90,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
         autoScale: state.autoScale,
         percentageScale: state.percentageScale,
         showBacktestStats: state.showBacktestStats,
+        scannerHighlightsVisible: state.scannerHighlightsVisible,
       }),
     }
   )

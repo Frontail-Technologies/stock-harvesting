@@ -1,6 +1,4 @@
-"use client";
-
-import { motion } from "framer-motion";
+import type { CSSProperties } from "react";
 import { AU, CA, EU, GB, IN, JP, SG, US } from "country-flag-icons/string/3x2";
 import { DottedMap, type Marker } from "@/components/ui/dotted-map";
 import { cn } from "@/utils/cn";
@@ -8,12 +6,8 @@ import { cn } from "@/utils/cn";
 const MAP_WIDTH = 200;
 const MAP_HEIGHT = 100;
 
-// country-flag-icons ships each flag as a standalone SVG string — embed as a
-// data URI so the flag renders as an <image> inside the map's own SVG,
-// scaling with the map (an HTML overlay didn't respect the small size).
 const FLAG_SVG: Record<string, string> = { IN, US, JP, AU, GB, CA, SG, EU };
-const flagUri = (code: string) =>
-  `data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}`;
+const flagUri = (code: string) => `data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}`;
 
 type CountryMarker = Marker & {
   code: string;
@@ -23,8 +17,6 @@ type CountryMarker = Marker & {
   mobileHidden?: boolean;
 };
 
-// Country-level global context — India + US primary, a few more for reach,
-// Europe as broader expansion. Exchange detail lives in 04 / Market Coverage.
 const COUNTRY_MARKERS: CountryMarker[] = [
   { code: "IN", lat: 21.5, lng: 78.5, size: 0, label: "India", tier: "primary", labelSide: "left" },
   { code: "US", lat: 39.8, lng: -98.6, size: 0, label: "United States", tier: "primary", labelSide: "right" },
@@ -42,7 +34,7 @@ export function HeroWorldMap() {
       <DottedMap
         width={MAP_WIDTH}
         height={MAP_HEIGHT}
-        mapSamples={6000}
+        mapSamples={2400}
         dotRadius={0.3}
         dotColor="rgb(255 255 255 / 0.1)"
         markers={COUNTRY_MARKERS}
@@ -51,15 +43,12 @@ export function HeroWorldMap() {
           const fw = primary ? 8 : 6.8;
           const fh = fw * (2 / 3);
           const anchor = marker.labelSide === "left" ? "end" : "start";
-          const labelX =
-            marker.labelSide === "left" ? x - fw / 2 - 1.6 : x + fw / 2 + 1.6;
+          const labelX = marker.labelSide === "left" ? x - fw / 2 - 1.6 : x + fw / 2 + 1.6;
 
           return (
-            <motion.g
-              className={marker.mobileHidden ? "max-sm:hidden" : undefined}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 + index * 0.08 }}
+            <g
+              className={cn("landing-map-marker", marker.mobileHidden && "max-sm:hidden")}
+              style={{ "--landing-map-marker-delay": `${0.3 + index * 0.08}s` } as CSSProperties}
             >
               <image
                 href={flagUri(marker.code)}
@@ -94,10 +83,12 @@ export function HeroWorldMap() {
               >
                 {marker.label}
               </text>
-            </motion.g>
+            </g>
           );
         }}
       />
     </div>
   );
 }
+
+

@@ -37,15 +37,15 @@ export function AdminUsersFilters({
   onReset,
 }: AdminUsersFiltersProps) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid gap-2 md:grid-cols-[minmax(240px,1fr)_160px_160px] xl:grid-cols-[minmax(280px,1fr)_180px_180px_180px_150px_auto]">
+    <div className="rounded-md border border-border bg-[var(--admin-elevated)] p-3">
+      <div className="grid gap-2 md:grid-cols-[minmax(280px,1fr)_150px_150px] xl:grid-cols-[minmax(360px,1.4fr)_150px_150px_170px_140px_auto]">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filters.q}
             onChange={(event) => onFilterChange("q", event.target.value)}
             placeholder="Search name or email"
-            className="h-8 rounded-md bg-background pl-8"
+            className="h-10 rounded-md border-input bg-card pl-9 text-sm focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/30"
           />
         </div>
 
@@ -83,7 +83,7 @@ export function AdminUsersFilters({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5"
+          className="h-10 gap-1.5 rounded-md border-border bg-card px-3 text-sm hover:bg-accent"
           onClick={onReset}
           disabled={filtersAreDefault}
         >
@@ -93,10 +93,11 @@ export function AdminUsersFilters({
       </div>
 
       {activeFilterCount > 0 ? (
-        <div className="text-xs text-muted-foreground">
+        <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           {activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}
         </div>
       ) : null}
     </div>
   );
 }
+

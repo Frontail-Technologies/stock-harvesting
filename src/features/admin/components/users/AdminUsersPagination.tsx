@@ -35,12 +35,12 @@ export function AdminUsersPagination({
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 py-3 text-xs text-muted-foreground">
-      <span>
+    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span className="font-mono uppercase tracking-[0.08em]">
         Showing {firstRecord} to {lastRecord} of {pagination.total} records
       </span>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <AdminSelect
           label="Rows"
           value={String(filters.limit)}
@@ -56,6 +56,7 @@ export function AdminUsersPagination({
           variant="outline"
           size="icon-sm"
           aria-label="First page"
+          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
           disabled={filters.page <= 1 || loading}
           onClick={() => onFilterChange("page", 1)}
         >
@@ -66,12 +67,13 @@ export function AdminUsersPagination({
           variant="outline"
           size="icon-sm"
           aria-label="Previous page"
+          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
           disabled={filters.page <= 1 || loading}
           onClick={() => onFilterChange("page", Math.max(1, filters.page - 1))}
         >
           <ChevronLeft className="size-3.5" />
         </Button>
-        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-primary px-2 font-semibold text-primary-foreground">
+        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-primary px-2 font-mono text-xs font-semibold text-primary-foreground">
           {pagination.page}
         </span>
         <Button
@@ -79,6 +81,7 @@ export function AdminUsersPagination({
           variant="outline"
           size="icon-sm"
           aria-label="Next page"
+          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
           disabled={filters.page >= pagination.totalPages || loading}
           onClick={() =>
             onFilterChange(
@@ -94,6 +97,7 @@ export function AdminUsersPagination({
           variant="outline"
           size="icon-sm"
           aria-label="Last page"
+          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
           disabled={filters.page >= pagination.totalPages || loading}
           onClick={() =>
             onFilterChange("page", Math.max(1, pagination.totalPages))
@@ -105,3 +109,4 @@ export function AdminUsersPagination({
     </div>
   );
 }
+

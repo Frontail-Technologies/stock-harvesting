@@ -55,18 +55,32 @@ export function AdminSidebar({
 
   return (
     <Sidebar
-      className={cn("relative", onNavigate && "w-18 shadow-2xl", className)}
+      className={cn("relative border-sidebar-border/80", onNavigate && "w-72", className)}
     >
       <SidebarHeader>
         <Link
           href="/admin/users"
           onClick={onNavigate}
-          className="flex min-w-0 items-center justify-center"
+          className={cn(
+            "flex min-w-0 flex-col",
+            collapsed ? "items-center" : "items-start"
+          )}
           aria-label="Admin users"
         >
-          <SidebarLabel className="text-sm font-semibold">
-            Admin Console
-          </SidebarLabel>
+          {collapsed ? (
+            <span className="inline-flex size-9 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/55 font-mono text-xs font-semibold text-primary">
+              SH
+            </span>
+          ) : (
+            <>
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+                Stock Harvesting
+              </span>
+              <span className="mt-1 text-sm font-semibold text-sidebar-foreground">
+                Admin / Console
+              </span>
+            </>
+          )}
         </Link>
 
         {onNavigate && (
@@ -74,14 +88,14 @@ export function AdminSidebar({
             type="button"
             aria-label="Close admin navigation"
             onClick={onNavigate}
-            className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
+            className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
           >
-            <X className="size-3.5" />
+            <X className="size-4" />
           </button>
         )}
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="py-5">
         <SidebarMenu>
           {ADMIN_NAV_ITEMS.map((item) => {
             const active = pathname?.startsWith(item.href);
@@ -111,7 +125,7 @@ export function AdminSidebar({
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-sidebar-border/80">
         {collapsed ? (
           <>
             <AdminSidebarTooltip label="Open app">
@@ -119,7 +133,10 @@ export function AdminSidebar({
                 href="/scanner"
                 onClick={onNavigate}
                 aria-label="Open app"
-                className={buttonVariants({ variant: "ghost", size: "icon-lg" })}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon-lg" }),
+                  "rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                )}
               >
                 <Home className="size-4" />
               </Link>
@@ -137,6 +154,7 @@ export function AdminSidebar({
                   aria-label="Log out"
                   disabled={logout.isPending}
                   onClick={handleLogout}
+                  className="rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 >
                   <LogOut className="size-4" />
                 </Button>
@@ -144,7 +162,7 @@ export function AdminSidebar({
             ) : (
               <AdminSidebarTooltip label={user.name || user.email}>
                 <div aria-label="Account">
-                  <Avatar className="size-10">
+                  <Avatar className="size-9">
                     {user.avatarUrl ? (
                       <AvatarImage
                         src={user.avatarUrl}
@@ -162,12 +180,15 @@ export function AdminSidebar({
         ) : (
           <>
             <div className="flex w-full items-center justify-between gap-2">
-              <SidebarTrigger />
-              <div className="flex items-center gap-2">
+              <SidebarTrigger className="border border-sidebar-border/70 bg-sidebar-accent/25" />
+              <div className="flex items-center gap-1.5">
                 <Link
                   href="/scanner"
                   onClick={onNavigate}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "h-8 rounded-md border-sidebar-border/70 bg-transparent px-3 text-xs text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
                 >
                   App
                 </Link>
@@ -176,9 +197,9 @@ export function AdminSidebar({
             </div>
 
             {IS_PRODUCTION_LOCKDOWN ? (
-              <div className="flex w-full items-center justify-between gap-3 rounded-lg p-2">
+              <div className="flex w-full items-center justify-between gap-3 border-t border-sidebar-border/70 pt-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar className="size-11 shrink-0">
+                  <Avatar className="size-10 shrink-0">
                     {user.avatarUrl ? (
                       <AvatarImage src={user.avatarUrl} alt={user.name || user.email} />
                     ) : null}
@@ -190,7 +211,7 @@ export function AdminSidebar({
                     <div className="truncate text-sm font-semibold text-sidebar-foreground">
                       {user.name || user.email}
                     </div>
-                    <div className="truncate text-xs text-sidebar-foreground/50">
+                    <div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-sidebar-foreground/45">
                       {user.role}
                     </div>
                   </div>
@@ -202,32 +223,33 @@ export function AdminSidebar({
                   aria-label="Log out"
                   disabled={logout.isPending}
                   onClick={handleLogout}
+                  className="rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 >
                   <LogOut className="size-4" />
                 </Button>
               </div>
             ) : (
-            <div
-              aria-label="Account"
-              className="flex w-full items-start gap-3 rounded-lg p-2 text-left"
-            >
-              <Avatar className="size-11 shrink-0">
-                {user.avatarUrl ? (
-                  <AvatarImage src={user.avatarUrl} alt={user.name || user.email} />
-                ) : null}
-                <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                  {avatarInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 pt-1">
-                <div className="truncate text-sm font-semibold text-sidebar-foreground">
-                  {user.name || user.email}
-                </div>
-                <div className="truncate text-xs text-sidebar-foreground/50">
-                  {user.role}
+              <div
+                aria-label="Account"
+                className="flex w-full items-center gap-3 border-t border-sidebar-border/70 pt-3 text-left"
+              >
+                <Avatar className="size-10 shrink-0">
+                  {user.avatarUrl ? (
+                    <AvatarImage src={user.avatarUrl} alt={user.name || user.email} />
+                  ) : null}
+                  <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+                    {avatarInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-sidebar-foreground">
+                    {user.name || user.email}
+                  </div>
+                  <div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-sidebar-foreground/45">
+                    {user.role}
+                  </div>
                 </div>
               </div>
-            </div>
             )}
           </>
         )}

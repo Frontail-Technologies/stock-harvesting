@@ -12,6 +12,6 @@ export function useLandingCta() {
   return {
     isAuthenticated,
     href: isAuthenticated ? "/scanner" : "/login",
-    label: isAuthenticated ? "Go to Scanner" : "Open Scanner",
+    label: isAuthenticated ? "Open Workspace" : "Open Workspace",
   };
 }

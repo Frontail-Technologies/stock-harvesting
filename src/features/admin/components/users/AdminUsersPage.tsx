@@ -40,8 +40,7 @@ export function AdminUsersPage() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       downloadBlob(blob, `stock-harvesting-users-${Date.now()}.csv`);
     } catch {
-      // No toast/notification system on this page yet — button just stops
-      // spinning on failure rather than downloading a broken file.
+      return;
     } finally {
       setExporting(false);
     }
@@ -75,7 +74,8 @@ export function AdminUsersPage() {
         onRefresh={() => void usersQuery.refetch()}
         onExport={() => void handleExport()}
       />
-      <section className="rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm">
+
+      <section className="flex flex-col gap-3 text-foreground">
         <AdminUsersFilters
           filters={filters}
           activeFilterCount={activeFilterCount}
@@ -114,3 +114,5 @@ export function AdminUsersPage() {
     </div>
   );
 }
+
+

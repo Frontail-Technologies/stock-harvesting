@@ -30,10 +30,11 @@ export function AdminSelect({
         placeholder={label}
         disabled={disabled}
         triggerClassName={cn(
-          "h-8",
-          compact && "h-7 rounded-md px-2 text-xs"
+          "h-10 rounded-md border-input bg-card text-sm focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/30",
+          compact && "h-8 rounded-md px-2 font-mono text-xs"
         )}
       />
     </div>
   );
 }
+

@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryProvider } from "@/features/api";
-import { AuthBootstrap } from "@/features/auth";
-import { CurrencyProvider } from "@/features/currency";
-import { ThemeProvider } from "@/features/theme/components/ThemeProvider";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
 import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
 import "./globals.css";
@@ -126,19 +121,14 @@ export default function RootLayout({
       className={`h-full antialiased ${geist.variable} ${ibmPlexMono.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body
         className="min-h-full flex flex-col bg-background text-foreground"
         suppressHydrationWarning
       >
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <ThemeProvider>
-          <QueryProvider>
-            <CurrencyProvider>
-              <AuthBootstrap />
-              <TooltipProvider>{children}</TooltipProvider>
-            </CurrencyProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

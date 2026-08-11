@@ -16,16 +16,14 @@ type MarketSelectorProps = {
   compact?: boolean;
   className?: string;
   onExchangeChange?: (exchange: MarketExchangeCode) => void;
+  portalClassName?: string;
 };
 
-// The exchange list is ~70 items now (all EODHD exchanges plus NSE), so the
-// plain unsearchable <Select> primitive that worked for 2 items doesn't
-// scale — this is a text-filter combobox instead, following the same
-// portal/positioning approach as components/ui/select.tsx.
 export function MarketSelector({
   compact = false,
   className,
   onExchangeChange,
+  portalClassName,
 }: MarketSelectorProps) {
   const selectedExchange = useMarketStore((state) => state.selectedExchange);
   const setSelectedExchange = useMarketStore((state) => state.setSelectedExchange);
@@ -149,9 +147,12 @@ export function MarketSelector({
             <div
               ref={menuRef}
               style={{ top: menuRect.top, left: menuRect.left, width: menuRect.width }}
-              className="fixed z-9999 flex max-h-80 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+              className={cn(
+                "fixed z-9999 flex max-h-80 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10",
+                portalClassName
+              )}
             >
-              <div className="relative shrink-0 border-b border-border p-1.5">
+              <div className="relative shrink-0 border-b border-border bg-popover p-1.5">
                 <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   ref={inputRef}
@@ -165,7 +166,7 @@ export function MarketSelector({
                     if (event.key === "Escape") setOpen(false);
                   }}
                   placeholder="Search exchange or country"
-                  className="h-8 w-full rounded-md bg-transparent pl-7 pr-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  className="h-8 w-full rounded-md bg-background/55 pl-7 pr-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
                 />
               </div>
 
@@ -189,7 +190,7 @@ export function MarketSelector({
                           "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors sm:px-2.5 sm:py-1.5",
                           isSelected
                             ? "bg-primary text-primary-foreground"
-                            : "text-popover-foreground hover:bg-muted"
+                            : "text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
                         )}
                       >
                         <span className="min-w-0">
@@ -200,7 +201,7 @@ export function MarketSelector({
                               isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                             )}
                           >
-                            {exchange.code} · {exchange.country}
+                            {exchange.code} - {exchange.country}
                           </span>
                         </span>
                         {isSelected && <Check className="size-3.5 shrink-0" />}

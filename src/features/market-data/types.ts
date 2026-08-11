@@ -24,6 +24,20 @@ export type CandleListResponse = {
   candles: Candle[];
 };
 
+export type HistoryRangeInput = {
+  symbol: string;
+  timeframe: string;
+  exchange?: string;
+};
+
+export type HistoryRangeResponse = {
+  symbol: string;
+  exchange: string;
+  timeframe: string;
+  from: string | null;
+  to: string | null;
+};
+
 export type StockMoveFilter = "all" | "gainers" | "decliners" | "unchanged";
 
 export type StockListInput = {

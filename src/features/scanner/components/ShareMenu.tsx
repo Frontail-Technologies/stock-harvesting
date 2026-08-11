@@ -49,7 +49,7 @@ export function ShareMenu({ stock, compact, className, onNativeShare, onDownload
         <DropdownMenuTrigger
           aria-label="Share"
           title="Share"
-          className={`flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${className ?? ""}`}
+          className={`flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${className ?? ""}`}
         >
           <Share2 className="size-4" />
         </DropdownMenuTrigger>
@@ -62,52 +62,52 @@ export function ShareMenu({ stock, compact, className, onNativeShare, onDownload
               size="icon"
               aria-label="Share"
               title="Share"
-              className={className}
+              className={`cursor-pointer ${className ?? ""}`}
             />
           }
         >
           <Share2 className="size-4" />
         </DropdownMenuTrigger>
       )}
-      <DropdownMenuContent align={compact ? "start" : "end"} side={compact ? "right" : "bottom"} className="w-56">
+      <DropdownMenuContent align={compact ? "start" : "end"} side={compact ? "right" : "bottom"} className="scanner-portal w-56">
         {hasNativeShare && (
           <>
-            <DropdownMenuItem onClick={onNativeShare} className="gap-2">
+            <DropdownMenuItem onClick={onNativeShare} className="cursor-pointer gap-2">
               <Share2 className="size-4 text-muted-foreground" />
               Share via device...
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem onClick={onDownload} className="gap-2">
+        <DropdownMenuItem onClick={onDownload} className="cursor-pointer gap-2">
           <Download className="size-4 text-muted-foreground" />
           Download image
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => openShareWindow(buildWhatsAppShareUrl(caption, shareUrl))}
-          className="gap-2"
+          className="cursor-pointer gap-2"
         >
           <MessageCircle className="size-4 text-muted-foreground" />
           Share to WhatsApp
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => openShareWindow(buildTelegramShareUrl(caption, shareUrl))}
-          className="gap-2"
+          className="cursor-pointer gap-2"
         >
           <Send className="size-4 text-muted-foreground" />
           Share to Telegram
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => openShareWindow(buildTwitterShareUrl(caption, shareUrl))}
-          className="gap-2"
+          className="cursor-pointer gap-2"
         >
           <X className="size-4 text-muted-foreground" />
           Share to X
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => openShareWindow(buildRedditShareUrl(caption, shareUrl))}
-          className="gap-2"
+          className="cursor-pointer gap-2"
         >
           <MessageSquare className="size-4 text-muted-foreground" />
           Share to Reddit
@@ -116,3 +116,4 @@ export function ShareMenu({ stock, compact, className, onNativeShare, onDownload
     </DropdownMenu>
   );
 }
+

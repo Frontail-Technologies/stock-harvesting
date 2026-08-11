@@ -36,7 +36,7 @@ export function PlanCard({ plan = "pro" }: { plan?: UserPlan }) {
       </ul>
 
       <div className="mt-5 flex flex-col gap-2">
-        <Button className="w-full bg-brand-gold text-brand-navy hover:bg-brand-gold-soft">
+        <Button className="w-full bg-primary text-primary-foreground hover:bg-brand-gold-soft">
           Upgrade Plan
         </Button>
         <Button variant="outline" className="w-full">

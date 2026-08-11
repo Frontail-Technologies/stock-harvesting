@@ -22,13 +22,21 @@ import { findStockBySymbol } from "@/utils/stock-search";
 import { useScannerDrawingState } from "../hooks/use-scanner-drawing-state";
 import {
   useExchangeDefaultStock,
+  useScannerBacktest,
   useSaveScannerDrawings,
   useScannerCandles,
+  useScannerHistoryRange,
   useScannerResults,
   useScannerWorkspaceDrawings,
 } from "../hooks/use-scanner-data";
+import { buildBacktestStatsFromCandles } from "../lib/build-backtest-stats-from-candles";
+import { mapScanBandsToDisplayTimeframe } from "../lib/map-scan-bands-to-display-timeframe";
 import { buildNear250WeekHighScanBand } from "../lib/near-250-week-high-scan";
 import { getScannerThemeClass } from "../lib/scanner-chart-config";
+import {
+  isHistoricalRangeFilterAvailable,
+  type AvailableHistoryRange,
+} from "../lib/historical-range";
 import { useScannerUiStore } from "../stores/scanner-ui-store";
 import type {
   ChartCaptureRequest,
@@ -43,6 +51,8 @@ import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
 import { TopToolbar } from "./TopToolbar";
+
+const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
 
 const DEFAULT_STOCK: Stock =
   findStockBySymbol(mockStocks, "AAPL") ??
@@ -68,7 +78,7 @@ const DEFAULT_STOCK_BY_EXCHANGE: Record<MarketExchangeCode, Stock> = {
   },
 };
 
-// Only US/NSE have a curated mock default — every other exchange (all of
+// Only US/NSE have a curated mock default - every other exchange (all of
 // EODHD's ~70) falls back to a generic empty placeholder instead of a
 // hand-picked one; real data fills in once a symbol is actually selected.
 function getDefaultStock(exchange: MarketExchangeCode): Stock {
@@ -154,6 +164,7 @@ export function ScannerPage() {
   const rangeFilter = useScannerUiStore((state) => state.rangeFilter);
   const setRangeFilter = useScannerUiStore((state) => state.setRangeFilter);
   const timeframe = useScannerUiStore((state) => state.timeframe);
+  const setTimeframe = useScannerUiStore((state) => state.setTimeframe);
   const captureRequest = useScannerUiStore((state) => state.captureRequest);
   const requestCapture = useScannerUiStore((state) => state.requestCapture);
   const autoScale = useScannerUiStore((state) => state.autoScale);
@@ -161,7 +172,9 @@ export function ScannerPage() {
   const toggleAutoScale = useScannerUiStore((state) => state.toggleAutoScale);
   const togglePercentageScale = useScannerUiStore((state) => state.togglePercentageScale);
   const showBacktestStats = useScannerUiStore((state) => state.showBacktestStats);
+  const scannerHighlightsVisible = useScannerUiStore((state) => state.scannerHighlightsVisible);
   const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
+  const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
   const selectedStock = useMemo<Stock>(() => {
     if (isSameMarketStock(selectedStockSnapshot, selectedSymbol, selectedExchange)) {
       return selectedStockSnapshot;
@@ -171,7 +184,7 @@ export function ScannerPage() {
   }, [selectedExchange, selectedStockSnapshot, selectedSymbol]);
   const symbolSyncOriginRef = useRef<"url" | "user" | null>(null);
 
-  // Only US/NSE have a hand-picked default symbol — every other exchange
+  // Only US/NSE have a hand-picked default symbol - every other exchange
   // resolves to the empty placeholder from getDefaultStock() first, then
   // gets backfilled here once a real symbol for that exchange loads.
   const hasCuratedDefault = Boolean(DEFAULT_STOCK_BY_EXCHANGE[selectedExchange]);
@@ -259,7 +272,7 @@ export function ScannerPage() {
   return (
     // Scoped with the same scanner-theme classes as the real shell below,
     // so bg-background here resolves to the same colour instead of the
-    // app-wide default — without this, "Checking session" would flash a
+    // app-wide default - without this, "Checking session" would flash a
     // mismatched background right before the actual scanner shell mounts.
     <AuthGuard
       className={cn(
@@ -276,9 +289,11 @@ export function ScannerPage() {
         <TopToolbar
           stock={selectedStock}
           chartType={chartType}
+          timeframe={timeframe}
           lookbackMultiplier={lookbackMultiplier}
           exchange={selectedExchange}
           onChartTypeChange={setChartType}
+          onTimeframeChange={setTimeframe}
           onLookbackMultiplierChange={setLookbackMultiplier}
           onExchangeChange={handleExchangeChange}
           onSelectStock={handleSelectStock}
@@ -298,6 +313,7 @@ export function ScannerPage() {
           autoScale={autoScale}
           percentageScale={percentageScale}
           showBacktestStats={showBacktestStats}
+          scannerHighlightsVisible={scannerHighlightsVisible}
           onChartTypeChange={setChartType}
           onScreenshot={() => requestCapture("download")}
           onSend={() => requestCapture("share")}
@@ -305,6 +321,7 @@ export function ScannerPage() {
           onToggleAutoScale={toggleAutoScale}
           onTogglePercentageScale={togglePercentageScale}
           onToggleBacktestStats={toggleBacktestStats}
+          onToggleScannerHighlights={toggleScannerHighlights}
         />
       </div>
     </AuthGuard>
@@ -322,6 +339,7 @@ type ScannerDrawingWorkspaceProps = {
   autoScale: boolean;
   percentageScale: boolean;
   showBacktestStats: boolean;
+  scannerHighlightsVisible: boolean;
   onChartTypeChange: (chartType: ScannerChartType) => void;
   onScreenshot: () => void;
   onSend: () => void;
@@ -329,6 +347,7 @@ type ScannerDrawingWorkspaceProps = {
   onToggleAutoScale: () => void;
   onTogglePercentageScale: () => void;
   onToggleBacktestStats: () => void;
+  onToggleScannerHighlights: () => void;
 };
 
 function ScannerDrawingWorkspace({
@@ -342,6 +361,7 @@ function ScannerDrawingWorkspace({
   autoScale,
   percentageScale,
   showBacktestStats,
+  scannerHighlightsVisible,
   onChartTypeChange,
   onScreenshot,
   onSend,
@@ -349,18 +369,80 @@ function ScannerDrawingWorkspace({
   onToggleAutoScale,
   onTogglePercentageScale,
   onToggleBacktestStats,
+  onToggleScannerHighlights,
 }: ScannerDrawingWorkspaceProps) {
   const queryClient = useQueryClient();
   const drawing = useScannerDrawingState(stock.symbol, timeframe);
   const authStatus = useSessionStore((state) => state.status);
+  const historyRangeQuery = useScannerHistoryRange(stock.symbol, "1D", stock.exchange);
+  const historyMetadataRange = useMemo<AvailableHistoryRange | null>(() => {
+    const range = historyRangeQuery.data;
+    if (!range?.from || !range.to) return null;
+    return { from: range.from, to: range.to };
+  }, [historyRangeQuery.data]);
   const candleQuery = useScannerCandles(stock.symbol, timeframe, stock.exchange);
+  const candles = useMemo(
+    () =>
+      candleQuery.data && candleQuery.data.length > 0
+        ? candleQuery.data
+        : [],
+    [candleQuery.data]
+  );
+  const candleHistoryRange = useMemo<AvailableHistoryRange | null>(() => {
+    if (candles.length === 0) return null;
+
+    return {
+      from: candles[0].time,
+      to: candles[candles.length - 1].time,
+    };
+  }, [candles]);
+  const availableHistoryRange = historyMetadataRange ?? candleHistoryRange;
+  const effectiveRangeFilter = useMemo<ScannerRangeFilter>(
+    () =>
+      isHistoricalRangeFilterAvailable(rangeFilter, availableHistoryRange)
+        ? rangeFilter
+        : "ALL",
+    [availableHistoryRange, rangeFilter]
+  );
+
+  useEffect(() => {
+    if (!availableHistoryRange) return;
+    if (effectiveRangeFilter === rangeFilter) return;
+
+    onRangeFilterChange(effectiveRangeFilter);
+  }, [availableHistoryRange, effectiveRangeFilter, onRangeFilterChange, rangeFilter]);
+  const analysisCandleQuery = useScannerCandles(
+    stock.symbol,
+    SCANNER_ANALYSIS_TIMEFRAME,
+    stock.exchange
+  );
+  const analysisCandles = useMemo(
+    () =>
+      timeframe === SCANNER_ANALYSIS_TIMEFRAME
+        ? candles
+        : analysisCandleQuery.data ?? [],
+    [analysisCandleQuery.data, candles, timeframe]
+  );
   const scannerResultsQuery = useScannerResults(
     stock.symbol,
-    timeframe,
-    !candleQuery.isPending,
+    SCANNER_ANALYSIS_TIMEFRAME,
+    timeframe === SCANNER_ANALYSIS_TIMEFRAME
+      ? !candleQuery.isPending
+      : !analysisCandleQuery.isPending,
     stock.exchange,
     lookbackMultiplier
   );
+  const fallbackBacktestStats = useMemo(
+    () => buildBacktestStatsFromCandles(analysisCandles, lookbackMultiplier),
+    [analysisCandles, lookbackMultiplier]
+  );
+  const { stats: backendBacktestStats } = useScannerBacktest(
+    stock.symbol,
+    true,
+    stock.exchange,
+    lookbackMultiplier
+  );
+  const visibleBacktestStats = backendBacktestStats ?? fallbackBacktestStats;
   const workspaceDrawingsQuery = useScannerWorkspaceDrawings(stock.symbol, timeframe);
   const { mutate: saveDrawings } = useSaveScannerDrawings(stock.symbol, timeframe);
   const { replaceDrawings } = drawing;
@@ -422,25 +504,18 @@ function ScannerDrawingWorkspace({
     },
   });
 
-  const candles = useMemo(
-    () =>
-      candleQuery.data && candleQuery.data.length > 0
-        ? candleQuery.data
-        : [],
-    [candleQuery.data]
-  );
   const derivedScanBand = useMemo(
     () =>
       buildNear250WeekHighScanBand({
         symbol: stock.symbol,
         exchange: stock.exchange,
-        timeframe,
-        candles,
+        timeframe: SCANNER_ANALYSIS_TIMEFRAME,
+        candles: analysisCandles,
         lookbackWeeks: getScannerLookbackWeeks(lookbackMultiplier),
       }),
-    [candles, lookbackMultiplier, stock.exchange, stock.symbol, timeframe]
+    [analysisCandles, lookbackMultiplier, stock.exchange, stock.symbol]
   );
-  const baseScanBands = useMemo(
+  const weeklyScanBands = useMemo(
     () => {
       if (derivedScanBand) return [derivedScanBand];
 
@@ -459,6 +534,11 @@ function ScannerDrawingWorkspace({
       scannerResultsQuery.isError,
       scannerResultsQuery.scanBands,
     ]
+  );
+
+  const baseScanBands = useMemo(
+    () => mapScanBandsToDisplayTimeframe(weeklyScanBands, candles, timeframe),
+    [candles, timeframe, weeklyScanBands]
   );
 
   useEffect(() => {
@@ -511,7 +591,7 @@ function ScannerDrawingWorkspace({
             baseScanBands={baseScanBands}
             loading={candleQuery.isPending}
             chartType={chartType}
-            rangeFilter={rangeFilter}
+            rangeFilter={effectiveRangeFilter}
             theme={theme}
             timeframe={timeframe}
             lookbackMultiplier={lookbackMultiplier}
@@ -521,19 +601,42 @@ function ScannerDrawingWorkspace({
             autoScale={autoScale}
             percentageScale={percentageScale}
             showBacktestStats={showBacktestStats}
+            backtestStats={visibleBacktestStats}
+            scannerHighlightsVisible={scannerHighlightsVisible}
           />
         </div>
         <RangeFilterTabs
-          value={rangeFilter}
+          value={effectiveRangeFilter}
+          availableRange={availableHistoryRange}
+          availableRangeLoading={historyRangeQuery.isPending}
+          backtestStats={visibleBacktestStats}
           onChange={onRangeFilterChange}
           autoScale={autoScale}
           percentageScale={percentageScale}
           showBacktestStats={showBacktestStats}
+          scannerHighlightsVisible={scannerHighlightsVisible}
           onToggleAutoScale={onToggleAutoScale}
           onTogglePercentageScale={onTogglePercentageScale}
           onToggleBacktestStats={onToggleBacktestStats}
+          onToggleScannerHighlights={onToggleScannerHighlights}
         />
       </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

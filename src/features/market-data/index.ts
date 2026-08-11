@@ -1,12 +1,14 @@
 export { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "./constants";
 export {
   getCandles,
+  getHistoryRange,
   getIndexRelativeStrength,
   getStocks,
   searchStocksApi,
 } from "./api/market-data-api";
 export {
   useCandles,
+  useHistoryRange,
   useIndexRelativeStrength,
   useInfiniteStocks,
   useStocks,
@@ -15,6 +17,8 @@ export {
 export type {
   CandleListInput,
   CandleListResponse,
+  HistoryRangeInput,
+  HistoryRangeResponse,
   IndexRelativeStrengthMetric,
   IndexRelativeStrengthResponse,
   StockListInput,

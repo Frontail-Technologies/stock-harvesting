@@ -36,6 +36,8 @@ export const queryKeys = {
       to?: string;
       exchange?: string;
     }) => ["market-data", "candles", input] as const,
+    historyRange: (input: { symbol: string; timeframe: string; exchange?: string }) =>
+      ["market-data", "history-range", input] as const,
     exchanges: ["market-data", "exchanges"] as const,
     exchangeRates: ["market-data", "exchange-rates"] as const,
     indexRelativeStrength: (limit?: number, exchange?: string) =>

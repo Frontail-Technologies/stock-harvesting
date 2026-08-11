@@ -17,18 +17,22 @@ import {
   SCANNER_LOOKBACK_OPTIONS,
   type ScannerChartType,
   type ScannerLookbackMultiplier,
+  type Timeframe,
 } from "../types";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
 import { ShareMenu } from "./ShareMenu";
 import { StockSearchCombobox } from "./StockSearchCombobox";
+import { TimeframeSelector } from "./TimeframeSelector";
 
 type TopToolbarProps = {
   stock: Stock;
   chartType: ScannerChartType;
+  timeframe: Timeframe;
   lookbackMultiplier: ScannerLookbackMultiplier;
   exchange: MarketExchangeCode;
   onChartTypeChange: (chartType: ScannerChartType) => void;
+  onTimeframeChange: (timeframe: Timeframe) => void;
   onLookbackMultiplierChange: (value: ScannerLookbackMultiplier) => void;
   onExchangeChange: (exchange: MarketExchangeCode) => void;
   onSelectStock: (stock: Stock) => void;
@@ -49,7 +53,7 @@ function LookbackDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted",
+          "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted",
           className
         )}
       >
@@ -81,9 +85,11 @@ function LookbackDropdown({
 export function TopToolbar({
   stock,
   chartType,
+  timeframe,
   lookbackMultiplier,
   exchange,
   onChartTypeChange,
+  onTimeframeChange,
   onLookbackMultiplierChange,
   onExchangeChange,
   onSelectStock,
@@ -91,21 +97,32 @@ export function TopToolbar({
   onSend,
 }: TopToolbarProps) {
   return (
-    <div className="flex min-h-9 shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-background px-1 py-0.5 sm:min-h-10 sm:gap-2 sm:px-2 sm:py-1">
-      {/* Mobile: search input, left-anchored, grows to fill available width.
-          Chart type moved to ChartToolsBar (side rail) on mobile, so this
-          takes its place as the leading element. */}
-      <div className="min-w-0 flex-1 sm:hidden">
-        <StockSearchCombobox
-          selectedStock={stock}
-          exchange={exchange}
-          onSelectStock={onSelectStock}
-        />
+    <div className="flex shrink-0 flex-col gap-1 overflow-hidden border-b border-border bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
+      <div className="flex min-h-10 items-center gap-1 sm:hidden">
+        <div className="min-w-0 flex-1">
+          <StockSearchCombobox
+            selectedStock={stock}
+            exchange={exchange}
+            onSelectStock={onSelectStock}
+          />
+        </div>
+        <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
+        <ScannerAccountMenu />
       </div>
 
-      {/* Desktop-only left cluster: chart type, lookback. */}
+      <div className="flex min-h-9 items-center gap-1 sm:hidden">
+        <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
+        <LookbackDropdown
+          lookbackMultiplier={lookbackMultiplier}
+          onLookbackMultiplierChange={onLookbackMultiplierChange}
+          className="h-9"
+        />
+        <ThemeToggle />
+      </div>
+
       <div className="hidden items-center gap-1.5 sm:flex">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} />
+        <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
         <Separator orientation="vertical" className="mx-1 h-5" />
         <LookbackDropdown
           lookbackMultiplier={lookbackMultiplier}
@@ -113,20 +130,6 @@ export function TopToolbar({
         />
       </div>
 
-      {/* Mobile-only compact right cluster. */}
-      <div className="flex shrink-0 items-center gap-1 sm:hidden">
-        <LookbackDropdown
-          lookbackMultiplier={lookbackMultiplier}
-          onLookbackMultiplierChange={onLookbackMultiplierChange}
-        />
-        <MarketSelector compact onExchangeChange={onExchangeChange} />
-        <ThemeToggle />
-        <ScannerAccountMenu />
-      </div>
-
-      {/* Desktop-only right cluster: grouped into actions / market+theme /
-          search+account, separated by thin dividers so the bar reads as
-          logical terminal groups rather than one flat row of controls. */}
       <div className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex">
         <div className="flex items-center gap-1.5">
           <Button
@@ -145,7 +148,7 @@ export function TopToolbar({
         <Separator orientation="vertical" className="mx-0.5 h-5" />
 
         <div className="flex items-center gap-1.5">
-          <MarketSelector compact onExchangeChange={onExchangeChange} />
+          <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
           <ThemeToggle />
         </div>
 

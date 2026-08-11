@@ -1,22 +1,19 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Reveal } from "./Reveal";
 
-// Three connected workflow visuals (search → review → save/share). These are
+// Three connected workflow visuals (search â†’ review â†’ save/share). These are
 // abstractions of real capabilities already shown individually in 02 / Chart
 // Workspace, recomposed to tell the flow between them. Coordinates are
 // deterministic (sine-based, not Math.random) so server and client render
 // identical markup.
 
-// 01 / Search — mixed global result list to show the product works across
+// 01 / Search â€” mixed global result list to show the product works across
 // markets. Country names as metadata; no exchange-provider names.
 const SEARCH_RESULTS = [
-  { symbol: "RELIANCE", name: "Reliance Industries Limited · India", active: true },
-  { symbol: "AAPL", name: "Apple Inc. · United States", active: false },
-  { symbol: "BHP", name: "BHP Group · Australia", active: false },
-  { symbol: "HSBC", name: "HSBC Holdings · United Kingdom", active: false },
-  { symbol: "SONY", name: "Sony Group · Japan", active: false },
+  { symbol: "RELIANCE", name: "Reliance Industries Limited Â· India", active: true },
+  { symbol: "AAPL", name: "Apple Inc. Â· United States", active: false },
+  { symbol: "BHP", name: "BHP Group Â· Australia", active: false },
+  { symbol: "HSBC", name: "HSBC Holdings Â· United Kingdom", active: false },
+  { symbol: "SONY", name: "Sony Group Â· Japan", active: false },
 ];
 
 function SearchVisual() {
@@ -48,11 +45,7 @@ function SearchVisual() {
         stroke="rgb(255 255 255 / 0.14)"
       />
 
-      <motion.g
-        initial={{ opacity: 0, y: 6 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
+      <g
       >
         {SEARCH_RESULTS.map((result, i) => {
           const rowY = panel.y + i * rowHeight;
@@ -79,7 +72,7 @@ function SearchVisual() {
             </g>
           );
         })}
-      </motion.g>
+      </g>
 
       <line
         x1={panel.x + panel.width + 8}
@@ -89,15 +82,11 @@ function SearchVisual() {
         stroke="rgb(255 255 255 / 0.32)"
         strokeWidth="1.25"
       />
-      <motion.circle
+      <circle
         cx={(panel.x + panel.width + glyph.x) / 2}
         cy={(panel.y + rowHeight / 2 + glyph.y + glyph.height / 2) / 2}
         r="3.5"
         fill="var(--brand-gold)"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.3, delay: 0.6 }}
       />
 
       <rect x={glyph.x} y={glyph.y} width={glyph.width} height={glyph.height} fill="none" stroke="rgb(245 184 0 / 0.4)" />
@@ -127,7 +116,7 @@ function SearchVisual() {
   );
 }
 
-// 02 / Review — the state AFTER a stock has been selected: a single
+// 02 / Review â€” the state AFTER a stock has been selected: a single
 // simplified price path with one already-surfaced area highlighted and a
 // crosshair marking active inspection. Not a "market noise -> detected
 // areas" composition (that's 01 / Proprietary Analysis's job).
@@ -164,11 +153,7 @@ function ReviewVisual() {
         <circle key={m.x} cx={m.x} cy={m.y} r="2" fill="rgb(255 255 255 / 0.28)" />
       ))}
 
-      <motion.g
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
+      <g
       >
         <rect
           x={REVIEW_HIGHLIGHT.x}
@@ -184,7 +169,7 @@ function ReviewVisual() {
           <line x1={REVIEW_CROSSHAIR.x} y1={REVIEW_CROSSHAIR.y - 12} x2={REVIEW_CROSSHAIR.x} y2={REVIEW_CROSSHAIR.y + 12} />
         </g>
         <circle cx={REVIEW_CROSSHAIR.x} cy={REVIEW_CROSSHAIR.y} r="4" fill="var(--brand-gold)" />
-      </motion.g>
+      </g>
 
       <text x="24" y="20" className="landing-analysis-label">
         CHART CONTEXT
@@ -221,7 +206,7 @@ function MiniCandles({ frame }: { frame: { x: number; y: number; width: number; 
   );
 }
 
-// 03 / Save & Share — review → saved view → shared review, left to right.
+// 03 / Save & Share â€” review â†’ saved view â†’ shared review, left to right.
 const SHARE_NODES = [
   { x: 574, y: 125 },
   { x: 574, y: 180 },
@@ -256,49 +241,33 @@ function SaveShareVisual() {
       />
 
       <line x1={review.x + review.width} y1={reviewCenterY} x2={saved.x} y2={savedCenterY} stroke="rgb(255 255 255 / 0.3)" strokeDasharray="3 3" />
-      <motion.rect
+      <rect
         x={connect1Mid - 3}
         y={(reviewCenterY + savedCenterY) / 2 - 3}
         width="6"
         height="6"
         fill="var(--brand-gold)"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.3, delay: 0.4 }}
       />
 
-      <motion.g
-        initial={{ opacity: 0, x: -8 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
+      <g
       >
         <rect x={saved.x} y={saved.y} width={saved.width} height={saved.height} fill="none" stroke="rgb(255 255 255 / 0.28)" />
         <rect x={saved.x + saved.width / 2 - 3.5} y={savedCenterY - 3.5} width="7" height="7" fill="var(--brand-gold)" />
-      </motion.g>
+      </g>
 
-      <motion.g
+      <g
         stroke="rgb(255 255 255 / 0.28)"
         strokeWidth="1"
         fill="none"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.6, delay: 0.75 }}
       >
         <line x1={saved.x + saved.width} y1={savedCenterY} x2={trunkEnd} y2={savedCenterY} />
         <line x1={trunkEnd} y1={SHARE_NODES[0].y} x2={trunkEnd} y2={SHARE_NODES[2].y} />
         {SHARE_NODES.map((n) => (
           <line key={n.y} x1={trunkEnd} y1={n.y} x2={branchX} y2={n.y} />
         ))}
-      </motion.g>
+      </g>
 
-      <motion.g
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5, delay: 1 }}
+      <g
       >
         {SHARE_NODES.map((n) => (
           <g key={n.y}>
@@ -306,7 +275,7 @@ function SaveShareVisual() {
             <circle cx={n.x} cy={n.y} r="1.8" fill="rgb(255 255 255 / 0.45)" />
           </g>
         ))}
-      </motion.g>
+      </g>
 
       <text x={review.x} y="86" className="landing-analysis-label">
         REVIEW
@@ -380,7 +349,7 @@ export function ReviewWorkflowSection() {
         <Reveal delay={0.1}>
           <p className="landing-section-subheading mt-4 max-w-lg">
             Search across markets, inspect what Stock Harvesting surfaces, and
-            save or share the review — all inside the same workspace.
+            save or share the review â€” all inside the same workspace.
           </p>
         </Reveal>
 
@@ -413,3 +382,4 @@ export function ReviewWorkflowSection() {
     </section>
   );
 }
+
