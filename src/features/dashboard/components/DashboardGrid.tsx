@@ -36,7 +36,7 @@ export function DashboardGrid() {
       {collectionsQuery.collections.map((collection) => (
         <Link
           key={collection.id}
-          href={`/dashboard/collections/${encodeURIComponent(collection.code)}`}
+          href={`/dashboard/collections/${collection.code}`}
           className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">

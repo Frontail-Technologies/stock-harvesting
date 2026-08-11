@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getAdminUsersExportCsv } from "../../api/admin-api";
 import {
   useAdminUsers,
   useDeleteAdminUser,
@@ -9,6 +10,7 @@ import {
 } from "../../hooks/use-admin-users";
 import { useAdminUserFilters } from "../../hooks/use-admin-user-filters";
 import type { AdminUser } from "../../types";
+import { downloadBlob } from "@/utils/download-blob";
 import { AdminUserSheet } from "./AdminUserSheet";
 import { AdminUsersFilters } from "./AdminUsersFilters";
 import { AdminUsersHeader } from "./AdminUsersHeader";
@@ -29,6 +31,21 @@ export function AdminUsersPage() {
   const planMutation = useUpdateAdminUserPlan();
   const deleteMutation = useDeleteAdminUser();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const csv = await getAdminUsersExportCsv(queryFilters);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      downloadBlob(blob, `stock-harvesting-users-${Date.now()}.csv`);
+    } catch {
+      // No toast/notification system on this page yet — button just stops
+      // spinning on failure rather than downloading a broken file.
+    } finally {
+      setExporting(false);
+    }
+  };
   const users = usersQuery.data?.users ?? [];
   const pagination = usersQuery.data?.pagination ?? {
     page: filters.page,
@@ -54,7 +71,9 @@ export function AdminUsersPage() {
       <AdminUsersHeader
         totalUsers={pagination.total}
         refreshing={usersQuery.isFetching}
+        exporting={exporting}
         onRefresh={() => void usersQuery.refetch()}
+        onExport={() => void handleExport()}
       />
       <section className="rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm">
         <AdminUsersFilters

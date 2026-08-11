@@ -257,7 +257,16 @@ export function ScannerPage() {
   }, [pathname, router, searchParams, selectedSymbol]);
 
   return (
-    <AuthGuard>
+    // Scoped with the same scanner-theme classes as the real shell below,
+    // so bg-background here resolves to the same colour instead of the
+    // app-wide default — without this, "Checking session" would flash a
+    // mismatched background right before the actual scanner shell mounts.
+    <AuthGuard
+      className={cn(
+        getScannerThemeClass(theme),
+        "grid h-dvh w-screen place-items-center bg-background text-foreground"
+      )}
+    >
       <div
         className={cn(
           getScannerThemeClass(theme),

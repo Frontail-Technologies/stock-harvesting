@@ -13,11 +13,13 @@ const WIDTH_MULTIPLIER = 0.92;
 const MIN_COLUMN_WIDTH_PX = 1;
 const EDGE_WIDTH_PX = 1;
 
-type HighlightRect = { left: number; right: number };
+type HighlightRect = { left: number; right: number; selected: boolean };
 
 type ScanBandColors = {
   fill: string;
   edge: string;
+  fillSelected: string;
+  edgeSelected: string;
 };
 
 // Draws one filled rectangle per highlighted candle directly on the chart's
@@ -47,27 +49,44 @@ class ScanBandPaneRenderer implements IPrimitivePaneRenderer {
       horizontalPixelRatio,
     }: BitmapCoordinatesRenderingScope) => {
       context.save();
-      context.fillStyle = this.colors.fill;
 
       const edgeWidth = Math.max(1, Math.round(EDGE_WIDTH_PX * horizontalPixelRatio));
 
+      // Normal zones first, then the hovered/selected zone (if any) drawn
+      // last so its slightly stronger tint isn't undercut by a neighbouring
+      // normal rect's edge lines.
       for (const rect of this.rects) {
-        const x1 = Math.round(rect.left * horizontalPixelRatio);
-        const x2 = Math.round(rect.right * horizontalPixelRatio);
-        const width = Math.max(1, x2 - x1);
-        context.fillRect(x1, 0, width, bitmapSize.height);
+        if (rect.selected) continue;
+        this.paintRect(context, rect, this.colors.fill, this.colors.edge, edgeWidth, horizontalPixelRatio, bitmapSize.height);
       }
-
-      context.fillStyle = this.colors.edge;
       for (const rect of this.rects) {
-        const x1 = Math.round(rect.left * horizontalPixelRatio);
-        const x2 = Math.round(rect.right * horizontalPixelRatio);
-        context.fillRect(x1, 0, edgeWidth, bitmapSize.height);
-        context.fillRect(x2 - edgeWidth, 0, edgeWidth, bitmapSize.height);
+        if (!rect.selected) continue;
+        this.paintRect(context, rect, this.colors.fillSelected, this.colors.edgeSelected, edgeWidth, horizontalPixelRatio, bitmapSize.height);
       }
 
       context.restore();
     });
+  }
+
+  private paintRect(
+    context: CanvasRenderingContext2D,
+    rect: HighlightRect,
+    fill: string,
+    edge: string,
+    edgeWidth: number,
+    horizontalPixelRatio: number,
+    height: number
+  ) {
+    const x1 = Math.round(rect.left * horizontalPixelRatio);
+    const x2 = Math.round(rect.right * horizontalPixelRatio);
+    const width = Math.max(1, x2 - x1);
+
+    context.fillStyle = fill;
+    context.fillRect(x1, 0, width, height);
+
+    context.fillStyle = edge;
+    context.fillRect(x1, 0, edgeWidth, height);
+    context.fillRect(x2 - edgeWidth, 0, edgeWidth, height);
   }
 }
 
@@ -86,11 +105,17 @@ class ScanBandPaneView implements IPrimitivePaneView {
 }
 
 export class ScanBandPrimitive implements ISeriesPrimitive<Time> {
-  colors: ScanBandColors = { fill: "transparent", edge: "transparent" };
+  colors: ScanBandColors = {
+    fill: "transparent",
+    edge: "transparent",
+    fillSelected: "transparent",
+    edgeSelected: "transparent",
+  };
 
   private chart: IChartApi | null = null;
   private requestUpdateFn: (() => void) | null = null;
   private highlightedTimes: Time[] = [];
+  private hoveredTime: Time | null = null;
   private readonly paneView = new ScanBandPaneView(this);
 
   attached({ chart, requestUpdate }: SeriesAttachedParameter<Time, SeriesType>) {
@@ -106,6 +131,17 @@ export class ScanBandPrimitive implements ISeriesPrimitive<Time> {
   setData(times: string[], colors: ScanBandColors) {
     this.highlightedTimes = times as Time[];
     this.colors = colors;
+    this.requestUpdateFn?.();
+  }
+
+  // Marks whichever highlighted band the crosshair currently sits over so
+  // it paints with the stronger "selected" tint — separate from setData so
+  // hover changes (which happen far more often than the detected-band list
+  // itself) don't need to re-resolve highlightedTimes/colors each time.
+  setHoveredTime(time: string | null) {
+    const next = (time as Time | null) ?? null;
+    if (this.hoveredTime === next) return;
+    this.hoveredTime = next;
     this.requestUpdateFn?.();
   }
 
@@ -128,7 +164,7 @@ export class ScanBandPrimitive implements ISeriesPrimitive<Time> {
     for (const time of this.highlightedTimes) {
       const x = timeScale.timeToCoordinate(time);
       if (x === null) continue;
-      rects.push({ left: x - halfWidth, right: x + halfWidth });
+      rects.push({ left: x - halfWidth, right: x + halfWidth, selected: time === this.hoveredTime });
     }
 
     return rects;

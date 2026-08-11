@@ -2,6 +2,7 @@ import { apiFetch, API_ROUTES } from "@/features/api";
 import type {
   CandleListInput,
   CandleListResponse,
+  IndexRelativeStrengthResponse,
   StockListInput,
   StockListResponse,
 } from "../types";
@@ -64,5 +65,11 @@ export async function getCandles(input: CandleListInput) {
       to: input.to,
       exchange: input.exchange,
     })
+  );
+}
+
+export async function getIndexRelativeStrength(limit?: number, exchange?: string) {
+  return apiFetch<IndexRelativeStrengthResponse>(
+    withQuery(API_ROUTES.marketData.indexRelativeStrength, { limit, exchange })
   );
 }

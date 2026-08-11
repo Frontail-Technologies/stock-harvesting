@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { DotGridBackground } from "@/components/ui/dot-grid-background";
+import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/utils/cn";
+import { getAdminOrigin } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
 import { useSessionStore } from "../stores/session-store";
 
@@ -33,25 +34,203 @@ function GoogleIcon({ className = "size-4" }: { className?: string }) {
   );
 }
 
+// "Signal Harvest" — an original brand illustration for the login screen:
+// a large field of muted market observations gradually narrowing toward a
+// small cluster of selected (gold) points. Deterministic (sine-based, not
+// Math.random) so server and client render identical markup. A field of
+// upright "stalks" sits in the lower-middle of the 900-tall viewBox — near
+// enough to true center that a center-sliced mobile crop still lands on
+// it — carrying the "Harvesting" half of the brand: most stalks stay dim
+// and gray, a handful of "mature" ones are highlighted in harvest yellow.
+const SIGNAL_NOISE = Array.from({ length: 42 }, (_, i) => {
+  const col = i % 6;
+  const row = Math.floor(i / 6);
+  return {
+    x: 40 + col * 76 + Math.sin(i * 11.3) * 16,
+    y: 20 + row * 50 + Math.cos(i * 6.1) * 14,
+    size: 2 + ((i * 5) % 3),
+    opacity: 0.07 + ((i * 3) % 6) * 0.03,
+  };
+});
+
+const SIGNAL_PATHS = [
+  "M100 40 C 140 160, 160 280, 190 400",
+  "M400 50 C 360 170, 330 280, 300 400",
+];
+
+const FIELD_STALKS = Array.from({ length: 30 }, (_, i) => {
+  const col = i % 6;
+  const row = Math.floor(i / 6);
+  const groundY = 458 + row * 72 + Math.sin(i * 3.7) * 10;
+  const height = 34 + ((i * 7) % 26);
+  const x = 56 + col * 76 + Math.cos(i * 2.9) * 10;
+  return { x, groundY, topY: groundY - height };
+});
+
+const MATURE_STALK_INDEXES = new Set([1, 3, 8, 10, 12]);
+
+// Extremely faint, slightly bowed guide lines behind the stalks — reads as
+// organized field rows rather than random vertical markers, without
+// fighting the rigid CSS backdrop grid.
+const FIELD_ROW_LINES = [458, 530, 602, 674, 746].map(
+  (y, i) => `M16 ${y} Q 250 ${y + (i % 2 === 0 ? 7 : -7)} 484 ${y}`,
+);
+
+// A minimal, abstract grain-head sitting atop each stalk: one central node
+// plus 2 (regular) or 3 (mature) short diagonal marks — just enough to
+// read as a crop head without becoming literal wheat illustration.
+function GrainHead({
+  x,
+  y,
+  mature,
+  delay,
+}: {
+  x: number;
+  y: number;
+  mature: boolean;
+  delay: number;
+}) {
+  const armLength = mature ? 7 : 5;
+  const strokeColor = mature ? "rgb(245 184 0 / 0.55)" : "rgb(255 255 255 / 0.22)";
+  const arms = mature
+    ? [
+        [x, y, x - armLength, y - armLength * 0.7],
+        [x, y, x + armLength, y - armLength * 0.7],
+        [x, y, x, y - armLength],
+      ]
+    : [
+        [x, y, x - armLength, y - armLength * 0.6],
+        [x, y, x + armLength, y - armLength * 0.6],
+      ];
+
+  const content = (
+    <g filter={mature ? "url(#signal-grain-glow)" : undefined}>
+      {arms.map(([x1, y1, x2, y2], idx) => (
+        <line
+          key={idx}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={strokeColor}
+          strokeWidth={mature ? 1.25 : 1}
+        />
+      ))}
+      <circle cx={x} cy={y} r={mature ? 3 : 2} fill={mature ? "var(--brand-gold)" : "rgb(255 255 255 / 0.24)"} />
+    </g>
+  );
+
+  if (!mature) return content;
+
+  return (
+    <motion.g
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, delay }}
+      style={{ transformOrigin: `${x}px ${y}px` }}
+    >
+      {content}
+    </motion.g>
+  );
+}
+
+function SignalHarvestIllustration({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 500 900"
+      preserveAspectRatio="xMidYMid slice"
+      className={cn("absolute inset-0 h-full w-full", className)}
+      aria-hidden="true"
+    >
+      <defs>
+        <filter id="signal-grain-glow" x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="3.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {SIGNAL_PATHS.map((d, i) => (
+        <motion.path
+          key={d}
+          d={d}
+          stroke="rgb(255 255 255 / 0.14)"
+          strokeWidth="1"
+          fill="none"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 2.2, delay: 0.3 + i * 0.3, ease: "easeInOut" }}
+        />
+      ))}
+
+      {SIGNAL_NOISE.map((p) => (
+        <rect
+          key={`${p.x}-${p.y}`}
+          x={p.x}
+          y={p.y}
+          width={p.size}
+          height={p.size}
+          fill={`rgb(255 255 255 / ${p.opacity})`}
+        />
+      ))}
+
+      {FIELD_ROW_LINES.map((d) => (
+        <path key={d} d={d} stroke="rgb(255 255 255 / 0.045)" strokeWidth="1" fill="none" />
+      ))}
+
+      {FIELD_STALKS.map((s, i) => {
+        const mature = MATURE_STALK_INDEXES.has(i);
+        return (
+          <g key={`${s.x}-${s.groundY}`}>
+            <line
+              x1={s.x}
+              y1={s.groundY}
+              x2={s.x}
+              y2={s.topY}
+              stroke={mature ? "rgb(245 184 0 / 0.4)" : "rgb(255 255 255 / 0.16)"}
+              strokeWidth="1"
+            />
+            <GrainHead x={s.x} y={s.topY} mature={mature} delay={1.1 + i * 0.05} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function LoginScreen() {
   const router = useRouter();
   const googleLogin = useGoogleLogin();
   const status = useSessionStore((state) => state.status);
+  const user = useSessionStore((state) => state.user);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      const params = new URLSearchParams(window.location.search);
-      const nextPath = params.get("next") || "/scanner";
-      const target =
-        nextPath.startsWith("/") &&
-        !nextPath.startsWith("//") &&
-        !nextPath.startsWith("/login")
-          ? nextPath
-          : "/scanner";
-      router.replace(target);
+    if (status !== "authenticated") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const nextPath = params.get("next");
+    const validNext =
+      nextPath &&
+      nextPath.startsWith("/") &&
+      !nextPath.startsWith("//") &&
+      !nextPath.startsWith("/login");
+    // No explicit deep link: send admins to the admin panel by default,
+    // everyone else to the scanner.
+    const target = validNext ? nextPath : user?.role === "admin" ? "/admin" : "/scanner";
+
+    // "/admin" lives on its own host once that's configured — a relative
+    // router navigation can't cross origins reliably, so go there directly.
+    const adminOrigin = getAdminOrigin();
+    if (adminOrigin && target.startsWith("/admin")) {
+      window.location.href = `${adminOrigin}${target}`;
+      return;
     }
-  }, [router, status]);
+
+    router.replace(target);
+  }, [router, status, user]);
 
   async function handleGoogleLogin() {
     setError(null);
@@ -66,96 +245,65 @@ export function LoginScreen() {
 
   if (status !== "guest") {
     return (
-      <DotGridBackground
-        className="grid min-h-[100dvh] place-items-center bg-[#f4f5fb] px-4 py-6 dark:bg-background"
-        dotSize={1}
-        gap={22}
-        glowRadius={260}
-      >
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-card-foreground shadow-sm">
+      <div className="grid min-h-dvh place-items-center bg-brand-charcoal px-4">
+        <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80">
           <Spinner size="sm" />
           Checking session...
         </div>
-      </DotGridBackground>
+      </div>
     );
   }
 
   return (
-    <DotGridBackground
-      className="flex min-h-[100dvh] items-center justify-center bg-[#f4f5fb] px-4 py-6 dark:bg-background"
-      dotSize={1}
-      gap={22}
-      glowRadius={260}
-    >
-      <div className="grid w-full overflow-hidden rounded-3xl border border-white/80 bg-white/90 p-2 shadow-2xl shadow-slate-200/80 backdrop-blur md:h-[min(720px,calc(100dvh-48px))] md:w-[min(1120px,calc(100vw-48px))] md:grid-cols-[1.08fr_0.92fr] dark:border-border dark:bg-card dark:shadow-black/30">
-        <div className="relative hidden h-full w-full overflow-hidden rounded-2xl md:block">
-          <Image
-            src="/images/login/left.png"
-            alt=""
-            fill
-            loading="eager"
-            sizes="(min-width: 768px) 52vw, 0vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/45" />
+    <div className="login-split bg-brand-charcoal">
+      <div className="login-visual" aria-hidden="true">
+        <div className="login-visual-grid" />
+        <SignalHarvestIllustration />
+      </div>
 
-          <div className="absolute left-6 right-6 top-6 flex items-center justify-between gap-4 text-white">
-            <span className="text-sm font-semibold">Featured Markets</span>
-            <span className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur">
-              AI Scanner
-            </span>
-          </div>
+      <div className="login-auth">
+        <p className="login-meta-label">Auth / Secure Access</p>
 
-          <div className="absolute bottom-6 left-6 right-6 rounded-2xl border border-white/15 bg-black/30 p-4 text-white shadow-2xl backdrop-blur-md">
-            <div className="text-sm font-semibold">Market-ready insights</div>
-            <p className="mt-1 max-w-sm text-xs leading-5 text-white/75">
-              Scan global stocks, inspect weekly strength, and continue your
-              chart review in one workspace.
-            </p>
-          </div>
+        <div className="login-visual-mobile" aria-hidden="true">
+          <div className="login-visual-grid" />
+          <SignalHarvestIllustration />
         </div>
 
-        <div className="flex min-h-[560px] flex-col justify-center px-6 py-10 md:min-h-0 sm:px-12 lg:px-16">
-          <div className="mx-auto w-full max-w-sm">
-            <div className="flex justify-center">
-              <BrandLogo size="lg" />
-            </div>
+        <div className="login-auth-surface">
+          <BrandLogo size="md" forceTheme="dark" />
 
-            <div className="mt-9 text-center">
-              <h1 className="text-4xl font-bold tracking-tight text-brand-navy dark:text-foreground">
-                Hi Trader
-              </h1>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Welcome to Stock Harvesting
-              </p>
-            </div>
+          <h1 className="mt-8 text-2xl font-bold tracking-tight text-white">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm text-white/55">
+            Sign in to continue to your Stock Harvesting workspace.
+          </p>
 
-            <Button
-              variant="outline"
-              className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-slate-200 bg-white text-base font-semibold text-slate-900 shadow-sm hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed dark:border-slate-200 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50"
-              onClick={handleGoogleLogin}
-              disabled={googleLogin.isPending}
-            >
-              {googleLogin.isPending ? (
-                <Spinner size="sm" />
-              ) : (
-                <GoogleIcon className="size-5" />
-              )}
-              {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
-            </Button>
-
-            {error && (
-              <p className="mt-4 rounded-lg border border-border bg-muted/45 px-3 py-2 text-center text-sm text-muted-foreground">
-                {error}
-              </p>
+          <Button
+            variant="outline"
+            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-white/15 bg-white/5 text-base font-semibold text-white shadow-sm hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed"
+            onClick={handleGoogleLogin}
+            disabled={googleLogin.isPending}
+          >
+            {googleLogin.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <GoogleIcon className="size-5" />
             )}
+            {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
+          </Button>
 
-            <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
-              Secure Google sign-in for your Stock Harvesting account.
+          {error && (
+            <p className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/60">
+              {error}
             </p>
+          )}
+
+          <div className="mt-6 border-t border-white/8 pt-4">
+            <p className="text-xs text-white/35">Secure authentication via Google</p>
           </div>
         </div>
       </div>
-    </DotGridBackground>
+    </div>
   );
 }

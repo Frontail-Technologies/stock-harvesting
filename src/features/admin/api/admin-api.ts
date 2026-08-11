@@ -43,6 +43,20 @@ export function getAdminUsers(filters: AdminUserFilters) {
   );
 }
 
+export function getAdminUsersExportCsv(
+  filters: Pick<AdminUserFilters, "q" | "role" | "plan" | "sort" | "direction">
+) {
+  return apiFetch<string>(
+    withQuery(API_ROUTES.admin.usersExport, {
+      q: filters.q.trim() || undefined,
+      role: filters.role || undefined,
+      plan: filters.plan || undefined,
+      sort: filters.sort,
+      direction: filters.direction,
+    })
+  );
+}
+
 export function updateAdminUserRole(input: { id: string; role: UserRole }) {
   return apiFetch(API_ROUTES.admin.userRole(input.id), {
     method: "PATCH",
@@ -127,6 +141,19 @@ export function syncAdminDataProvider(input: { exchange: string }) {
 
 export function syncAdminMarketDataPrices(input: { exchange: string }) {
   return apiFetch<{ job: unknown }>(API_ROUTES.admin.marketDataSyncPrices, {
+    method: "POST",
+    body: JSON.stringify({ exchange: input.exchange }),
+  });
+}
+
+export function syncAdminSectorClassification() {
+  return apiFetch<{ job: unknown }>(API_ROUTES.admin.sectorClassificationSync, {
+    method: "POST",
+  });
+}
+
+export function backfillAdminIndexCandles(input: { exchange?: string } = {}) {
+  return apiFetch<{ job: unknown }>(API_ROUTES.admin.indexCandleBackfill, {
     method: "POST",
     body: JSON.stringify({ exchange: input.exchange }),
   });

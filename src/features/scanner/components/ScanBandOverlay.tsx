@@ -12,6 +12,7 @@ type ScanBandOverlayProps = {
   bands: ScanBand[];
   candleTimes: string[];
   theme: ScannerTheme;
+  hoveredTime?: string | null;
 };
 
 // Renders nothing itself — highlighted candles are painted by ScanBandPrimitive
@@ -19,7 +20,13 @@ type ScanBandOverlayProps = {
 // a <div>-per-candle DOM overlay, which was laggy on drag and shimmered as it
 // panned). This component's only job is resolving which candle times are
 // highlighted and handing that + the current theme colors to the primitive.
-export function ScanBandOverlay({ series, bands, candleTimes, theme }: ScanBandOverlayProps) {
+export function ScanBandOverlay({
+  series,
+  bands,
+  candleTimes,
+  theme,
+  hoveredTime = null,
+}: ScanBandOverlayProps) {
   const [primitive] = useState(() => new ScanBandPrimitive());
 
   const candleIndexByTime = useMemo(
@@ -73,8 +80,14 @@ export function ScanBandOverlay({ series, bands, candleTimes, theme }: ScanBandO
     primitive.setData(highlightedTimes, {
       fill: chartTheme.highlightFill,
       edge: chartTheme.highlightEdge,
+      fillSelected: chartTheme.highlightFillSelected,
+      edgeSelected: chartTheme.highlightEdgeSelected,
     });
   }, [highlightedTimes, primitive, theme]);
+
+  useEffect(() => {
+    primitive.setHoveredTime(hoveredTime);
+  }, [hoveredTime, primitive]);
 
   return null;
 }

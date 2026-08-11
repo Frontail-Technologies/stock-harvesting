@@ -57,7 +57,7 @@ export function RangeFilterTabs({
       <div className="flex items-center justify-between gap-3 overflow-x-auto px-2 py-1.5">
         <MobileRangeDropdown value={value} onChange={onChange} />
 
-        <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        <div className="hidden shrink-0 items-center gap-1 sm:flex">
           {SCANNER_RANGE_FILTERS.map((filter) => {
             const active = value === filter;
 
@@ -66,10 +66,10 @@ export function RangeFilterTabs({
                 key={filter}
                 type="button"
                 onClick={() => onChange(filter)}
-                className={`h-7 shrink-0 rounded-sm px-2.5 text-xs font-medium transition-colors md:h-6 ${
+                className={`h-7 shrink-0 rounded-sm px-2 text-xs font-medium transition-colors md:h-6 ${
                   active
-                    ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/35"
-                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 {filter}
@@ -87,7 +87,7 @@ export function RangeFilterTabs({
           onToggleBacktestStats={onToggleBacktestStats}
         />
       </div>
-      <div className="h-0.5 bg-primary" />
+      <div className="h-0.5 bg-primary/40" />
     </div>
   );
 }
@@ -120,7 +120,7 @@ function MobileRangeDropdown({
               className={cn(
                 "flex h-8 cursor-pointer items-center justify-between rounded-md px-2 text-sm font-medium text-muted-foreground focus:bg-muted focus:text-foreground",
                 active &&
-                  "border border-primary/45 bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground"
+                  "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground"
               )}
             >
               <span>{RANGE_LABELS[filter]}</span>

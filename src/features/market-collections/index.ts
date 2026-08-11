@@ -17,6 +17,7 @@ export type {
   CollectionImportReport,
   CollectionMember,
   CollectionMemberQuote,
+  CollectionGroupRelativeStrengthRow,
   CollectionMembersInput,
   CollectionMembersResponse,
   CollectionRelativeStrengthMetric,

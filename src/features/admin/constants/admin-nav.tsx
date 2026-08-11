@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   Database,
   ImageIcon,
+  Layers,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -24,6 +25,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: "Data Provider",
     href: "/admin/data-provider",
     icon: <Database className="size-4" />,
+  },
+  {
+    label: "Market Collections",
+    href: "/admin/market-collections",
+    icon: <Layers className="size-4" />,
   },
   {
     label: "Branding",

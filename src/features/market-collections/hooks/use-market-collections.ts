@@ -63,7 +63,11 @@ export function useCollectionMembers(input: CollectionMembersInput) {
   };
 }
 
-export function useCollectionRelativeStrength(input: { code: string; limit?: number }) {
+export function useCollectionRelativeStrength(input: {
+  code: string;
+  limit?: number;
+  groupBy?: "sector" | "industry";
+}) {
   const authStatus = useSessionStore((state) => state.status);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.relativeStrength(input),

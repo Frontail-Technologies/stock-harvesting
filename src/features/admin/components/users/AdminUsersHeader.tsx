@@ -1,19 +1,23 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 type AdminUsersHeaderProps = {
   totalUsers: number;
   refreshing: boolean;
+  exporting: boolean;
   onRefresh: () => void;
+  onExport: () => void;
 };
 
 export function AdminUsersHeader({
   totalUsers,
   refreshing,
+  exporting,
   onRefresh,
+  onExport,
 }: AdminUsersHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -27,6 +31,17 @@ export function AdminUsersHeader({
         <Badge variant="outline" className="bg-card">
           {totalUsers} total
         </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={onExport}
+          disabled={exporting}
+        >
+          <Download className="size-3.5" />
+          {exporting ? "Exporting..." : "Export CSV"}
+        </Button>
         <Button
           type="button"
           variant="outline"

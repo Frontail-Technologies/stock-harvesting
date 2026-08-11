@@ -30,7 +30,7 @@ export function AdminShell({ children }: AdminShellProps) {
 
   return (
     <SidebarProvider defaultCollapsed={false} storageKey="stock-harvesting:admin-sidebar-collapsed">
-      <div className="flex min-h-screen bg-surface text-foreground">
+      <div className="flex h-screen overflow-hidden bg-surface text-foreground">
         <AdminSidebar pathname={pathname} user={user} className="hidden lg:flex" />
 
         <Button

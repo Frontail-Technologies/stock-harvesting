@@ -38,6 +38,8 @@ export const queryKeys = {
     }) => ["market-data", "candles", input] as const,
     exchanges: ["market-data", "exchanges"] as const,
     exchangeRates: ["market-data", "exchange-rates"] as const,
+    indexRelativeStrength: (limit?: number, exchange?: string) =>
+      ["market-data", "index-relative-strength", limit, exchange] as const,
   },
   marketCollections: {
     list: (input: { exchange?: string }) => ["market-collections", "list", input] as const,
@@ -49,8 +51,11 @@ export const queryKeys = {
       sortBy?: string;
       sortDirection?: string;
     }) => ["market-collections", "members", input] as const,
-    relativeStrength: (input: { code: string; limit?: number }) =>
-      ["market-collections", "relative-strength", input] as const,
+    relativeStrength: (input: {
+      code: string;
+      limit?: number;
+      groupBy?: "sector" | "industry";
+    }) => ["market-collections", "relative-strength", input] as const,
     weeklyStrongStocks: (input: { code: string }) =>
       ["market-collections", "weekly-strong-stocks", input] as const,
     weeklyStrongStocksBacktest: (input: { code: string; weeks?: number }) =>

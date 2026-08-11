@@ -6,6 +6,7 @@ import type { AdminDataProviderStatusEntry } from "../../types";
 const PROVIDER_LABELS: Record<string, string> = {
   eodhd: "EODHD",
   zerodha: "Zerodha Kite",
+  "global-datafeeds": "GlobalDataFeeds (BSE)",
 };
 
 const CONNECTABLE_PROVIDERS = new Set(["zerodha"]);

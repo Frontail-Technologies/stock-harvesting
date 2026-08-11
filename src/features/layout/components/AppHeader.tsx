@@ -13,6 +13,7 @@ import { MarketSelector } from "@/features/market";
 import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
+import { getAdminOrigin } from "@/utils/seo";
 
 type NavItem = {
   label: string;
@@ -20,6 +21,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [{ label: "Scanner", href: "/scanner" }];
+
+// When the admin panel is split onto its own host (src/proxy.ts), link
+// straight there instead of bouncing through the main host's redirect.
+const ADMIN_ORIGIN = getAdminOrigin();
+const ADMIN_HREF = ADMIN_ORIGIN ? `${ADMIN_ORIGIN}/admin` : "/admin";
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -29,7 +35,7 @@ export function AppHeader() {
   const logout = useLogout();
   const navItems =
     currentUser?.role === "admin"
-      ? [...NAV_ITEMS, { label: "Admin", href: "/admin" }]
+      ? [...NAV_ITEMS, { label: "Admin", href: ADMIN_HREF }]
       : NAV_ITEMS;
   const avatarInitials = currentUser
     ? getAvatarInitials(currentUser.name ?? "", currentUser.email)

@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import {
   useAdminDataProviderStatus,
   useAdminDataProviderStatuses,
+  useBackfillAdminIndexCandles,
   useCreateAdminDataProviderConnectUrl,
   useSyncAdminDataProvider,
   useSyncAdminMarketDataPrices,
+  useSyncAdminSectorClassification,
 } from "../../hooks/use-admin-data-provider";
 import { ProviderStatusCard } from "../overview/ProviderStatusCard";
 
@@ -19,9 +21,24 @@ export function AdminDataProviderPage() {
   const connectUrlMutation = useCreateAdminDataProviderConnectUrl();
   const syncMutation = useSyncAdminDataProvider();
   const priceRefreshMutation = useSyncAdminMarketDataPrices();
+  const sectorClassificationMutation = useSyncAdminSectorClassification();
+  // Separate mutation instance from syncMutation (even though both call the
+  // same generic sync endpoint) so its pending state doesn't get conflated
+  // with the "Sync NSE" button above.
+  const indexSyncMutation = useSyncAdminDataProvider();
+  const indexBackfillMutation = useBackfillAdminIndexCandles();
+  // Separate mutation instances from the NSE ones above so BSE buttons get
+  // their own independent pending/success/error state.
+  const bseSyncMutation = useSyncAdminDataProvider();
+  const bseIndexSyncMutation = useSyncAdminDataProvider();
+  const bsePriceRefreshMutation = useSyncAdminMarketDataPrices();
+  const bseIndexBackfillMutation = useBackfillAdminIndexCandles();
   const status = statusQuery.data;
   const eodhdStatus = statusesQuery.data?.providers.find(
     (entry) => entry.provider === "eodhd"
+  );
+  const globalDatafeedsStatus = statusesQuery.data?.providers.find(
+    (entry) => entry.provider === "global-datafeeds"
   );
   const callbackUrl = useMemo(() => {
     if (typeof window === "undefined") return "/admin/data-provider/callback";
@@ -42,6 +59,34 @@ export function AdminDataProviderPage() {
 
   const handlePriceRefresh = () => {
     priceRefreshMutation.mutate({ exchange: "NSE" });
+  };
+
+  const handleSectorClassificationSync = () => {
+    sectorClassificationMutation.mutate();
+  };
+
+  const handleIndexSync = () => {
+    indexSyncMutation.mutate({ exchange: "NSE_IDX" });
+  };
+
+  const handleIndexBackfill = () => {
+    indexBackfillMutation.mutate({ exchange: "NSE_IDX" });
+  };
+
+  const handleBseSync = () => {
+    bseSyncMutation.mutate({ exchange: "BSE" });
+  };
+
+  const handleBseIndexSync = () => {
+    bseIndexSyncMutation.mutate({ exchange: "BSE_IDX" });
+  };
+
+  const handleBsePriceRefresh = () => {
+    bsePriceRefreshMutation.mutate({ exchange: "BSE" });
+  };
+
+  const handleBseIndexBackfill = () => {
+    bseIndexBackfillMutation.mutate({ exchange: "BSE_IDX" });
   };
 
   return (
@@ -121,6 +166,54 @@ export function AdminDataProviderPage() {
                 <RefreshCw className="size-3.5" />
               )}
               Sync all prices
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={sectorClassificationMutation.isPending}
+              onClick={handleSectorClassificationSync}
+              title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE/BSE instruments — independent of the Zerodha connection above"
+            >
+              {sectorClassificationMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Sync Sector Data
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={!status?.connected || indexSyncMutation.isPending}
+              onClick={handleIndexSync}
+              title="Sync NSE indices (NIFTY AUTO, BANKNIFTY, NIFTY IT, ...) as instruments, filtered out of the regular equity sync — run this before Backfill Index History"
+            >
+              {indexSyncMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Sync Indices
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={!status?.connected || indexBackfillMutation.isPending}
+              onClick={handleIndexBackfill}
+              title="Backfill full price history for every synced NSE index — needed before the dashboard's Relative Strength Index box has real data"
+            >
+              {indexBackfillMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Backfill Index History
             </Button>
             <Button
               type="button"
@@ -212,6 +305,147 @@ export function AdminDataProviderPage() {
           <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
             Price refresh failed to start. Check the backend log for the
             provider message.
+          </div>
+        ) : null}
+      </section>
+
+      {globalDatafeedsStatus ? <ProviderStatusCard entry={globalDatafeedsStatus} /> : null}
+
+      <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Database className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-foreground">
+                GlobalDataFeeds (BSE)
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                BSE market data and indices use this connection. No OAuth
+                required — just the API keys already configured in backend
+                env.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={bseSyncMutation.isPending}
+              onClick={handleBseSync}
+              title="Sync BSE equity instruments from GlobalDataFeeds"
+            >
+              {bseSyncMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Sync BSE
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={bsePriceRefreshMutation.isPending}
+              onClick={handleBsePriceRefresh}
+              title="Refresh latest close/change%/volume for every known BSE instrument"
+            >
+              {bsePriceRefreshMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Sync BSE Prices
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={bseIndexSyncMutation.isPending}
+              onClick={handleBseIndexSync}
+              title="Sync BSE indices as instruments — run before Backfill BSE Index History"
+            >
+              {bseIndexSyncMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Sync BSE Indices
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={bseIndexBackfillMutation.isPending}
+              onClick={handleBseIndexBackfill}
+              title="Backfill full price history for every synced BSE index — needed before the BSE dashboard's Relative Strength Index box has real data"
+            >
+              {bseIndexBackfillMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Backfill BSE Index History
+            </Button>
+          </div>
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Sector/industry classification (which also auto-populates the
+          &quot;BSE — Classified Universe&quot; dashboard collection) is
+          synced from the &quot;Sync Sector Data&quot; button above — it
+          covers both NSE and BSE in one pass.
+        </p>
+
+        {bseSyncMutation.isSuccess ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            BSE instrument sync started.
+          </div>
+        ) : null}
+        {bseSyncMutation.isError ? (
+          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            BSE instrument sync failed. Check the backend log for the
+            provider message.
+          </div>
+        ) : null}
+        {bsePriceRefreshMutation.isSuccess ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            BSE price refresh started.
+          </div>
+        ) : null}
+        {bsePriceRefreshMutation.isError ? (
+          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            BSE price refresh failed to start. Check the backend log for the
+            provider message.
+          </div>
+        ) : null}
+        {bseIndexSyncMutation.isSuccess ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            BSE index sync started.
+          </div>
+        ) : null}
+        {bseIndexSyncMutation.isError ? (
+          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            BSE index sync failed. Check the backend log for the provider
+            message.
+          </div>
+        ) : null}
+        {bseIndexBackfillMutation.isSuccess ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            BSE index history backfill started.
+          </div>
+        ) : null}
+        {bseIndexBackfillMutation.isError ? (
+          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            BSE index history backfill failed to start. Check the backend
+            log for the provider message.
           </div>
         ) : null}
       </section>

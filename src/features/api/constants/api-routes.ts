@@ -15,6 +15,7 @@ export const API_ROUTES = {
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
     exchanges: "/api/market-data/exchanges",
     exchangeRates: "/api/market-data/exchange-rates",
+    indexRelativeStrength: "/api/market-data/index-relative-strength",
   },
   marketCollections: {
     list: "/api/market-collections",
@@ -39,6 +40,7 @@ export const API_ROUTES = {
   },
   admin: {
     users: "/api/admin/users",
+    usersExport: "/api/admin/users/export",
     userRole: (id: string) => `/api/admin/users/${encodeURIComponent(id)}/role`,
     userPlan: (id: string) => `/api/admin/users/${encodeURIComponent(id)}/plan`,
     userById: (id: string) => `/api/admin/users/${encodeURIComponent(id)}`,
@@ -48,6 +50,8 @@ export const API_ROUTES = {
     dataProviderConnectUrl: "/api/admin/data-provider/connect-url",
     dataProviderConnect: "/api/admin/data-provider/connect",
     dataProviderSync: "/api/admin/data-provider/sync",
+    sectorClassificationSync: "/api/admin/data-provider/sector-classification-sync",
+    indexCandleBackfill: "/api/admin/data-provider/index-candle-backfill",
     marketDataSyncPrices: "/api/admin/market-data/sync-prices",
     jobs: "/api/admin/jobs",
     aiSettings: "/api/admin/ai-settings",

@@ -6,6 +6,7 @@ import { getBrandLogoPath } from "@/components/ui/brand-logo-paths";
 import { Spinner } from "@/components/ui/spinner";
 import { useCurrency } from "@/features/currency";
 import { useDelayedFlag } from "@/hooks/use-delayed-flag";
+import { downloadBlob } from "@/utils/download-blob";
 import { formatCompactVolume, formatSignedChange } from "@/utils/formatters";
 import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-chart";
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
@@ -74,8 +75,17 @@ export function ScannerChartStage({
   // symbol/timeframe switch doesn't flash a spinner it doesn't need to.
   const showChartLoading = useDelayedFlag(loading && candles.length === 0);
 
+  const processedCaptureIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
+    // captureRequest is never reset to null once set, and this effect's
+    // other deps (candles, backtestStats, ...) change on their own from
+    // live price ticks — without this guard, every subsequent tick would
+    // silently re-run the same capture again (an unwanted "automatic"
+    // download/share on every update, not just the actual button click).
+    if (processedCaptureIdRef.current === captureRequest.id) return;
+    processedCaptureIdRef.current = captureRequest.id;
 
     void captureStageImage(
       stageRef.current,
@@ -215,6 +225,7 @@ export function ScannerChartStage({
           alt=""
           width={220}
           height={70}
+          loading="eager"
           className="h-6 w-auto object-contain sm:h-9"
           unoptimized
         />
@@ -229,7 +240,7 @@ export function ScannerChartStage({
       <ScannerBacktestStatsOverlay stats={backtestStats} />
       {showChartLoading && (
         <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-background/35">
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-popover/90 px-4 py-3 text-sm font-medium text-foreground shadow-lg">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-foreground sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
             <Spinner size="sm" />
             Loading {stock.symbol} {timeframe} candles...
           </div>
@@ -243,6 +254,7 @@ export function ScannerChartStage({
             bands={scanBands}
             candleTimes={candleTimes}
             theme={theme}
+            hoveredTime={hoveredCandleTime}
           />
           <DrawingOverlay
             chart={chartHandles.chart}
@@ -256,17 +268,6 @@ export function ScannerChartStage({
       )}
     </div>
   );
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function captureStageImage(
@@ -526,27 +527,36 @@ function drawChartInfoScreenshotOverlay(
     context.fillText("Signal", badgeX + 7, y);
   }
 
-  const detailY = y + 25;
+  // Price row: the largest, most prominent number in the block — mirrors
+  // the on-screen ChartInfoOverlay's symbol/price/metadata hierarchy.
+  const priceY = y + 24;
+  const priceText = formatStockCurrency(last.close, stock.exchange);
+  context.font = "700 17px Arial, sans-serif";
+  context.fillStyle = colors.text;
+  context.fillText(priceText, x, priceY);
+  const priceWidth = context.measureText(priceText).width;
+
+  context.font = "700 13px Arial, sans-serif";
+  context.fillStyle = isPositive ? colors.success : colors.danger;
+  context.fillText(changeText, x + priceWidth + 10, priceY);
+
+  const detailY = priceY + 20;
   const details = [
-    ["O", formatStockCurrency(last.open, stock.exchange), colors.text],
-    ["H", formatStockCurrency(last.high, stock.exchange), colors.text],
-    ["L", formatStockCurrency(last.low, stock.exchange), colors.text],
-    ["C", formatStockCurrency(last.close, stock.exchange), colors.text],
-    ["", changeText, isPositive ? colors.success : colors.danger],
-    ["V", formatCompactVolume(last.volume), colors.text],
+    ["O", formatStockCurrency(last.open, stock.exchange)],
+    ["H", formatStockCurrency(last.high, stock.exchange)],
+    ["L", formatStockCurrency(last.low, stock.exchange)],
+    ["C", formatStockCurrency(last.close, stock.exchange)],
+    ["V", formatCompactVolume(last.volume)],
   ];
   let cursorX = x;
 
-  context.font = "12px Arial, sans-serif";
-  for (const [label, value, color] of details) {
-    context.fillStyle = label ? colors.muted : color;
-    if (label) {
-      context.fillText(label, cursorX, detailY);
-      cursorX += context.measureText(label).width + 4;
-    }
-    context.fillStyle = color;
+  context.font = "11px Arial, sans-serif";
+  for (const [label, value] of details) {
+    context.fillStyle = colors.muted;
+    context.fillText(label, cursorX, detailY);
+    cursorX += context.measureText(label).width + 4;
     context.fillText(value, cursorX, detailY);
-    cursorX += context.measureText(value).width + 15;
+    cursorX += context.measureText(value).width + 14;
   }
   context.restore();
 }
@@ -586,7 +596,8 @@ function drawBacktestStatsScreenshotOverlay(
   const width = 236;
   const rowHeight = 21;
   const paddingX = 14;
-  const topPadding = 22;
+  const headerHeight = 30;
+  const topPadding = headerHeight + 12;
   const height = topPadding + rows.length * rowHeight + 10;
   const x = 14;
   const y = Math.max(
@@ -595,15 +606,36 @@ function drawBacktestStatsScreenshotOverlay(
   );
 
   context.save();
-  drawRoundedRect(context, x, y, width, height, 8);
+  drawRoundedRect(context, x, y, width, height, 6);
   context.fillStyle = colors.panel;
   context.fill();
   context.strokeStyle = colors.border;
   context.lineWidth = 1;
   context.stroke();
 
+  context.textAlign = "left";
+  context.font = "700 10px Arial, sans-serif";
+  context.fillStyle = colors.muted;
+  context.fillText("PERFORMANCE", x + paddingX, y + 19);
+  context.strokeStyle = colors.border;
+  context.beginPath();
+  context.moveTo(x, y + headerHeight);
+  context.lineTo(x + width, y + headerHeight);
+  context.stroke();
+
+  const dividerBeforeIndex = rows.length - 2;
+
   rows.forEach(([label, value, valueColor], index) => {
     const rowY = y + topPadding + index * rowHeight;
+
+    if (index === dividerBeforeIndex) {
+      context.strokeStyle = colors.border;
+      context.beginPath();
+      context.moveTo(x + paddingX, rowY - rowHeight / 2);
+      context.lineTo(x + width - paddingX, rowY - rowHeight / 2);
+      context.stroke();
+    }
+
     context.textAlign = "left";
     context.font = "12px Arial, sans-serif";
     context.fillStyle = colors.muted;

@@ -10,6 +10,12 @@ type BrandLogoProps = {
   markClassName?: string;
   textClassName?: string;
   size?: "sm" | "md" | "lg";
+  /**
+   * Forces a specific logo variant regardless of the app-wide theme toggle
+   * — for surfaces that are permanently light or dark (landing, login)
+   * rather than following the visitor's stored preference.
+   */
+  forceTheme?: "light" | "dark";
 };
 
 const sizeClasses = {
@@ -32,6 +38,7 @@ export function BrandLogo({
   markClassName,
   textClassName,
   size = "md",
+  forceTheme,
 }: BrandLogoProps) {
   const classes = sizeClasses[size];
   const { theme } = useTheme();
@@ -46,7 +53,7 @@ export function BrandLogo({
         aria-hidden="true"
       >
         <Image
-          src={getBrandLogoPath(theme)}
+          src={getBrandLogoPath(forceTheme ?? theme)}
           alt=""
           width={420}
           height={160}

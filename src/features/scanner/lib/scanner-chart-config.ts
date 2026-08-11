@@ -26,33 +26,41 @@ export const SCANNER_CHART_THEMES: Record<
     gridLine: string;
     highlightFill: string;
     highlightEdge: string;
+    highlightFillSelected: string;
+    highlightEdgeSelected: string;
   }
 > = {
   dark: {
-    panelBackground: "#080D12",
+    panelBackground: "#0B0E11",
     text: "#94A3B8",
     scaleBorder: "rgba(255,255,255,0.08)",
-    crosshair: "rgba(226,232,240,0.58)",
-    volumeGreen: "rgba(34,197,94,0.38)",
-    volumeRed: "rgba(239,68,68,0.34)",
-    gridLine: "rgba(255,255,255,0.055)",
-    // Mirrors --scanner-highlight-fill / --scanner-highlight-edge in
-    // globals.css — canvas fillStyle can't read CSS custom properties, so
-    // the scan-band primitive (which paints on the chart's own canvas)
-    // needs these as literal values kept in sync with that file.
+    crosshair: "rgba(226,232,240,0.5)",
+    volumeGreen: "rgba(34,197,94,0.3)",
+    volumeRed: "rgba(239,68,68,0.26)",
+    gridLine: "rgba(255,255,255,0.045)",
+    // Mirrors --scanner-highlight-fill / --scanner-highlight-edge (and the
+    // -selected variants) in globals.css — canvas fillStyle can't read CSS
+    // custom properties, so the scan-band primitive (which paints on the
+    // chart's own canvas) needs these as literal values kept in sync with
+    // that file. The hovered/selected zone is a bit stronger than a normal
+    // detected zone, not a bright highlight.
     highlightFill: "rgba(250,240,88,0.22)",
     highlightEdge: "rgba(250,204,21,0.12)",
+    highlightFillSelected: "rgba(250,240,88,0.32)",
+    highlightEdgeSelected: "rgba(250,204,21,0.18)",
   },
   light: {
     panelBackground: "#F8FAFC",
     text: "#334155",
     scaleBorder: "rgba(15,23,42,0.22)",
     crosshair: "rgba(30,41,59,0.64)",
-    volumeGreen: "rgba(22,163,74,0.28)",
-    volumeRed: "rgba(220,38,38,0.24)",
-    gridLine: "rgba(15,23,42,0.14)",
+    volumeGreen: "rgba(22,163,74,0.24)",
+    volumeRed: "rgba(220,38,38,0.2)",
+    gridLine: "rgba(15,23,42,0.12)",
     highlightFill: "rgba(250,240,88,0.3)",
     highlightEdge: "rgba(217,119,6,0.16)",
+    highlightFillSelected: "rgba(250,240,88,0.42)",
+    highlightEdgeSelected: "rgba(217,119,6,0.22)",
   },
 };
 
@@ -153,6 +161,7 @@ export function createScannerCandleSeriesOptions(
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceLineWidth: 1 as const,
     priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }
@@ -185,6 +194,7 @@ export function createScannerBarSeriesOptions(
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceLineWidth: 1 as const,
     priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }
@@ -214,6 +224,7 @@ export function createScannerLineSeriesOptions(
     priceLineVisible: true,
     priceLineColor: SCANNER_CHART_COLORS.gold,
     priceLineStyle: LineStyle.Dashed,
+    priceLineWidth: 1 as const,
     priceFormat: createScannerPriceFormat(priceFormatter),
   };
 }

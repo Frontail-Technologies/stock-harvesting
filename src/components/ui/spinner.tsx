@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/utils/cn";
 
 type SpinnerSize = "sm" | "md" | "lg";
@@ -20,13 +21,12 @@ type SpinnerProps = {
   label?: string;
 };
 
-// A conic-gradient ring (brand accent fading through gold) masked into a
-// thin donut shape and rotated — reads as a premium "swoosh" rather than a
-// generic browser-default spinner, while staying a single lightweight div.
+// Three concentric rings rotating at different speeds (defined as
+// .app-loader in globals.css) — reads as a layered, premium spinner rather
+// than a generic browser-default one, while staying a single lightweight div.
 export function Spinner({ size = "md", className, label }: SpinnerProps) {
   const dimension = SIZE_PX[size];
   const thickness = THICKNESS_PX[size];
-  const ringMask = `radial-gradient(farthest-side, transparent calc(100% - ${thickness}px), #000 calc(100% - ${thickness}px))`;
 
   return (
     <span
@@ -36,15 +36,13 @@ export function Spinner({ size = "md", className, label }: SpinnerProps) {
     >
       <span
         aria-hidden="true"
-        className="inline-block shrink-0 animate-spin motion-reduce:animate-[spin_1.6s_linear_infinite]"
-        style={{
-          width: dimension,
-          height: dimension,
-          background:
-            "conic-gradient(from 0deg, transparent 0%, color-mix(in oklab, var(--brand-accent) 85%, transparent) 55%, var(--brand-gold) 100%)",
-          WebkitMask: ringMask,
-          mask: ringMask,
-        }}
+        className="app-loader shrink-0 motion-reduce:animate-none"
+        style={
+          {
+            "--app-loader-size": `${dimension}px`,
+            "--app-loader-thickness": `${thickness}px`,
+          } as CSSProperties
+        }
       />
       {label ? (
         <span className="text-sm text-muted-foreground">{label}</span>

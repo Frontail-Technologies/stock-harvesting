@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "@/features/api";
 import { AuthBootstrap } from "@/features/auth";
@@ -74,14 +75,40 @@ export const metadata: Metadata = {
   },
 };
 
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
+
 const themeInitScript = `
 (() => {
   try {
-    const storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
-    const stored = window.localStorage.getItem(storageKey);
-    const theme = stored === "light" || stored === "dark"
-      ? stored
-      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    var storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
+    var path = window.location.pathname;
+    // Dark-only public surfaces (marketing landing, login) force dark before
+    // first paint so no light background/scrollbar flashes. The scanner and
+    // other product routes keep the user's selectable light/dark preference.
+    var forcedDark = path === "/" || path === "/login";
+    var stored = window.localStorage.getItem(storageKey);
+    var theme = forcedDark
+      ? "dark"
+      : stored === "light" || stored === "dark"
+        ? stored
+        : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
   } catch {}
@@ -96,7 +123,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="h-full antialiased"
+      className={`h-full antialiased ${geist.variable} ${ibmPlexMono.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >
       <body

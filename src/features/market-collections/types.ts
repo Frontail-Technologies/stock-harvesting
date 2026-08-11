@@ -59,9 +59,16 @@ export type CollectionRelativeStrengthMetric = {
   combinedScore: number;
 };
 
+export type CollectionGroupRelativeStrengthRow = {
+  label: string;
+  score: number;
+  memberCount: number;
+};
+
 export type CollectionRelativeStrengthResponse = {
-  collection: { code: string; name: string };
-  metrics: CollectionRelativeStrengthMetric[];
+  collection: { code: string; name: string; exchange: string };
+  metrics?: CollectionRelativeStrengthMetric[];
+  groups?: CollectionGroupRelativeStrengthRow[];
 };
 
 export type CollectionWeeklyStrongStock = {

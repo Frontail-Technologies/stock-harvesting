@@ -39,7 +39,7 @@ export function AdminUsersTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="w-14 border-r border-border px-4 text-xs font-semibold">
+            <TableHead className="w-14 border-r border-border px-4 text-right text-xs font-semibold">
               No.
             </TableHead>
             <TableHead className="min-w-52 border-r border-border px-4 text-xs font-semibold">
@@ -57,7 +57,7 @@ export function AdminUsersTable({
             <TableHead className="w-44 border-r border-border px-4 text-xs font-semibold">
               Created
             </TableHead>
-            <TableHead className="min-w-56 px-4 text-xs font-semibold">
+            <TableHead className="w-28 px-4 text-xs font-semibold">
               Actions
             </TableHead>
           </TableRow>
@@ -65,7 +65,7 @@ export function AdminUsersTable({
         <TableBody>
           {users.map((user, index) => (
             <TableRow key={user.id} className="hover:bg-muted/30">
-              <TableCell className="border-r border-border px-4 text-muted-foreground">
+              <TableCell className="border-r border-border px-4 text-right text-muted-foreground">
                 {startIndex + index + 1}
               </TableCell>
               <TableCell className="border-r border-border px-4">

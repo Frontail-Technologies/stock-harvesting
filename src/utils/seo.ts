@@ -16,3 +16,14 @@ export function getSiteUrl() {
 export function absoluteUrl(path = "/") {
   return new URL(path, getSiteUrl()).toString();
 }
+
+// Host (not URL) that serves the admin panel, e.g. "admin.example.com" — see
+// src/proxy.ts. Null when unset, which keeps /admin on the main host.
+export function getAdminHost() {
+  return process.env.NEXT_PUBLIC_ADMIN_HOST?.trim() || null;
+}
+
+export function getAdminOrigin() {
+  const adminHost = getAdminHost();
+  return adminHost ? `${getSiteUrl().protocol}//${adminHost}` : null;
+}

@@ -4,12 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
 import {
+  backfillAdminIndexCandles,
   connectAdminDataProvider,
   getAdminDataProviderConnectUrl,
   getAdminDataProviderStatus,
   getAdminDataProviderStatuses,
   syncAdminDataProvider,
   syncAdminMarketDataPrices,
+  syncAdminSectorClassification,
 } from "../api/admin-api";
 
 export function useAdminDataProviderStatus() {
@@ -72,6 +74,28 @@ export function useSyncAdminMarketDataPrices() {
 
   return useMutation({
     mutationFn: syncAdminMarketDataPrices,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
+    },
+  });
+}
+
+export function useSyncAdminSectorClassification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: syncAdminSectorClassification,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
+    },
+  });
+}
+
+export function useBackfillAdminIndexCandles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: backfillAdminIndexCandles,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
     },

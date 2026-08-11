@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import {
   useCollectionRelativeStrength,
-  type CollectionRelativeStrengthMetric,
+  type CollectionGroupRelativeStrengthRow,
 } from "@/features/market-collections";
+import { useIndexRelativeStrength } from "@/features/market-data";
 import type { DashboardCardData, DashboardItemColor } from "@/types/dashboard";
 import { DashboardWidget } from "./DashboardWidget";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
@@ -21,8 +22,40 @@ const COLOR_CYCLE: DashboardItemColor[] = [
   "red",
 ];
 
+// Sectors/industries are a small, roughly fixed taxonomy (~22 sectors, ~57
+// industries per GlobalDataFeeds' GetSectors) — well under this, so the
+// group-ranked cards effectively show every category with real data.
+const GROUP_RANKING_LIMIT = 100;
+
+// Indices live under a virtual exchange code parallel to the collection's
+// own equity exchange — NSE collections rank NSE indices, BSE collections
+// rank BSE indices.
+const INDEX_EXCHANGE_BY_EQUITY_EXCHANGE: Record<string, string> = {
+  NSE: "NSE_IDX",
+  BSE: "BSE_IDX",
+};
+
 export function DashboardCollectionPage({ code }: { code: string }) {
   const rsQuery = useCollectionRelativeStrength({ code, limit: 200 });
+  const sectorQuery = useCollectionRelativeStrength({
+    code,
+    limit: GROUP_RANKING_LIMIT,
+    groupBy: "sector",
+  });
+  const industryQuery = useCollectionRelativeStrength({
+    code,
+    limit: GROUP_RANKING_LIMIT,
+    groupBy: "industry",
+  });
+  // Not collection-scoped — same index ranking regardless of which
+  // collection is open (indices aren't members of any market_collection) —
+  // but scoped to the collection's own exchange so a BSE collection shows
+  // BSE indices, not NSE ones.
+  const collectionExchange = rsQuery.data?.collection.exchange;
+  const indexExchange = collectionExchange
+    ? INDEX_EXCHANGE_BY_EQUITY_EXCHANGE[collectionExchange] ?? "NSE_IDX"
+    : undefined;
+  const indexQuery = useIndexRelativeStrength(150, indexExchange);
 
   if (rsQuery.isLoading) {
     return <DashboardGridSkeleton />;
@@ -37,7 +70,12 @@ export function DashboardCollectionPage({ code }: { code: string }) {
     );
   }
 
-  const cards = buildCollectionCards(rsQuery.metrics);
+  const cards = buildCollectionCards({
+    indexMetrics: indexQuery.metrics,
+    weeklyStrongMetrics: rsQuery.metrics,
+    sectorGroups: sectorQuery.data?.groups ?? [],
+    industryGroups: industryQuery.data?.groups ?? [],
+  });
   const collectionName = rsQuery.data.collection.name;
 
   return (
@@ -69,31 +107,63 @@ export function DashboardCollectionPage({ code }: { code: string }) {
   );
 }
 
-function buildCollectionCards(
-  metrics: CollectionRelativeStrengthMetric[]
-): DashboardCardData[] {
+type StockScoreRow = {
+  symbol: string;
+  exchange: string;
+  combinedScore: number;
+};
+
+function buildCollectionCards(input: {
+  indexMetrics: StockScoreRow[];
+  weeklyStrongMetrics: StockScoreRow[];
+  sectorGroups: CollectionGroupRelativeStrengthRow[];
+  industryGroups: CollectionGroupRelativeStrengthRow[];
+}): DashboardCardData[] {
   const timestamp = new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date());
 
-  // All 4 boxes rank by the same combined score (55-day change + monthly
-  // change + weekly MACD line % + weekly MACD histogram %, all added
-  // together) instead of each box using one of the 4 conditions on its
-  // own — they show the same ranked list under their 4 existing titles.
+  // Index ranks actual NSE indices (NIFTY AUTO, BANKNIFTY, ...) against each
+  // other — global, not scoped to the selected collection, since indices
+  // aren't members of any market_collection. Sector/Industry rank the
+  // categories themselves (mean combinedScore of member stocks) — a
+  // sector-rotation view, not a stock list. Weekly Strong ranks individual
+  // stocks in the selected collection by the same combined score (55-day
+  // change + monthly change + weekly MACD line % + weekly MACD histogram %).
   return [
-    createCard("relative-strength-index", "Relative Strength Index", timestamp, metrics),
-    createCard("relative-strength-sector", "Relative Strength Sector", timestamp, metrics),
-    createCard("relative-strength-industry", "Relative Strength Industry", timestamp, metrics),
-    createCard("weekly-strong-stock-list", "Weekly Strong Stock List", timestamp, metrics),
+    createStockCard(
+      "relative-strength-index",
+      "Relative Strength Index",
+      timestamp,
+      input.indexMetrics
+    ),
+    createGroupCard(
+      "relative-strength-sector",
+      "Relative Strength Sector",
+      timestamp,
+      input.sectorGroups
+    ),
+    createGroupCard(
+      "relative-strength-industry",
+      "Relative Strength Industry",
+      timestamp,
+      input.industryGroups
+    ),
+    createStockCard(
+      "weekly-strong-stock-list",
+      "Weekly Strong Stock List",
+      timestamp,
+      input.weeklyStrongMetrics
+    ),
   ];
 }
 
-function createCard(
+function createStockCard(
   id: string,
   title: string,
   timestamp: string,
-  metrics: CollectionRelativeStrengthMetric[]
+  metrics: StockScoreRow[]
 ): DashboardCardData {
   const rows = [...metrics].sort((a, b) => b.combinedScore - a.combinedScore);
 
@@ -109,6 +179,26 @@ function createCard(
       color: COLOR_CYCLE[index % COLOR_CYCLE.length],
       metric: undefined,
       exchange: row.exchange,
+    })),
+  };
+}
+
+function createGroupCard(
+  id: string,
+  title: string,
+  timestamp: string,
+  groups: CollectionGroupRelativeStrengthRow[]
+): DashboardCardData {
+  return {
+    id,
+    title,
+    timestamp,
+    variant: "category",
+    items: groups.map((group, index) => ({
+      rank: index + 1,
+      label: group.label,
+      value: group.score,
+      color: COLOR_CYCLE[index % COLOR_CYCLE.length],
     })),
   };
 }

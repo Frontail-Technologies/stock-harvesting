@@ -10,7 +10,12 @@ import { mockStocks } from "@/mocks/market/stocks";
 import { DEV_MOCK_FALLBACK_ENABLED } from "@/utils/frontend-flags";
 import { searchStocks } from "@/utils/stock-search";
 import { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "../constants";
-import { getCandles, getStocks, searchStocksApi } from "../api/market-data-api";
+import {
+  getCandles,
+  getIndexRelativeStrength,
+  getStocks,
+  searchStocksApi,
+} from "../api/market-data-api";
 import { normalizeStocks } from "../lib/stock-mappers";
 import { useMarketDataCacheStore } from "../stores/market-data-cache-store";
 import type { CandleListInput, StockListInput } from "../types";
@@ -261,4 +266,26 @@ export function useCandles(input: CandleListInput) {
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,
   });
+}
+
+// Not collection-scoped — same index ranking regardless of which dashboard
+// collection is open, so the query key deliberately has no `code`/filter
+// dependency (only `exchange`, so NSE/BSE index views cache independently)
+// and stays cached across collection switches within the same exchange.
+export function useIndexRelativeStrength(limit?: number, exchange?: string) {
+  const authStatus = useSessionStore((state) => state.status);
+
+  const query = useQuery({
+    queryKey: queryKeys.marketData.indexRelativeStrength(limit, exchange),
+    queryFn: async () => {
+      const response = await getIndexRelativeStrength(limit, exchange);
+      return response.metrics;
+    },
+    enabled: authStatus === "authenticated",
+    retry: false,
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+
+  return { ...query, metrics: query.data ?? [] };
 }

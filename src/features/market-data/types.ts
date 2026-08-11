@@ -45,3 +45,20 @@ export type CandleListInput = {
   to?: string;
   exchange?: string;
 };
+
+export type IndexRelativeStrengthMetric = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  close: number;
+  volume: number;
+  change55dPct: number;
+  monthlyPct: number;
+  weeklyMacdPct: number;
+  weeklyMacdHistogramPct: number;
+  combinedScore: number;
+};
+
+export type IndexRelativeStrengthResponse = {
+  metrics: IndexRelativeStrengthMetric[];
+};

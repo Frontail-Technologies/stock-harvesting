@@ -37,10 +37,15 @@ export function getCollectionMembers(input: CollectionMembersInput) {
   );
 }
 
-export function getCollectionRelativeStrength(input: { code: string; limit?: number }) {
+export function getCollectionRelativeStrength(input: {
+  code: string;
+  limit?: number;
+  groupBy?: "sector" | "industry";
+}) {
   return apiFetch<CollectionRelativeStrengthResponse>(
     withQuery(API_ROUTES.marketCollections.relativeStrength(input.code), {
       limit: input.limit,
+      groupBy: input.groupBy,
     })
   );
 }
