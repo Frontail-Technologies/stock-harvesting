@@ -88,6 +88,10 @@ max-connections calculation before raising `DB_POOL_MAX`).
 | `NEXT_PUBLIC_ADMIN_HOST` | No | Host (not full URL) that serves the admin panel on its own subdomain, e.g. `admin.example.com`. Unset keeps `/admin` on the main host — see `src/proxy.ts` |
 | `NEXT_PUBLIC_DEV_MOCK_FALLBACK` | No | `"true"` enables mock-data fallbacks in dev when the backend is unavailable |
 | `NEXT_PUBLIC_DEBUG_MARKET_STREAM` | No | Verbose console logging for the live market-data WebSocket stream |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | No | Google AdSense client id, e.g. `ca-pub-...`. If missing, ad placements collapse in production |
+| `NEXT_PUBLIC_ADSENSE_LANDING_PRIMARY_SLOT` | No | Manual AdSense slot after the landing chart workspace section |
+| `NEXT_PUBLIC_ADSENSE_LANDING_SECONDARY_SLOT` | No | Manual AdSense slot after the landing market coverage section |
+| `NEXT_PUBLIC_ADSENSE_SCANNER_SLOT` | No | Manual AdSense slot below scanner chart controls |
 
 ## Adding a new variable
 

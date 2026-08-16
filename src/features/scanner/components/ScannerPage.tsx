@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
+import { ADSENSE_SLOTS, AdsenseAd, AdsenseScript } from "@/features/adsense";
 import type { Stock } from "@/types/market";
 import { AuthGuard, useSessionStore } from "@/features/auth";
 import { useMarketStream, type MarketStreamEvent } from "@/features/market-stream";
@@ -270,10 +271,6 @@ export function ScannerPage() {
   }, [pathname, router, searchParams, selectedSymbol]);
 
   return (
-    // Scoped with the same scanner-theme classes as the real shell below,
-    // so bg-background here resolves to the same colour instead of the
-    // app-wide default - without this, "Checking session" would flash a
-    // mismatched background right before the actual scanner shell mounts.
     <AuthGuard
       className={cn(
         getScannerThemeClass(theme),
@@ -286,6 +283,7 @@ export function ScannerPage() {
           "flex h-dvh w-screen flex-col overflow-hidden bg-background text-foreground"
         )}
       >
+        <AdsenseScript slots={[ADSENSE_SLOTS.scanner]} />
         <TopToolbar
           stock={selectedStock}
           chartType={chartType}
@@ -620,10 +618,17 @@ function ScannerDrawingWorkspace({
           onToggleBacktestStats={onToggleBacktestStats}
           onToggleScannerHighlights={onToggleScannerHighlights}
         />
+        <AdsenseAd
+          slot={ADSENSE_SLOTS.scanner}
+          placement="scanner-bottom-after-chart-controls"
+          variant="scanner"
+          className="shrink-0"
+        />
       </div>
     </div>
   );
 }
+
 
 
 

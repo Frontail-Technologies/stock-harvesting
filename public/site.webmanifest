@@ -1,27 +1,24 @@
-{
+﻿{
   "name": "Stock Harvesting",
-  "short_name": "Stock Harvest",
-  "description": "Market scanner and charting workspace for stocks, scan signals, and chart annotations.",
+  "short_name": "Harvesting",
+  "description": "A focused stock scanner workspace for market review.",
   "start_url": "/scanner",
   "scope": "/",
-  "id": "/scanner",
+  "display": "standalone",
+  "background_color": "#05070d",
+  "theme_color": "#f8b800",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
-  ],
-  "theme_color": "#f5b800",
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "orientation": "any",
-  "categories": ["finance", "business", "productivity"]
+  ]
 }

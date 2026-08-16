@@ -11,6 +11,7 @@ export type DrawingToolId =
   | "ray"
   | "horizontal-line"
   | "vertical-line"
+  | "measure"
   | "date-range"
   | "price-range"
   | "date-price-range"

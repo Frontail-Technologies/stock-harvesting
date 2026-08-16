@@ -69,5 +69,13 @@ export const API_ROUTES = {
   ai: {
     ask: (symbol: string) => `/api/ai/scanner/${encodeURIComponent(symbol)}/ask`,
   },
+  priceAlerts: {
+    root: "/api/price-alerts",
+    byId: (id: string) => `/api/price-alerts/${encodeURIComponent(id)}`,
+  },
+  pushSubscriptions: {
+    root: "/api/push-subscriptions",
+    publicKey: "/api/push-subscriptions/public-key",
+  },
 } as const;
 

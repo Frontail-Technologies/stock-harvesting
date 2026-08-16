@@ -71,5 +71,6 @@ export function getChartCursorCss(tool: DrawingToolId) {
   if (tool === "cursor-arrow") return "default";
   if (tool === "cursor-demo") return demoCursor;
   if (tool === "cursor-laser") return laserCursor;
+  if (tool === "measure") return "crosshair";
   return "default";
 }

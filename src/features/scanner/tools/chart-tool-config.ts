@@ -55,6 +55,7 @@ export const LINE_TOOLS: ToolMenuItem[] = [
 ];
 
 export const RANGE_TOOLS: ToolMenuItem[] = [
+  { kind: "tool", id: "measure", label: "Measure", icon: Ruler },
   { kind: "tool", id: "date-range", label: "Date Range", icon: MoveHorizontal },
   { kind: "tool", id: "price-range", label: "Price Range", icon: MoveVertical },
   { kind: "tool", id: "date-price-range", label: "Date and Price Range", icon: Ruler },

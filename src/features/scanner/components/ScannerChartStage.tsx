@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Time } from "lightweight-charts";
 import NextImage from "next/image";
 import type { Candle, ScanBand, Stock } from "@/types/market";
@@ -264,6 +264,7 @@ export function ScannerChartStage({
             series={chartHandles.series}
             containerRef={containerRef}
             candleTimes={candleTimes}
+            candles={candles}
             drawing={drawing}
             exchange={stock.exchange}
           />

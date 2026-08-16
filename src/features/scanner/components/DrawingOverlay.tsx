@@ -12,6 +12,8 @@ import {
 import { Check } from "lucide-react";
 import type { IChartApi, Logical } from "lightweight-charts";
 import { useCurrency } from "@/features/currency";
+import type { Candle } from "@/types/market";
+import { formatCompactVolume } from "@/utils/formatters";
 import { createDrawingBase } from "../hooks/use-scanner-drawing-state";
 import type { ScannerPriceSeries } from "../hooks/use-lightweight-candlestick-chart";
 import {
@@ -25,6 +27,7 @@ import {
   isCursorTool,
 } from "../tools/cursor-tool-config";
 import {
+  defaultDrawingStyle,
   resolveDrawingStyle,
   withAlpha,
 } from "../tools/drawing-style-config";
@@ -50,6 +53,7 @@ type DrawingOverlayProps = {
   series: ScannerPriceSeries;
   containerRef: RefObject<HTMLDivElement | null>;
   candleTimes: string[];
+  candles: Candle[];
   drawing: DrawingController;
   exchange: string;
 };
@@ -57,6 +61,13 @@ type DrawingOverlayProps = {
 type ScreenPoint = {
   x: number;
   y: number;
+};
+type MeasurementState = {
+  start: DrawingPoint;
+  end: DrawingPoint;
+  startIndex: number;
+  endIndex: number;
+  style: DrawingStyle;
 };
 
 type MarkerDrawingType =
@@ -96,6 +107,12 @@ type DragState =
       id: string;
       handle: "start" | "end" | "point";
       original: DrawingElement;
+    }
+  | {
+      kind: "measurement";
+      mode: "move" | "start" | "end";
+      original: MeasurementState;
+      origin: ScreenPoint;
     };
 
 type TextEditorState = {
@@ -109,7 +126,26 @@ type TextEditorState = {
 const SELECTED_STROKE = "var(--scanner-handle-stroke)";
 const DRAFT_STROKE = "#facc15";
 const HIT_STROKE = "rgba(255, 255, 255, 0)";
+const MEASUREMENT_UP_COLOR = "#00d084";
+const MEASUREMENT_DOWN_COLOR = "#ff4d67";
+const defaultMeasurementStyle: DrawingStyle = {
+  ...defaultDrawingStyle,
+  strokeColor: MEASUREMENT_DOWN_COLOR,
+  fillColor: MEASUREMENT_DOWN_COLOR,
+  strokeWidth: 1,
+  fillOpacity: 0.16,
+  fontSize: 12,
+};
 type PriceFormatter = (value: number) => string;
+
+function getDefaultMeasurementStyle(start: DrawingPoint, end: DrawingPoint): DrawingStyle {
+  const color = end.price >= start.price ? MEASUREMENT_UP_COLOR : MEASUREMENT_DOWN_COLOR;
+  return {
+    ...defaultMeasurementStyle,
+    strokeColor: color,
+    fillColor: color,
+  };
+}
 
 function normalizeTime(time: unknown): string | null {
   if (typeof time === "string") return time;
@@ -1288,11 +1324,155 @@ function DrawingElementView({
   );
 }
 
+function formatMeasurementScaleValue(diff: number) {
+  const scaled = Math.round(diff * 100);
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+    signDisplay: "exceptZero",
+  }).format(scaled);
+}
+
+function formatMeasurementDuration(startTime: string, endTime: string) {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
+  const minutes = Math.max(0, Math.round(Math.abs(end - start) / 60_000));
+  const days = Math.floor(minutes / 1_440);
+  const hours = Math.floor((minutes % 1_440) / 60);
+  const mins = minutes % 60;
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function MeasurementElementView({
+  measurement,
+  candles,
+  pointToScreen,
+  formatPrice,
+  size,
+  onPointerDown,
+}: {
+  measurement: MeasurementState;
+  candles: Candle[];
+  pointToScreen: (point: DrawingPoint) => ScreenPoint | null;
+  formatPrice: PriceFormatter;
+  size: ScreenPoint;
+  onPointerDown: (mode: "move" | "start" | "end", event: ReactPointerEvent<SVGElement>) => void;
+}) {
+  const start = pointToScreen(measurement.start);
+  const end = pointToScreen(measurement.end);
+  if (!start || !end) return null;
+
+  const diff = measurement.end.price - measurement.start.price;
+  const pct = measurement.start.price ? (diff / measurement.start.price) * 100 : 0;
+  const color = measurement.style.strokeColor;
+  const fill = withAlpha(measurement.style.fillColor, measurement.style.fillOpacity);
+  const strokeWidth = Math.max(1, measurement.style.strokeWidth);
+  const labelFontSize = Math.max(10, Math.min(16, measurement.style.fontSize));
+  const minX = Math.min(start.x, end.x);
+  const minY = Math.min(start.y, end.y);
+  const width = Math.abs(end.x - start.x);
+  const height = Math.abs(end.y - start.y);
+  const startIndex = clamp(measurement.startIndex, 0, Math.max(candles.length - 1, 0));
+  const endIndex = clamp(measurement.endIndex, 0, Math.max(candles.length - 1, 0));
+  const from = Math.min(startIndex, endIndex);
+  const to = Math.max(startIndex, endIndex);
+  const bars = Math.max(1, to - from + 1);
+  const volume = candles.slice(from, to + 1).reduce((total, candle) => total + candle.volume, 0);
+  const duration = formatMeasurementDuration(measurement.start.time, measurement.end.time);
+  const sign = diff >= 0 ? "+" : "";
+  const priceText = `${sign}${formatPrice(diff)}`;
+  const pctText = `${sign}${pct.toFixed(2)}%`;
+  const scaleText = formatMeasurementScaleValue(diff);
+  const primary = `${priceText} (${pctText}) ${scaleText}`;
+  const secondary = duration ? `${bars} bars, ${duration}` : `${bars} bars`;
+  const labelWidth = 166;
+  const labelHeight = 70;
+  const labelX = clamp(end.x - labelWidth / 2, 8, Math.max(8, size.x - labelWidth - 8));
+  const labelY = clamp(Math.max(start.y, end.y) + 10, 8, Math.max(8, size.y - labelHeight - 8));
+  const arrowSize = 5;
+  const horizontalArrow = end.x >= start.x
+    ? `${end.x},${start.y} ${end.x - arrowSize},${start.y - arrowSize} ${end.x - arrowSize},${start.y + arrowSize}`
+    : `${end.x},${start.y} ${end.x + arrowSize},${start.y - arrowSize} ${end.x + arrowSize},${start.y + arrowSize}`;
+  const verticalArrow = end.y >= start.y
+    ? `${end.x},${end.y} ${end.x - arrowSize},${end.y - arrowSize} ${end.x + arrowSize},${end.y - arrowSize}`
+    : `${end.x},${end.y} ${end.x - arrowSize},${end.y + arrowSize} ${end.x + arrowSize},${end.y + arrowSize}`;
+
+  return (
+    <g pointerEvents="auto" data-measurement-overlay="true">
+      <rect
+        x={minX}
+        y={minY}
+        width={Math.max(width, 1)}
+        height={Math.max(height, 1)}
+        fill={fill}
+        stroke={color}
+        strokeDasharray="5 4"
+        strokeOpacity={0.65}
+        strokeWidth={strokeWidth}
+        style={{ cursor: "move" }}
+        onPointerDown={(event) => onPointerDown("move", event)}
+      />
+      <line x1={start.x} y1={start.y} x2={end.x} y2={start.y} stroke={color} strokeWidth={strokeWidth} />
+      <polygon points={horizontalArrow} fill={color} />
+      <line x1={end.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={strokeWidth} />
+      <polygon points={verticalArrow} fill={color} />
+      <line
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={start.y}
+        stroke="transparent"
+        strokeWidth={14}
+        style={{ cursor: "ew-resize" }}
+        onPointerDown={(event) => onPointerDown("end", event)}
+      />
+      <line
+        x1={end.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke="transparent"
+        strokeWidth={14}
+        style={{ cursor: "ns-resize" }}
+        onPointerDown={(event) => onPointerDown("end", event)}
+      />
+      <circle
+        cx={start.x}
+        cy={start.y}
+        r={5}
+        fill={color}
+        style={{ cursor: "grab" }}
+        onPointerDown={(event) => onPointerDown("start", event)}
+      />
+      <circle
+        cx={end.x}
+        cy={end.y}
+        r={5}
+        fill={color}
+        style={{ cursor: "grab" }}
+        onPointerDown={(event) => onPointerDown("end", event)}
+      />
+      <rect x={labelX} y={labelY} width={labelWidth} height={labelHeight} rx={4} fill={color} />
+      <text x={labelX + labelWidth / 2} y={labelY + 21} textAnchor="middle" fill="#ffffff" fontSize={labelFontSize} fontWeight={700}>
+        {primary}
+      </text>
+      <text x={labelX + labelWidth / 2} y={labelY + 42} textAnchor="middle" fill="#ffffff" fontSize={labelFontSize} fontWeight={700}>
+        {secondary}
+      </text>
+      <text x={labelX + labelWidth / 2} y={labelY + 60} textAnchor="middle" fill="#ffffff" fontSize={Math.max(10, labelFontSize - 1)} fontWeight={700}>
+        Vol {formatCompactVolume(volume)}
+      </text>
+    </g>
+  );
+}
 export function DrawingOverlay({
   chart,
   series,
   containerRef,
   candleTimes,
+  candles,
   drawing,
   exchange,
 }: DrawingOverlayProps) {
@@ -1301,6 +1481,7 @@ export function DrawingOverlay({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [renderTick, setRenderTick] = useState(0);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
+  const [measurement, setMeasurement] = useState<MeasurementState | null>(null);
   // Drives the "grab" -> "grabbing" cursor swap while a drawing element is
   // being repositioned (move or handle drag). Also mirrored onto
   // document.body during the drag so the closed-hand cursor stays visible
@@ -1311,6 +1492,10 @@ export function DrawingOverlay({
   const textEditorOpen = Boolean(textEditor);
   const selectedDrawingId = drawing.selectedDrawingId;
   const selectDrawing = drawing.selectDrawing;
+  const candleIndexByTime = useMemo(
+    () => new Map(candles.map((candle, index) => [candle.time, index])),
+    [candles]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1413,6 +1598,27 @@ export function DrawingOverlay({
     }
   };
 
+  const getCandleIndexForPoint = (point: DrawingPoint) => {
+    const byTime = candleIndexByTime.get(point.time);
+    if (typeof byTime === "number") return byTime;
+    if (typeof point.logical === "number") {
+      return clamp(Math.round(point.logical), 0, Math.max(candles.length - 1, 0));
+    }
+    return 0;
+  };
+
+  const createMeasurementState = (
+    start: DrawingPoint,
+    end: DrawingPoint,
+    style = getDefaultMeasurementStyle(start, end)
+  ): MeasurementState => ({
+    start,
+    end,
+    startIndex: getCandleIndexForPoint(start),
+    endIndex: getCandleIndexForPoint(end),
+    style: { ...style },
+  });
+
   const syncCrosshairFromScreenPoint = (screen: ScreenPoint) => {
     if (!drawing.crosshairActive || !isCursorTool(drawing.activeTool)) return;
 
@@ -1459,6 +1665,16 @@ export function DrawingOverlay({
       }) ?? point
     );
   };
+
+  const moveMeasurementByDelta = (
+    item: MeasurementState,
+    deltaX: number,
+    deltaY: number
+  ): MeasurementState => createMeasurementState(
+    movePointByDelta(item.start, deltaX, deltaY),
+    movePointByDelta(item.end, deltaX, deltaY),
+    item.style
+  );
 
   const moveDrawingByDelta = (
     item: DrawingElement,
@@ -1517,7 +1733,8 @@ export function DrawingOverlay({
 
       syncCrosshairFromScreenPoint(screenPoint);
 
-      const chartPoint = screenToDrawingPoint(screenPoint);
+      const measureDrag = drag.kind === "measurement" || (drag.kind === "create" && drag.tool === "measure");
+      const chartPoint = screenToDrawingPoint(screenPoint, measureDrag ? false : drawing.magnetActive);
       if (!chartPoint) return;
 
       if (drag.kind === "freehand") {
@@ -1534,8 +1751,33 @@ export function DrawingOverlay({
       }
 
       if (drag.kind === "create") {
+        if (drag.tool === "measure") {
+          setMeasurement(createMeasurementState(drag.start, chartPoint));
+          return;
+        }
+
         const next = createTwoPointDrawing(drag.tool, drag.start, chartPoint);
         drawing.setDraftDrawing(next);
+        return;
+      }
+
+      if (drag.kind === "measurement") {
+        if (drag.mode === "move") {
+          setMeasurement(
+            moveMeasurementByDelta(
+              drag.original,
+              screenPoint.x - drag.origin.x,
+              screenPoint.y - drag.origin.y
+            )
+          );
+          return;
+        }
+
+        setMeasurement(
+          drag.mode === "start"
+            ? createMeasurementState(chartPoint, drag.original.end, drag.original.style)
+            : createMeasurementState(drag.original.start, chartPoint, drag.original.style)
+        );
         return;
       }
 
@@ -1572,7 +1814,8 @@ export function DrawingOverlay({
 
       syncCrosshairFromScreenPoint(screenPoint);
 
-      const chartPoint = screenToDrawingPoint(screenPoint);
+      const measureDrag = drag.kind === "measurement" || (drag.kind === "create" && drag.tool === "measure");
+      const chartPoint = screenToDrawingPoint(screenPoint, measureDrag ? false : drawing.magnetActive);
 
       if (drag.kind === "freehand") {
         const points =
@@ -1587,7 +1830,14 @@ export function DrawingOverlay({
           drawing.cancelDraft();
         }
       } else if (drag.kind === "create") {
-        if (chartPoint && distance(drag.origin, screenPoint) > 4) {
+        if (drag.tool === "measure") {
+          if (chartPoint && distance(drag.origin, screenPoint) > 4) {
+            setMeasurement(createMeasurementState(drag.start, chartPoint));
+          } else {
+            setMeasurement(null);
+          }
+          drawing.setActiveTool(DEFAULT_CURSOR_TOOL);
+        } else if (chartPoint && distance(drag.origin, screenPoint) > 4) {
           const next = createTwoPointDrawing(drag.tool, drag.start, chartPoint);
           if (next) drawing.commitDrawing(next);
         } else {
@@ -1609,6 +1859,27 @@ export function DrawingOverlay({
       if (dragRef.current) document.body.style.cursor = "";
     };
   });
+
+  const handleMeasurementPointerDown = (
+    mode: "move" | "start" | "end",
+    event: ReactPointerEvent<SVGElement>
+  ) => {
+    if (!measurement) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const screenPoint = getScreenPointFromEvent(event);
+    if (!screenPoint) return;
+
+    dragRef.current = {
+      kind: "measurement",
+      mode,
+      original: measurement,
+      origin: screenPoint,
+    };
+    setIsDraggingDrawing(true);
+    document.body.style.cursor = mode === "move" ? "grabbing" : "crosshair";
+  };
 
   const handleOverlayPointerMove = (event: ReactPointerEvent<SVGRectElement>) => {
     if (isCursorTool(drawing.activeTool)) return;
@@ -1652,7 +1923,7 @@ export function DrawingOverlay({
 
     syncCrosshairFromScreenPoint(screenPoint);
 
-    const chartPoint = screenToDrawingPoint(screenPoint);
+    const chartPoint = screenToDrawingPoint(screenPoint, drawing.activeTool === "measure" ? false : drawing.magnetActive);
     if (!chartPoint) return;
 
     event.preventDefault();
@@ -1667,6 +1938,18 @@ export function DrawingOverlay({
         y: screenPoint.y,
         value: defaultTextValue(tool, chartPoint, formatPrice),
       });
+      return;
+    }
+
+    if (drawing.activeTool === "measure") {
+      drawing.selectDrawing(null);
+      setMeasurement(createMeasurementState(chartPoint, chartPoint));
+      dragRef.current = {
+        kind: "create",
+        tool: "measure",
+        start: chartPoint,
+        origin: screenPoint,
+      };
       return;
     }
 
@@ -1779,6 +2062,33 @@ export function DrawingOverlay({
     return { x, y };
   })();
 
+
+  const measurementToolbarPosition = (() => {
+    if (!measurement) return null;
+
+    const start = pointToScreen(measurement.start);
+    const end = pointToScreen(measurement.end);
+    if (!start || !end) return null;
+
+    const toolbarWidth = Math.min(282, Math.max(220, size.width - 24));
+    const toolbarHeight = 44;
+    const toolbarGap = 30;
+    const minX = Math.min(start.x, end.x);
+    const minY = Math.min(start.y, end.y);
+    const maxX = Math.max(start.x, end.x);
+    const x = clamp(
+      (minX + maxX) / 2 - toolbarWidth / 2,
+      12,
+      Math.max(12, size.width - toolbarWidth - 12)
+    );
+    const y = clamp(
+      minY - toolbarHeight - toolbarGap,
+      12,
+      Math.max(12, size.height - toolbarHeight - 12)
+    );
+
+    return { x, y };
+  })();
   const textEditorPosition = textEditor
     ? {
         x: clamp(textEditor.x, 12, Math.max(12, size.width - 268)),
@@ -1798,6 +2108,20 @@ export function DrawingOverlay({
     }));
   };
 
+
+  const updateMeasurementStyle = (style: Partial<DrawingStyle>) => {
+    setMeasurement((current) =>
+      current
+        ? {
+            ...current,
+            style: {
+              ...current.style,
+              ...style,
+            },
+          }
+        : current
+    );
+  };
   void renderTick;
 
   return (
@@ -1861,6 +2185,16 @@ export function DrawingOverlay({
             />
           </g>
         ))}
+        {measurement && (
+          <MeasurementElementView
+            measurement={measurement}
+            candles={candles}
+            pointToScreen={pointToScreen}
+            formatPrice={formatPrice}
+            size={{ x: size.width, y: size.height }}
+            onPointerDown={handleMeasurementPointerDown}
+          />
+        )}
       </svg>
 
       {selectedDrawing && selectedToolbarPosition && (
@@ -1874,6 +2208,17 @@ export function DrawingOverlay({
         />
       )}
 
+
+      {measurement && measurementToolbarPosition && (
+        <DrawingStyleToolbar
+          key="measurement-toolbar"
+          style={measurement.style}
+          textMode={false}
+          position={measurementToolbarPosition}
+          onStyleChange={updateMeasurementStyle}
+          onDelete={() => setMeasurement(null)}
+        />
+      )}
       {textEditor && textEditorPosition && (
         <div
           className="pointer-events-auto absolute z-40 flex w-64 max-w-[calc(100%-1.5rem)] flex-col gap-2 rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-editor-bg)] p-2 shadow-2xl"
@@ -1932,3 +2277,7 @@ export function DrawingOverlay({
     </div>
   );
 }
+
+
+
+

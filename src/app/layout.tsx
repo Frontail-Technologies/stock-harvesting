@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
+import { PwaProvider } from "@/features/pwa";
 import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
 import "./globals.css";
 
@@ -128,6 +129,7 @@ export default function RootLayout({
         className="min-h-full flex flex-col bg-background text-foreground"
         suppressHydrationWarning
       >
+        <PwaProvider />
         {children}
       </body>
     </html>

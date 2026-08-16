@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { MarketSelector, type MarketExchangeCode } from "@/features/market";
+import { ScannerPriceAlertMenu } from "@/features/price-alerts";
 import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import {
@@ -107,6 +108,7 @@ export function TopToolbar({
           />
         </div>
         <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
+        <ScannerPriceAlertMenu stock={stock} compact />
         <ScannerAccountMenu />
       </div>
 
@@ -149,6 +151,7 @@ export function TopToolbar({
 
         <div className="flex items-center gap-1.5">
           <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
+          <ScannerPriceAlertMenu stock={stock} />
           <ThemeToggle />
         </div>
 
