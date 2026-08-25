@@ -4,6 +4,7 @@ import NextImage from "next/image";
 import type { Candle, ScanBand, Stock } from "@/types/market";
 import { getBrandLogoPath } from "@/components/ui/brand-logo-paths";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toast";
 import { useCurrency } from "@/features/currency";
 import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { downloadBlob } from "@/utils/download-blob";
@@ -11,6 +12,7 @@ import { formatCompactVolume, formatSignedChange } from "@/utils/formatters";
 import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-chart";
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
 import { getScannerChartTheme } from "../lib/scanner-chart-config";
+import { useScannerUiStore } from "../stores/scanner-ui-store";
 import { getChartCursorCss } from "../tools/cursor-tool-config";
 import type {
   ChartCaptureRequest,
@@ -76,17 +78,35 @@ export function ScannerChartStage({
   // symbol/timeframe switch doesn't flash a spinner it doesn't need to.
   const showChartLoading = useDelayedFlag(loading && candles.length === 0);
 
-  const processedCaptureIdRef = useRef<number | null>(null);
+  // Store-backed (not a local ref) because this component remounts on
+  // every timeframe switch (its `key` in ScannerPage includes timeframe) -
+  // a fresh per-mount ref would forget a request was already handled and
+  // re-fire the same download/share the next time the user just changes
+  // timeframe, with no new click on the capture button at all.
+  const lastProcessedCaptureId = useScannerUiStore((state) => state.lastProcessedCaptureId);
+  const markCaptureProcessed = useScannerUiStore((state) => state.markCaptureProcessed);
+
+  // Warm the brand logo for both themes as soon as the chart mounts, so a
+  // capture never has to await a fresh Image() load (or two â€” watermark and
+  // corner logo previously each loaded it independently). Keeping this gap
+  // small matters: capture runs inside the click handler's async chain, and
+  // browsers can silently block further automatic downloads from a page once
+  // a download fires too far from the triggering user gesture.
+  useEffect(() => {
+    preloadBrandLogo("dark").catch(() => {});
+    preloadBrandLogo("light").catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
     // captureRequest is never reset to null once set, and this effect's
     // other deps (candles, backtestStats, ...) change on their own from
-    // live price ticks â€” without this guard, every subsequent tick would
-    // silently re-run the same capture again (an unwanted "automatic"
-    // download/share on every update, not just the actual button click).
-    if (processedCaptureIdRef.current === captureRequest.id) return;
-    processedCaptureIdRef.current = captureRequest.id;
+    // live price ticks and from timeframe/symbol switches (which also
+    // remount this whole component) - without this guard, any of those
+    // would silently re-run the same capture again (an unwanted
+    // "automatic" download/share, not just the actual button click).
+    if (lastProcessedCaptureId === captureRequest.id) return;
+    markCaptureProcessed(captureRequest.id);
 
     void captureStageImage(
       stageRef.current,
@@ -100,13 +120,16 @@ export function ScannerChartStage({
       latestSignalActive,
       backtestStats,
       formatStockCurrency,
+      captureRequest.targetWindow,
     );
   }, [
     backtestStats,
     candles,
     captureRequest,
     formatStockCurrency,
+    lastProcessedCaptureId,
     latestSignalActive,
+    markCaptureProcessed,
     stock,
     theme,
     timeframe,
@@ -286,119 +309,192 @@ async function captureStageImage(
   latestSignalActive: boolean,
   backtestStats: ScannerBacktestStats | null,
   formatStockCurrency: (value: number, exchange: string) => string,
+  targetWindow?: Window | null,
 ) {
-  const rect = stage.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const output = document.createElement("canvas");
-  output.width = Math.max(1, Math.round(rect.width * ratio));
-  output.height = Math.max(1, Math.round(rect.height * ratio));
+  try {
+    const rect = stage.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(rect.width * ratio));
+    output.height = Math.max(1, Math.round(rect.height * ratio));
 
-  const context = output.getContext("2d");
-  if (!context) return;
-
-  context.scale(ratio, ratio);
-  context.fillStyle = getScannerChartTheme(theme).panelBackground;
-  context.fillRect(0, 0, rect.width, rect.height);
-
-  for (const canvas of Array.from(stage.querySelectorAll("canvas"))) {
-    const canvasRect = canvas.getBoundingClientRect();
-    context.drawImage(
-      canvas,
-      canvasRect.left - rect.left,
-      canvasRect.top - rect.top,
-      canvasRect.width,
-      canvasRect.height,
-    );
-  }
-
-  for (const band of Array.from(
-    stage.querySelectorAll<HTMLElement>("[data-scan-band]"),
-  )) {
-    const bandRect = band.getBoundingClientRect();
-    context.fillStyle = window.getComputedStyle(band).backgroundColor;
-    context.fillRect(
-      bandRect.left - rect.left,
-      bandRect.top - rect.top,
-      bandRect.width,
-      bandRect.height,
-    );
-  }
-
-  for (const svg of Array.from(
-    stage.querySelectorAll<SVGSVGElement>("[data-drawing-overlay]"),
-  )) {
-    const svgRect = svg.getBoundingClientRect();
-    const clone = svg.cloneNode(true) as SVGSVGElement;
-    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    clone.setAttribute("width", `${svgRect.width}`);
-    clone.setAttribute("height", `${svgRect.height}`);
-
-    const text = new XMLSerializer().serializeToString(clone);
-    const svgBlob = new Blob([text], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const image = new Image();
-
-    await new Promise<void>((resolve) => {
-      image.onload = () => resolve();
-      image.onerror = () => resolve();
-      image.src = url;
-    });
-
-    context.drawImage(
-      image,
-      svgRect.left - rect.left,
-      svgRect.top - rect.top,
-      svgRect.width,
-      svgRect.height,
-    );
-    URL.revokeObjectURL(url);
-  }
-
-  await drawCenteredScreenshotWatermark(context, rect, theme);
-  await drawBottomRightScreenshotLogo(context, rect, theme);
-  drawChartInfoScreenshotOverlay(
-    context,
-    stock,
-    timeframe,
-    candles,
-    latestSignalActive,
-    theme,
-    formatStockCurrency,
-  );
-  drawBacktestStatsScreenshotOverlay(context, backtestStats, rect, theme);
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    output.toBlob(resolve, "image/jpeg", 0.92),
-  );
-  if (!blob) return;
-
-  // Sharing must never silently fall back to downloading the file â€” a user
-  // picking "Share via device" only expects the native share sheet to open,
-  // not an unprompted download if that sheet fails or isn't actually
-  // supported. Download is its own explicit menu action (mode === "download").
-  if (mode === "share") {
-    const file = new File([blob], filename, { type: "image/jpeg" });
-    const shareData = {
-      title: "Stock Harvesting Chart",
-      text: shareText,
-      files: [file],
-    };
-    const nav = navigator as Navigator & {
-      canShare?: (data: ShareData) => boolean;
-      share?: (data: ShareData) => Promise<void>;
-    };
-
-    if (nav.share && (!nav.canShare || nav.canShare(shareData))) {
-      try {
-        await nav.share(shareData);
-      } catch {
-      }
+    const context = output.getContext("2d");
+    if (!context) {
+      console.warn("[scanner] screenshot capture aborted: no 2d context");
+      toast.error("Unable to capture chart");
+      return;
     }
 
-    return;
-  }
+    context.scale(ratio, ratio);
+    context.fillStyle = getScannerChartTheme(theme).panelBackground;
+    context.fillRect(0, 0, rect.width, rect.height);
 
-  downloadBlob(blob, filename);
+    for (const canvas of Array.from(stage.querySelectorAll("canvas"))) {
+      const canvasRect = canvas.getBoundingClientRect();
+      context.drawImage(
+        canvas,
+        canvasRect.left - rect.left,
+        canvasRect.top - rect.top,
+        canvasRect.width,
+        canvasRect.height,
+      );
+    }
+
+    for (const band of Array.from(
+      stage.querySelectorAll<HTMLElement>("[data-scan-band]"),
+    )) {
+      const bandRect = band.getBoundingClientRect();
+      context.fillStyle = window.getComputedStyle(band).backgroundColor;
+      context.fillRect(
+        bandRect.left - rect.left,
+        bandRect.top - rect.top,
+        bandRect.width,
+        bandRect.height,
+      );
+    }
+
+    for (const svg of Array.from(
+      stage.querySelectorAll<SVGSVGElement>("[data-drawing-overlay]"),
+    )) {
+      const svgRect = svg.getBoundingClientRect();
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("width", `${svgRect.width}`);
+      clone.setAttribute("height", `${svgRect.height}`);
+
+      const text = new XMLSerializer().serializeToString(clone);
+      const svgBlob = new Blob([text], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(svgBlob);
+      const image = new Image();
+
+      await new Promise<void>((resolve) => {
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+        image.src = url;
+      });
+
+      context.drawImage(
+        image,
+        svgRect.left - rect.left,
+        svgRect.top - rect.top,
+        svgRect.width,
+        svgRect.height,
+      );
+      URL.revokeObjectURL(url);
+    }
+
+    await drawCenteredScreenshotWatermark(context, rect, theme);
+    await drawBottomRightScreenshotLogo(context, rect, theme);
+    drawChartInfoScreenshotOverlay(
+      context,
+      stock,
+      timeframe,
+      candles,
+      latestSignalActive,
+      theme,
+      formatStockCurrency,
+    );
+    drawBacktestStatsScreenshotOverlay(context, backtestStats, rect, theme);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      output.toBlob(resolve, "image/jpeg", 0.92),
+    );
+    if (!blob) {
+      console.warn("[scanner] screenshot capture aborted: toBlob returned null");
+      toast.error("Unable to capture chart");
+      return;
+    }
+
+    // Sharing must never silently fall back to downloading the file â€” a user
+    // picking "Share via device" only expects the native share sheet to open,
+    // not an unprompted download if that sheet fails or isn't actually
+    // supported. Download is its own explicit menu action (mode === "download").
+    if (mode === "share") {
+      const file = new File([blob], filename, { type: "image/jpeg" });
+      const shareData = {
+        title: "Stock Harvesting Chart",
+        text: shareText,
+        files: [file],
+      };
+      const nav = navigator as Navigator & {
+        canShare?: (data: ShareData) => boolean;
+        share?: (data: ShareData) => Promise<void>;
+      };
+
+      if (nav.share && (!nav.canShare || nav.canShare(shareData))) {
+        try {
+          await nav.share(shareData);
+        } catch {
+        }
+      }
+
+      return;
+    }
+
+    if (mode === "copy") {
+      const nav = navigator as Navigator & {
+        clipboard?: { write?: (items: unknown[]) => Promise<void> };
+      };
+
+      if (!nav.clipboard?.write || typeof ClipboardItem === "undefined") {
+        toast.error("Copy image is not supported in this browser.");
+        return;
+      }
+
+      try {
+        // The Clipboard API only accepts a small whitelist of image MIME
+        // types for ClipboardItem, and "image/jpeg" isn't one of them in
+        // Chromium/Firefox (write() throws "Type image/jpeg not supported
+        // on write"). PNG is universally accepted, so re-encode the same
+        // composited canvas as PNG just for this action - same pixels as
+        // every other action, only the container format differs, since the
+        // OS clipboard mandates it.
+        const pngBlob = await new Promise<Blob | null>((resolve) =>
+          output.toBlob(resolve, "image/png"),
+        );
+        if (!pngBlob) {
+          toast.error("Unable to copy image");
+          return;
+        }
+        await nav.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+        toast.success("Chart image copied");
+      } catch (error) {
+        console.error("[scanner] copy image failed", error);
+        toast.error("Unable to copy image");
+      }
+
+      return;
+    }
+
+    if (mode === "open-tab") {
+      // targetWindow is a blank tab opened synchronously by the menu's click
+      // handler, before this async capture ran - navigating it now (instead
+      // of calling window.open() here, well after the gesture) keeps popup
+      // blockers from treating this as an unsolicited new tab.
+      const url = URL.createObjectURL(blob);
+      if (targetWindow && !targetWindow.closed) {
+        targetWindow.location.href = url;
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+      // Generous delay vs. downloadBlob's 1s - the new tab needs time to
+      // actually fetch and decode the image from this blob URL before it's
+      // safe to revoke, and a full-page image load can take longer than an
+      // <a download> click.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return;
+    }
+
+    downloadBlob(blob, filename);
+  } catch (error) {
+    // Caller invokes this with `void`, so an uncaught rejection here would
+    // otherwise vanish as a silent no-op click. Logging makes a genuine
+    // failure diagnosable instead of looking identical to "nothing happened".
+    console.error("[scanner] screenshot capture failed", error);
+    toast.error("Unable to capture chart");
+  }
 }
 
 function buildShareText(
@@ -660,7 +756,7 @@ async function drawCenteredScreenshotWatermark(
   theme: ScannerTheme,
 ) {
   try {
-    const image = await loadImage(getBrandLogoPath(theme));
+    const image = await preloadBrandLogo(theme);
     const imageWidth = image.naturalWidth || image.width;
     const imageHeight = image.naturalHeight || image.height;
     const maxWidth = Math.min(rect.width * 0.34, 420);
@@ -684,7 +780,7 @@ async function drawBottomRightScreenshotLogo(
   theme: ScannerTheme,
 ) {
   try {
-    const image = await loadImage(getBrandLogoPath(theme));
+    const image = await preloadBrandLogo(theme);
     const imageWidth = image.naturalWidth || image.width;
     const imageHeight = image.naturalHeight || image.height;
     const maxWidth = Math.min(rect.width * 0.13, 210);
@@ -709,6 +805,27 @@ function loadImage(src: string) {
     image.onerror = reject;
     image.src = src;
   });
+}
+
+// The brand logo is drawn twice per capture (centered watermark + bottom-right
+// corner logo) and is identical across captures for a given theme, so it's
+// loaded once per theme and reused rather than re-fetched/re-decoded every
+// click. A failed load is evicted so a later capture can retry instead of
+// being stuck with a permanently-rejected cache entry.
+const brandLogoCache = new Map<ScannerTheme, Promise<HTMLImageElement>>();
+
+function preloadBrandLogo(theme: ScannerTheme) {
+  let cached = brandLogoCache.get(theme);
+  if (!cached) {
+    cached = loadImage(getBrandLogoPath(theme));
+    brandLogoCache.set(theme, cached);
+    cached.catch(() => {
+      if (brandLogoCache.get(theme) === cached) {
+        brandLogoCache.delete(theme);
+      }
+    });
+  }
+  return cached;
 }
 
 

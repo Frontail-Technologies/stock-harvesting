@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { getAvatarInitials } from "@/utils/api-client";
 
@@ -35,20 +36,29 @@ export function ScannerAccountMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        type="button"
-        aria-label="Open account menu"
-        className="inline-flex size-8 items-center justify-center rounded-full outline-none ring-ring transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <Avatar className="size-8">
-          {currentUser?.avatarUrl ? (
-            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name || currentUser.email} />
-          ) : null}
-          <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-            {avatarInitials}
-          </AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              type="button"
+              aria-label="Account menu"
+              className="inline-flex size-8 items-center justify-center rounded-full outline-none ring-ring transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            />
+          }
+        >
+          <Avatar className="size-8">
+            {currentUser?.avatarUrl ? (
+              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name || currentUser.email} />
+            ) : null}
+            <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+              {avatarInitials}
+            </AvatarFallback>
+          </Avatar>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="scanner-portal">
+          Account menu
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent
         align="end"
         className="scanner-portal w-64 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl"

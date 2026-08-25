@@ -9,8 +9,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser, useLogout } from "@/features/auth";
+import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
+import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { MarketSelector } from "@/features/market";
 import { ThemeToggle } from "@/features/theme";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
 import { getAdminOrigin } from "@/utils/seo";
@@ -20,12 +23,18 @@ type NavItem = {
   href: string;
 };
 
-const NAV_ITEMS: NavItem[] = [{ label: "Scanner", href: "/scanner" }];
+const NAV_ITEMS: NavItem[] = [
+  { label: "Scanner", href: "/scanner" },
+  { label: "Watchlists", href: "/watchlists" },
+];
 
 // When the admin panel is split onto its own host (src/proxy.ts), link
-// straight there instead of bouncing through the main host's redirect.
+// straight there instead of bouncing through the main host's redirect. The
+// admin host's dashboard root is the bare origin - "/admin" is only a
+// path within the main app's own route tree, for the no-host-separation
+// fallback.
 const ADMIN_ORIGIN = getAdminOrigin();
-const ADMIN_HREF = ADMIN_ORIGIN ? `${ADMIN_ORIGIN}/admin` : "/admin";
+const ADMIN_HREF = ADMIN_ORIGIN ?? "/admin";
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -63,19 +72,26 @@ export function AppHeader() {
           </span>
         </span>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Log out"
-        disabled={logout.isPending}
-        onClick={() => {
-          setMobileOpen(false);
-          void handleLogout();
-        }}
-      >
-        <LogOut className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Log out"
+              disabled={logout.isPending}
+              onClick={() => {
+                setMobileOpen(false);
+                void handleLogout();
+              }}
+            />
+          }
+        >
+          <LogOut className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Log out</TooltipContent>
+      </Tooltip>
     </div>
   );
 
@@ -92,16 +108,23 @@ export function AppHeader() {
             <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[82vw] flex-col border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground shadow-2xl">
               <div className="flex items-center justify-between gap-3">
                 <BrandLogo size="sm" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Close navigation"
-                  className="size-9 border border-sidebar-border text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <X className="size-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Close navigation"
+                        className="size-9 border border-sidebar-border text-muted-foreground hover:text-foreground"
+                        onClick={() => setMobileOpen(false)}
+                      />
+                    }
+                  >
+                    <X className="size-4" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Close navigation</TooltipContent>
+                </Tooltip>
               </div>
 
               <nav className="mt-6 flex flex-col gap-1">
@@ -139,19 +162,27 @@ export function AppHeader() {
       <header className="relative z-50 h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div className="flex h-full w-full items-center gap-3 px-3 sm:px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 border border-border text-muted-foreground hover:text-foreground lg:hidden"
-              aria-label="Open navigation"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-9 border border-border text-muted-foreground hover:text-foreground lg:hidden"
+                    aria-label="Open navigation"
+                    onClick={() => setMobileOpen(true)}
+                  />
+                }
+              >
+                <Menu className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Open navigation</TooltipContent>
+            </Tooltip>
             <Link href="/scanner" className="flex items-center gap-2">
               <BrandLogo size="sm" textClassName="hidden text-sm sm:inline" />
             </Link>
+            <GlobalSearchNavbarField className="ml-2 hidden xl:block" />
           </div>
 
           <nav className="hidden items-center justify-center gap-6 lg:flex">
@@ -177,6 +208,7 @@ export function AppHeader() {
           </nav>
 
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
+            <GlobalSearchMobileSheet className="xl:hidden" />
             <MarketSelector className="hidden sm:block" />
             <ThemeToggle />
             <Avatar className="size-9">
@@ -184,16 +216,23 @@ export function AppHeader() {
                 {avatarInitials}
               </AvatarFallback>
             </Avatar>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Log out"
-              disabled={logout.isPending}
-              onClick={() => void handleLogout()}
-            >
-              <LogOut className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Log out"
+                    disabled={logout.isPending}
+                    onClick={() => void handleLogout()}
+                  />
+                }
+              >
+                <LogOut className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Log out</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </header>

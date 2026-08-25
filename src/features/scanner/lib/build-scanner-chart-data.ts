@@ -7,7 +7,7 @@ import type {
 } from "lightweight-charts";
 import type { Candle } from "@/types/market";
 import { generateFutureWhitespaceBars } from "@/utils/chart-whitespace";
-import type { ScannerRangeFilter, ScannerTheme } from "../types";
+import type { ScannerRangeFilter, ScannerTheme, Timeframe } from "../types";
 import {
   SCANNER_CHART_COLORS,
   SCANNER_CHART_LAYOUT,
@@ -53,7 +53,8 @@ const RANGE_FILTER_DAYS: Record<Exclude<ScannerRangeFilter, "ALL">, number> = {
 export function buildScannerChartData(
   candles: Candle[],
   rangeFilter: ScannerRangeFilter = "ALL",
-  theme: ScannerTheme = "dark"
+  theme: ScannerTheme = "dark",
+  timeframe: Timeframe = "1D"
 ): ScannerChartData {
   const chartTheme = getScannerChartTheme(theme);
 
@@ -77,10 +78,17 @@ export function buildScannerChartData(
   }
 
   const lastRealCandle = candles[candles.length - 1];
+  // Step size must match the chart's actual timeframe - previously this was
+  // hardcoded to "1W" regardless of what was being displayed, so a 1D chart
+  // got 24 weeks (~5.5 months) of synthetic future bars appended after the
+  // last real candle. That inflated total bar count is what pushed the
+  // visible range (and MAX's "fit everything" range) far past the latest
+  // candle, both stretching the time axis into empty future dates and
+  // squeezing every real candle into a narrower share of the chart width.
   const futureWhitespace = generateFutureWhitespaceBars(
     lastRealCandle.time,
     SCANNER_CHART_LAYOUT.futureWhitespaceBars,
-    "1W"
+    timeframe
   );
 
   const candleRenderData = [
@@ -180,6 +188,23 @@ export function buildScannerChartData(
   };
 }
 
+// The right edge should read as "latest candle, then a small breathing
+// gap" - not a proportional runway that grows without bound the more
+// history is on screen. Bounded to a fixed 6-12 bar window regardless of
+// how many real candles are visible (previously this scaled up to the
+// full 24-bar whitespace pool for any range showing 200+ bars, and MAX
+// ignored the cap entirely by fitting the whole whitespace pool).
+const MIN_RIGHT_PADDING_BARS = 6;
+const MAX_RIGHT_PADDING_BARS = 12;
+
+function computeRightPaddingBars(realVisibleBars: number, futureWhitespaceBars: number) {
+  const proportional = Math.round(realVisibleBars * 0.03);
+  return Math.min(
+    futureWhitespaceBars,
+    Math.max(MIN_RIGHT_PADDING_BARS, Math.min(MAX_RIGHT_PADDING_BARS, proportional))
+  );
+}
+
 function getVisibleLogicalRange(
   candles: Candle[],
   totalBars: number,
@@ -187,9 +212,10 @@ function getVisibleLogicalRange(
   rangeFilter: ScannerRangeFilter
 ) {
   if (rangeFilter === "ALL") {
+    const rightPadding = computeRightPaddingBars(candles.length, futureWhitespaceBars);
     return {
       from: 0,
-      to: totalBars - 1,
+      to: Math.min(totalBars - 1, candles.length - 1 + rightPadding),
     };
   }
 
@@ -201,10 +227,7 @@ function getVisibleLogicalRange(
   });
   const from = firstVisibleCandleIndex >= 0 ? firstVisibleCandleIndex : candles.length - 1;
   const realVisibleBars = candles.length - from;
-  const futurePadding = Math.min(
-    futureWhitespaceBars,
-    Math.max(2, Math.round(realVisibleBars * 0.12))
-  );
+  const futurePadding = computeRightPaddingBars(realVisibleBars, futureWhitespaceBars);
 
   return {
     from: Math.max(0, from),

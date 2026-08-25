@@ -15,6 +15,10 @@ import { useMarketStore } from "../stores/market-store";
 type MarketSelectorProps = {
   compact?: boolean;
   className?: string;
+  // Overrides the trigger button's own chrome (border/background) without
+  // touching the shared default - callers that don't pass it (AppHeader,
+  // admin) render exactly as before.
+  triggerClassName?: string;
   onExchangeChange?: (exchange: MarketExchangeCode) => void;
   portalClassName?: string;
 };
@@ -22,6 +26,7 @@ type MarketSelectorProps = {
 export function MarketSelector({
   compact = false,
   className,
+  triggerClassName,
   onExchangeChange,
   portalClassName,
 }: MarketSelectorProps) {
@@ -128,7 +133,8 @@ export function MarketSelector({
         onClick={() => setOpen((current) => !current)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
-          compact ? "h-8 rounded-md px-2 text-xs" : "h-9"
+          compact ? "h-8 rounded-md px-2 text-xs" : "h-9",
+          triggerClassName
         )}
       >
         <span className="truncate">

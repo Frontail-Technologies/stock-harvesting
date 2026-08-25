@@ -1,8 +1,7 @@
 "use client";
 
 import type { Stock } from "@/types/market";
-import { Camera, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,11 +19,20 @@ import {
   type ScannerLookbackMultiplier,
   type Timeframe,
 } from "../types";
+import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
 import { ShareMenu } from "./ShareMenu";
 import { StockSearchCombobox } from "./StockSearchCombobox";
 import { TimeframeSelector } from "./TimeframeSelector";
+
+// Shared with MarketSelector's trigger and ThemeToggle below - both render
+// a bordered box by default (their shared default across the rest of the
+// app, e.g. AppHeader), but the scanner toolbar wants every compact
+// control to recede behind the chart until hovered/active, so only this
+// call site overrides it.
+const SCANNER_GHOST_TRIGGER_CLASS =
+  "border-transparent bg-transparent hover:bg-muted hover:border-transparent";
 
 type TopToolbarProps = {
   stock: Stock;
@@ -37,8 +45,6 @@ type TopToolbarProps = {
   onLookbackMultiplierChange: (value: ScannerLookbackMultiplier) => void;
   onExchangeChange: (exchange: MarketExchangeCode) => void;
   onSelectStock: (stock: Stock) => void;
-  onScreenshot: () => void;
-  onSend: () => void;
 };
 
 function LookbackDropdown({
@@ -54,7 +60,7 @@ function LookbackDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted",
+          "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted aria-expanded:bg-muted focus-visible:ring-2 focus-visible:ring-primary/60",
           className
         )}
       >
@@ -94,8 +100,6 @@ export function TopToolbar({
   onLookbackMultiplierChange,
   onExchangeChange,
   onSelectStock,
-  onScreenshot,
-  onSend,
 }: TopToolbarProps) {
   return (
     <div className="flex shrink-0 flex-col gap-1 overflow-hidden border-b border-border bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
@@ -107,8 +111,13 @@ export function TopToolbar({
             onSelectStock={onSelectStock}
           />
         </div>
-        <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
-        <ScannerPriceAlertMenu stock={stock} compact />
+        <MarketSelector
+          compact
+          portalClassName="scanner-portal"
+          triggerClassName={SCANNER_GHOST_TRIGGER_CLASS}
+          onExchangeChange={onExchangeChange}
+        />
+        <ScannerPriceAlertMenu key={`${stock.exchange}:${stock.symbol}`} stock={stock} />
         <ScannerAccountMenu />
       </div>
 
@@ -119,13 +128,16 @@ export function TopToolbar({
           onLookbackMultiplierChange={onLookbackMultiplierChange}
           className="h-9"
         />
-        <ThemeToggle />
+        <ThemeToggle
+          className={SCANNER_GHOST_TRIGGER_CLASS}
+          tooltipPortalClassName="scanner-portal"
+        />
       </div>
 
       <div className="hidden items-center gap-1.5 sm:flex">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} />
         <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
-        <Separator orientation="vertical" className="mx-1 h-5" />
+        <Separator orientation="vertical" className="mx-1 h-5 bg-border/50" />
         <LookbackDropdown
           lookbackMultiplier={lookbackMultiplier}
           onLookbackMultiplierChange={onLookbackMultiplierChange}
@@ -134,28 +146,27 @@ export function TopToolbar({
 
       <div className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex">
         <div className="flex items-center gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Screenshot"
-            title="Screenshot"
-            onClick={onScreenshot}
-          >
-            <Camera className="size-4" />
-          </Button>
-          <ShareMenu stock={stock} onNativeShare={onSend} onDownload={onScreenshot} />
+          <ChartSnapshotMenu stock={stock} />
+          <ShareMenu stock={stock} />
         </div>
 
-        <Separator orientation="vertical" className="mx-0.5 h-5" />
+        <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex items-center gap-1.5">
-          <MarketSelector compact portalClassName="scanner-portal" onExchangeChange={onExchangeChange} />
-          <ScannerPriceAlertMenu stock={stock} />
-          <ThemeToggle />
+          <MarketSelector
+            compact
+            portalClassName="scanner-portal"
+            triggerClassName={SCANNER_GHOST_TRIGGER_CLASS}
+            onExchangeChange={onExchangeChange}
+          />
+          <ScannerPriceAlertMenu key={`${stock.exchange}:${stock.symbol}`} stock={stock} />
+          <ThemeToggle
+            className={SCANNER_GHOST_TRIGGER_CLASS}
+            tooltipPortalClassName="scanner-portal"
+          />
         </div>
 
-        <Separator orientation="vertical" className="mx-0.5 h-5" />
+        <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex min-w-0 items-center gap-1.5">
           <StockSearchCombobox

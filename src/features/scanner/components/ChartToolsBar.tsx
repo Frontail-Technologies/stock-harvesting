@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Camera,
   Eye,
   EyeOff,
   MoreHorizontal,
@@ -32,6 +31,7 @@ import type {
   ToolbarSection,
 } from "../tools/chart-tool-types";
 import type { DrawingController, ScannerChartType } from "../types";
+import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerIconButton } from "./ScannerIconButton";
 import { ShareMenu } from "./ShareMenu";
@@ -41,8 +41,6 @@ type ChartToolsBarProps = {
   stock: Stock;
   chartType: ScannerChartType;
   onChartTypeChange: (chartType: ScannerChartType) => void;
-  onScreenshot: () => void;
-  onSend: () => void;
 };
 
 const MOBILE_PRIMARY_GROUP_IDS = ["select", "lines", "ruler"];
@@ -52,8 +50,6 @@ export function ChartToolsBar({
   stock,
   chartType,
   onChartTypeChange,
-  onScreenshot,
-  onSend,
 }: ChartToolsBarProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [mobileSheetGroupId, setMobileSheetGroupId] = useState<string | "more" | null>(null);
@@ -186,13 +182,18 @@ export function ChartToolsBar({
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-md px-2 text-left font-semibold text-foreground transition-colors",
                   compact ? "h-11 text-sm" : "h-8 text-[0.8125rem]",
-                  active &&
-                    "border border-[var(--scanner-flyout-selected-border)] bg-[var(--scanner-flyout-selected-bg)] text-foreground",
+                  active && "bg-(--scanner-flyout-selected-bg) text-foreground",
                   !active && "cursor-pointer hover:bg-[var(--scanner-flyout-hover)]",
                   disabled && "cursor-not-allowed opacity-40 hover:bg-transparent"
                 )}
               >
-                <Icon className={cn("shrink-0", compact ? "size-4" : "size-3.5")} />
+                <Icon
+                  className={cn(
+                    "shrink-0",
+                    compact ? "size-4" : "size-3.5",
+                    active && "text-primary"
+                  )}
+                />
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
               </button>
             );
@@ -208,19 +209,8 @@ export function ChartToolsBar({
     >
       <div className="flex flex-col items-center gap-1 sm:hidden">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} compact />
-        <ScannerIconButton
-          label="Screenshot"
-          icon={Camera}
-          className="sm:hidden"
-          onClick={onScreenshot}
-        />
-        <ShareMenu
-          stock={stock}
-          compact
-          className="sm:hidden"
-          onNativeShare={onSend}
-          onDownload={onScreenshot}
-        />
+        <ChartSnapshotMenu stock={stock} compact className="sm:hidden" />
+        <ShareMenu stock={stock} compact className="sm:hidden" />
         <Separator className="my-1 h-px w-6 bg-border" />
         {mobilePrimaryGroups.map((group) => (
           <ScannerIconButton

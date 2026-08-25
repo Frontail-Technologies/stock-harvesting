@@ -13,6 +13,8 @@ import type {
 } from "../types";
 import { DEFAULT_SCANNER_LOOKBACK } from "../types";
 
+let captureRequestCounter = 0;
+
 type ScannerUiState = {
   selectedSymbol: string;
   selectedStock: Stock | null;
@@ -21,6 +23,14 @@ type ScannerUiState = {
   lookbackMultiplier: ScannerLookbackMultiplier;
   rangeFilter: ScannerRangeFilter;
   captureRequest: ChartCaptureRequest | null;
+  // Tracks the last captureRequest.id that was actually acted on. Lives
+  // here (not a ref inside ScannerChartStage) because that component
+  // remounts on every timeframe switch (its `key` includes timeframe) -
+  // a fresh per-mount ref would forget a request was already handled and
+  // silently re-fire the same download/share on the next unrelated
+  // remount. captureRequest itself is never reset to null once set, so
+  // this is what actually makes each request fire exactly once.
+  lastProcessedCaptureId: number | null;
   autoScale: boolean;
   percentageScale: boolean;
   showBacktestStats: boolean;
@@ -31,7 +41,8 @@ type ScannerUiState = {
   setChartType: (chartType: ScannerChartType) => void;
   setLookbackMultiplier: (lookbackMultiplier: ScannerLookbackMultiplier) => void;
   setRangeFilter: (rangeFilter: ScannerRangeFilter) => void;
-  requestCapture: (mode: ChartCaptureMode) => void;
+  requestCapture: (mode: ChartCaptureMode, targetWindow?: Window | null) => void;
+  markCaptureProcessed: (id: number) => void;
   toggleAutoScale: () => void;
   togglePercentageScale: () => void;
   toggleBacktestStats: () => void;
@@ -48,6 +59,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
       lookbackMultiplier: DEFAULT_SCANNER_LOOKBACK,
       rangeFilter: "ALL",
       captureRequest: null,
+      lastProcessedCaptureId: null,
       autoScale: true,
       percentageScale: false,
       showBacktestStats: true,
@@ -62,13 +74,15 @@ export const useScannerUiStore = create<ScannerUiState>()(
       setChartType: (chartType) => set({ chartType }),
       setLookbackMultiplier: (lookbackMultiplier) => set({ lookbackMultiplier }),
       setRangeFilter: (rangeFilter) => set({ rangeFilter }),
-      requestCapture: (mode) =>
+      requestCapture: (mode, targetWindow) =>
         set({
           captureRequest: {
-            id: Date.now(),
+            id: ++captureRequestCounter,
             mode,
+            targetWindow,
           },
         }),
+      markCaptureProcessed: (id) => set({ lastProcessedCaptureId: id }),
       toggleAutoScale: () => set((state) => ({ autoScale: !state.autoScale })),
       togglePercentageScale: () =>
         set((state) => ({ percentageScale: !state.percentageScale })),

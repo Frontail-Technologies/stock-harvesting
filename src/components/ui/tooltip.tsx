@@ -5,7 +5,12 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { cn } from "@/utils/cn"
 
 function TooltipProvider({
-  delay = 0,
+  // Measured in a real browser during the tooltip QA pass: the previous
+  // default of 0 opened tooltips in ~46ms (pure render lag, no actual
+  // delay) - noticeably instant/flickery when moving across a toolbar.
+  // 300ms is comfortably inside the 250-350ms range that reads as
+  // deliberate hover-intent rather than an accidental flash.
+  delay = 300,
   ...props
 }: TooltipPrimitive.Provider.Props) {
   return (

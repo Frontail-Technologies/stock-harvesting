@@ -117,7 +117,7 @@ export function RangeFilterTabs({
                     type="button"
                     onClick={() => onChange(filter)}
                     className={cn(
-                      "h-6 shrink-0 cursor-pointer rounded-sm px-2 text-xs font-medium transition-colors",
+                      "h-6 shrink-0 cursor-pointer rounded-sm px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/60",
                       active
                         ? "bg-primary text-primary-foreground"
                         : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"

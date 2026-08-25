@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { GripVertical, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   drawingColorPalette,
   drawingStrokeWidths,
@@ -108,15 +109,19 @@ export function DrawingStyleToolbar({
     >
       <div className="relative">
         <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-toolbar-bg)] px-1.5 shadow-2xl">
-          <button
-            type="button"
-            title="Move toolbar"
-            aria-label="Move toolbar"
-            onPointerDown={handleDragPointerDown}
-            className="flex h-8 w-4 cursor-grab items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-          >
-            <GripVertical className="size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Move toolbar"
+              onPointerDown={handleDragPointerDown}
+              className="flex h-8 w-4 cursor-grab items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            >
+              <GripVertical className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="scanner-portal">
+              Move toolbar
+            </TooltipContent>
+          </Tooltip>
 
           <ColorControl
             label="Color"
@@ -150,15 +155,19 @@ export function DrawingStyleToolbar({
 
           <div className="h-7 w-px bg-border" />
 
-          <button
-            type="button"
-            title="Delete drawing"
-            aria-label="Delete drawing"
-            onClick={onDelete}
-            className="flex size-7 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors hover:border-red-400/70 hover:text-red-500"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              aria-label="Delete drawing"
+              onClick={onDelete}
+              className="flex size-7 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground transition-colors hover:border-red-400/70 hover:text-red-500"
+            >
+              <Trash2 className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="scanner-portal">
+              Delete drawing
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {pickerOpen && (
@@ -184,26 +193,30 @@ type ColorControlProps = {
 
 function ColorControl({ label, value, active, onClick }: ColorControlProps) {
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      className={`relative flex size-7 items-center justify-center rounded-md border bg-muted transition-colors ${
-        active
-          ? "border-primary/80 bg-primary/10"
-          : "border-border hover:border-muted-foreground"
-      }`}
-    >
-      <span
-        className="size-4 rounded-sm border border-white/30"
-        style={{ backgroundColor: value }}
-      />
-      <span
-        className="absolute bottom-0.5 h-0.5 w-4 rounded-full"
-        style={{ backgroundColor: value }}
-      />
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className={`relative flex size-7 items-center justify-center rounded-md border bg-muted transition-colors ${
+          active
+            ? "border-primary/80 bg-primary/10"
+            : "border-border hover:border-muted-foreground"
+        }`}
+      >
+        <span
+          className="size-4 rounded-sm border border-white/30"
+          style={{ backgroundColor: value }}
+        />
+        <span
+          className="absolute bottom-0.5 h-0.5 w-4 rounded-full"
+          style={{ backgroundColor: value }}
+        />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="scanner-portal">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

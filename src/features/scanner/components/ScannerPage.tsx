@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { ADSENSE_SLOTS, AdsenseAd, AdsenseScript } from "@/features/adsense";
+import { AdPlacement, AdsenseScript } from "@/features/adsense";
+import { Toaster } from "@/components/ui/toast";
 import type { Stock } from "@/types/market";
 import { AuthGuard, useSessionStore } from "@/features/auth";
 import { useMarketStream, type MarketStreamEvent } from "@/features/market-stream";
@@ -51,6 +52,7 @@ import { getScannerLookbackWeeks } from "../types";
 import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
+import { ScannerWatchlistWidget } from "./ScannerWatchlistWidget";
 import { TopToolbar } from "./TopToolbar";
 
 const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
@@ -167,7 +169,6 @@ export function ScannerPage() {
   const timeframe = useScannerUiStore((state) => state.timeframe);
   const setTimeframe = useScannerUiStore((state) => state.setTimeframe);
   const captureRequest = useScannerUiStore((state) => state.captureRequest);
-  const requestCapture = useScannerUiStore((state) => state.requestCapture);
   const autoScale = useScannerUiStore((state) => state.autoScale);
   const percentageScale = useScannerUiStore((state) => state.percentageScale);
   const toggleAutoScale = useScannerUiStore((state) => state.toggleAutoScale);
@@ -228,6 +229,25 @@ export function ScannerPage() {
     setSelectedStock(stock);
   };
 
+  // The scanner toolbar itself has no watchlist affordance - this widget
+  // opens only when navigated to from the Watchlists page's "Open in
+  // Scanner" link (?watchlist=<id>), read once on mount. Read via lazy
+  // useState init (not a synced effect) so it behaves as "auto-open once
+  // from this navigation", not "stay in lockstep with the URL forever" -
+  // closing it must not re-open on the next unrelated param change.
+  const [watchlistWidgetId, setWatchlistWidgetId] = useState<string | null>(() =>
+    searchParams.get("watchlist")
+  );
+
+  const handleCloseWatchlistWidget = () => {
+    setWatchlistWidgetId(null);
+    if (!searchParams.get("watchlist")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("watchlist");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
   const handleExchangeChange = (exchange: MarketExchangeCode) => {
     const nextStock = getDefaultStock(exchange);
     symbolSyncOriginRef.current = "user";
@@ -283,7 +303,8 @@ export function ScannerPage() {
           "flex h-dvh w-screen flex-col overflow-hidden bg-background text-foreground"
         )}
       >
-        <AdsenseScript slots={[ADSENSE_SLOTS.scanner]} />
+        <AdsenseScript placementKeys={["scanner_bottom"]} />
+        <Toaster />
         <TopToolbar
           stock={selectedStock}
           chartType={chartType}
@@ -295,8 +316,6 @@ export function ScannerPage() {
           onLookbackMultiplierChange={setLookbackMultiplier}
           onExchangeChange={handleExchangeChange}
           onSelectStock={handleSelectStock}
-          onScreenshot={() => requestCapture("download")}
-          onSend={() => requestCapture("share")}
         />
 
         <ScannerDrawingWorkspace
@@ -313,13 +332,14 @@ export function ScannerPage() {
           showBacktestStats={showBacktestStats}
           scannerHighlightsVisible={scannerHighlightsVisible}
           onChartTypeChange={setChartType}
-          onScreenshot={() => requestCapture("download")}
-          onSend={() => requestCapture("share")}
           onRangeFilterChange={setRangeFilter}
           onToggleAutoScale={toggleAutoScale}
           onTogglePercentageScale={togglePercentageScale}
           onToggleBacktestStats={toggleBacktestStats}
           onToggleScannerHighlights={toggleScannerHighlights}
+          watchlistWidgetId={watchlistWidgetId}
+          onSelectStock={handleSelectStock}
+          onCloseWatchlistWidget={handleCloseWatchlistWidget}
         />
       </div>
     </AuthGuard>
@@ -339,13 +359,14 @@ type ScannerDrawingWorkspaceProps = {
   showBacktestStats: boolean;
   scannerHighlightsVisible: boolean;
   onChartTypeChange: (chartType: ScannerChartType) => void;
-  onScreenshot: () => void;
-  onSend: () => void;
   onRangeFilterChange: (rangeFilter: ScannerRangeFilter) => void;
   onToggleAutoScale: () => void;
   onTogglePercentageScale: () => void;
   onToggleBacktestStats: () => void;
   onToggleScannerHighlights: () => void;
+  watchlistWidgetId: string | null;
+  onSelectStock: (stock: Stock) => void;
+  onCloseWatchlistWidget: () => void;
 };
 
 function ScannerDrawingWorkspace({
@@ -361,13 +382,14 @@ function ScannerDrawingWorkspace({
   showBacktestStats,
   scannerHighlightsVisible,
   onChartTypeChange,
-  onScreenshot,
-  onSend,
   onRangeFilterChange,
   onToggleAutoScale,
   onTogglePercentageScale,
   onToggleBacktestStats,
   onToggleScannerHighlights,
+  watchlistWidgetId,
+  onSelectStock,
+  onCloseWatchlistWidget,
 }: ScannerDrawingWorkspaceProps) {
   const queryClient = useQueryClient();
   const drawing = useScannerDrawingState(stock.symbol, timeframe);
@@ -577,8 +599,6 @@ function ScannerDrawingWorkspace({
         stock={stock}
         chartType={chartType}
         onChartTypeChange={onChartTypeChange}
-        onScreenshot={onScreenshot}
-        onSend={onSend}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -602,6 +622,15 @@ function ScannerDrawingWorkspace({
             backtestStats={visibleBacktestStats}
             scannerHighlightsVisible={scannerHighlightsVisible}
           />
+          {watchlistWidgetId && (
+            <ScannerWatchlistWidget
+              watchlistId={watchlistWidgetId}
+              selectedSymbol={stock.symbol}
+              selectedExchange={stock.exchange}
+              onSelectStock={onSelectStock}
+              onClose={onCloseWatchlistWidget}
+            />
+          )}
         </div>
         <RangeFilterTabs
           value={effectiveRangeFilter}
@@ -618,12 +647,7 @@ function ScannerDrawingWorkspace({
           onToggleBacktestStats={onToggleBacktestStats}
           onToggleScannerHighlights={onToggleScannerHighlights}
         />
-        <AdsenseAd
-          slot={ADSENSE_SLOTS.scanner}
-          placement="scanner-bottom-after-chart-controls"
-          variant="scanner"
-          className="shrink-0"
-        />
+        <AdPlacement placementKey="scanner_bottom" variant="scanner" className="shrink-0" />
       </div>
     </div>
   );

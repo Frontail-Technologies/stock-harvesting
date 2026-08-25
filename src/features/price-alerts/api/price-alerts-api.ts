@@ -44,3 +44,24 @@ export async function createPriceAlert(input: {
     body: JSON.stringify(input),
   });
 }
+
+export async function listPriceAlerts(input: {
+  exchange?: string;
+  symbol?: string;
+  status?: PriceAlertStatus;
+}) {
+  const params = new URLSearchParams();
+  if (input.exchange) params.set("exchange", input.exchange);
+  if (input.symbol) params.set("symbol", input.symbol);
+  if (input.status) params.set("status", input.status);
+  const query = params.toString();
+  return apiFetch<{ alerts: PriceAlert[] }>(
+    `${API_ROUTES.priceAlerts.root}${query ? `?${query}` : ""}`
+  );
+}
+
+export async function deletePriceAlert(id: string) {
+  return apiFetch<{ ok: boolean }>(API_ROUTES.priceAlerts.byId(id), {
+    method: "DELETE",
+  });
+}

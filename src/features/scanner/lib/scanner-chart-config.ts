@@ -37,7 +37,7 @@ export const SCANNER_CHART_THEMES: Record<
     crosshair: "rgba(226,232,240,0.5)",
     volumeGreen: "rgba(34,197,94,0.3)",
     volumeRed: "rgba(239,68,68,0.26)",
-    gridLine: "rgba(255,255,255,0.045)",
+    gridLine: "rgba(255,255,255,0.028)",
     // Mirrors --scanner-highlight-fill / --scanner-highlight-edge (and the
     // -selected variants) in globals.css — canvas fillStyle can't read CSS
     // custom properties, so the scan-band primitive (which paints on the
@@ -50,13 +50,19 @@ export const SCANNER_CHART_THEMES: Record<
     highlightEdgeSelected: "rgba(250,204,21,0.18)",
   },
   light: {
-    panelBackground: "#F8FAFC",
-    text: "#334155",
-    scaleBorder: "rgba(15,23,42,0.22)",
-    crosshair: "rgba(30,41,59,0.64)",
+    // A warm neutral canvas (matches the brand's off-white elsewhere), not
+    // a cool slate-tinted white - the previous #F8FAFC/#334155/slate-based
+    // border and crosshair colors were a different, colder palette than
+    // the rest of the light-mode scanner chrome, which is what made this
+    // read as generic "washed-out white app" rather than the same
+    // charcoal/off-white identity the dark theme already has.
+    panelBackground: "#FAFAF8",
+    text: "#73736E",
+    scaleBorder: "#DDDCD7",
+    crosshair: "rgba(24,25,24,0.55)",
     volumeGreen: "rgba(22,163,74,0.24)",
     volumeRed: "rgba(220,38,38,0.2)",
-    gridLine: "rgba(15,23,42,0.12)",
+    gridLine: "rgba(24,25,24,0.065)",
     highlightFill: "rgba(250,240,88,0.3)",
     highlightEdge: "rgba(217,119,6,0.16)",
     highlightFillSelected: "rgba(250,240,88,0.42)",
@@ -65,7 +71,13 @@ export const SCANNER_CHART_THEMES: Record<
 };
 
 export const SCANNER_CHART_LAYOUT = {
-  futureWhitespaceBars: 24,
+  // The right edge should show a small amount of breathing room after the
+  // latest real candle, not a reserved runway of empty future time - this
+  // pool only needs to be as large as the biggest padding getVisibleLogicalRange
+  // will ever actually apply (see MAX_RIGHT_PADDING_BARS in
+  // build-scanner-chart-data.ts), so panning a little past the last candle
+  // still has whitespace bars to land on.
+  futureWhitespaceBars: 12,
   visibleBarsTarget: 185,
   barSpacing: 8,
   minBarSpacing: 4,

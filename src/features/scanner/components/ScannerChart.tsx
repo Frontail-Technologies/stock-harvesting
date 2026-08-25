@@ -58,8 +58,8 @@ export function ScannerChart({
 }: ScannerChartProps) {
   const { formatStockCurrency } = useCurrency();
   const chartData = useMemo(
-    () => buildScannerChartData(candles, rangeFilter, theme),
-    [candles, rangeFilter, theme]
+    () => buildScannerChartData(candles, rangeFilter, theme, timeframe),
+    [candles, rangeFilter, theme, timeframe]
   );
   const priceFormatter = useMemo(
     () => (price: number) => formatStockCurrency(price, stock.exchange),

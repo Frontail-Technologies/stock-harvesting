@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 
 type BeforeInstallPromptEvent = Event & {
@@ -56,29 +57,33 @@ export function PwaInstallButton({ compact = false, className }: PwaInstallButto
 
   if (!promptEvent && !manualInstallAvailable) return null;
 
-  return (
-    <button
-      type="button"
-      aria-label="Install app"
-      title="Install app"
-      onClick={async () => {
-        if (!promptEvent) {
-          window.alert("To install Stock Harvesting, open Share and choose Add to Home Screen.");
-          return;
-        }
+  const handleClick = async () => {
+    if (!promptEvent) {
+      window.alert("To install Stock Harvesting, open Share and choose Add to Home Screen.");
+      return;
+    }
 
-        await promptEvent.prompt();
-        await promptEvent.userChoice.catch(() => null);
-        setPromptEvent(null);
-      }}
-      className={cn(
-        "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        compact && "size-9 px-0",
-        className
-      )}
-    >
-      <Download className="size-4" />
-      {!compact && <span className="hidden lg:inline">Install</span>}
-    </button>
+    await promptEvent.prompt();
+    await promptEvent.userChoice.catch(() => null);
+    setPromptEvent(null);
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        type="button"
+        aria-label="Install app"
+        onClick={() => void handleClick()}
+        className={cn(
+          "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          compact && "size-9 px-0",
+          className
+        )}
+      >
+        <Download className="size-4" />
+        {!compact && <span className="hidden lg:inline">Install</span>}
+      </TooltipTrigger>
+      <TooltipContent side="bottom">Install app</TooltipContent>
+    </Tooltip>
   );
 }
