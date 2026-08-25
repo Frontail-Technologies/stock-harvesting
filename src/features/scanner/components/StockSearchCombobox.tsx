@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import type { Stock } from "@/types/market";
 import { Input } from "@/components/ui/input";
+import { WatchlistQuickAddButton } from "@/features/watchlists/components/WatchlistQuickAddButton";
 import { cn } from "@/utils/cn";
 import { useScannerStockSearch } from "../hooks/use-scanner-data";
 
@@ -135,7 +136,7 @@ export function StockSearchCombobox({
         }}
         onKeyDown={handleInputKeyDown}
         placeholder={`Search ${selectedStock.symbol}`}
-        className="h-8 border-border bg-muted/35 pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground sm:pr-3 sm:text-sm"
+        className="h-8 border-border/60 bg-muted/35 pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/25 sm:pr-3 sm:text-sm"
       />
 
       {open && trimmedQuery.length >= 2 && menuRect && typeof document !== "undefined"
@@ -154,25 +155,28 @@ export function StockSearchCombobox({
                   <p className="px-3 py-2 text-sm text-muted-foreground">No stocks found.</p>
                 ) : (
                   results.map((stock) => (
-                    <button
+                    <div
                       key={stock.symbol}
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectStock(stock)}
                       className={cn(
-                        "flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
+                        "flex w-full items-center gap-1 px-1.5 py-1 transition-colors hover:bg-accent hover:text-accent-foreground",
                         selectedStock.symbol === stock.symbol && "bg-primary/15 text-foreground"
                       )}
                     >
-                      <span className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectStock(stock)}
+                        className="min-w-0 flex-1 cursor-pointer px-1.5 py-1 text-left text-sm"
+                      >
                         <span className="block font-semibold text-foreground">
                           {stock.symbol}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {stock.name} - {stock.exchange}
                         </span>
-                      </span>
-                    </button>
+                      </button>
+                      <WatchlistQuickAddButton exchange={stock.exchange} symbol={stock.symbol} />
+                    </div>
                   ))
                 )}
               </div>

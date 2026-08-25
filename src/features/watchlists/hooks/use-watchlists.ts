@@ -1,0 +1,105 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/features/api";
+import { useSessionStore } from "@/features/auth";
+import {
+  addWatchlistItem,
+  createWatchlist,
+  deleteWatchlist,
+  getWatchlist,
+  getWatchlists,
+  removeWatchlistItem,
+  renameWatchlist,
+} from "../api/watchlists-api";
+
+const WATCHLISTS_STALE_TIME_MS = 60_000;
+
+export function useWatchlists() {
+  const authStatus = useSessionStore((state) => state.status);
+  const query = useQuery({
+    queryKey: queryKeys.watchlists.list,
+    queryFn: getWatchlists,
+    enabled: authStatus === "authenticated",
+    staleTime: WATCHLISTS_STALE_TIME_MS,
+    gcTime: 15 * 60_000,
+  });
+
+  return { ...query, watchlists: query.data?.watchlists ?? [] };
+}
+
+export function useWatchlist(id: string | null) {
+  const authStatus = useSessionStore((state) => state.status);
+  const query = useQuery({
+    queryKey: queryKeys.watchlists.detail(id ?? ""),
+    queryFn: () => getWatchlist(id as string),
+    enabled: authStatus === "authenticated" && Boolean(id),
+    staleTime: WATCHLISTS_STALE_TIME_MS,
+    gcTime: 15 * 60_000,
+  });
+
+  return { ...query, watchlist: query.data?.watchlist ?? null };
+}
+
+export function useCreateWatchlist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createWatchlist,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+    },
+  });
+}
+
+export function useRenameWatchlist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: renameWatchlist,
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteWatchlist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteWatchlist,
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+      queryClient.removeQueries({ queryKey: queryKeys.watchlists.detail(variables.id) });
+    },
+  });
+}
+
+export function useAddWatchlistItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addWatchlistItem,
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlists.detail(variables.watchlistId),
+      });
+    },
+  });
+}
+
+export function useRemoveWatchlistItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: removeWatchlistItem,
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlists.detail(variables.watchlistId),
+      });
+    },
+  });
+}
