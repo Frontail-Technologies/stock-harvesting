@@ -1,4 +1,12 @@
-export { AdsenseAd } from "./AdsenseAd";
-export { AdsenseScript } from "./AdsenseScript";
-export { ADSENSE_CLIENT, ADSENSE_SLOTS, hasAdsenseConfig } from "./adsense-config";
-export type { AdsensePlacement } from "./adsense-config";
+export { AdPlacement } from "./components/AdPlacement";
+export { AdsenseScript } from "./components/AdsenseScript";
+export { canRenderAd } from "./lib/can-render-ad";
+export { useMonetizationConfig } from "./hooks/use-monetization-config";
+export {
+  AD_PLACEMENT_KEYS,
+  MONETIZATION_MODES,
+  type AdPlacementConfig,
+  type AdPlacementKey,
+  type MonetizationConfig,
+  type MonetizationMode,
+} from "./types";

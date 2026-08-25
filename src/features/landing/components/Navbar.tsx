@@ -4,10 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/utils/cn";
+import { useLandingCta } from "../hooks/use-landing-cta";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const cta = useLandingCta();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -39,13 +41,31 @@ export function Navbar() {
 
         <div className="flex items-center justify-self-end gap-3">
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/login" className="landing-nav-link">
-              Login
-            </Link>
-            <span className="landing-nav-divider" aria-hidden="true" />
-            <Link href="/login" className="landing-btn-primary">
-              Open Workspace
-            </Link>
+            {cta.status === "loading" ? (
+              // Same footprint as the resolved states so nothing shifts
+              // once the session resolves - just no label committed to
+              // either "Login" or "Open Workspace" while status is unknown.
+              <span
+                className="landing-btn-primary invisible"
+                aria-hidden="true"
+              >
+                Open Workspace
+              </span>
+            ) : cta.status === "authenticated" ? (
+              <Link href={cta.href} className="landing-btn-primary">
+                {cta.label}
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="landing-nav-link">
+                  Login
+                </Link>
+                <span className="landing-nav-divider" aria-hidden="true" />
+                <Link href={cta.href} className="landing-btn-primary">
+                  {cta.label}
+                </Link>
+              </>
+            )}
           </div>
 
           <button
@@ -74,12 +94,32 @@ export function Navbar() {
             Markets
           </Link>
           <div className="border-t border-white/8 pt-3 flex flex-col gap-2">
-            <Link href="/login" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
-              Login
-            </Link>
-            <Link href="/login" className="landing-btn-primary text-center" onClick={() => setMobileOpen(false)}>
-              Open Workspace
-            </Link>
+            {cta.status === "loading" ? null : cta.status === "authenticated" ? (
+              <Link
+                href={cta.href}
+                className="landing-btn-primary text-center"
+                onClick={() => setMobileOpen(false)}
+              >
+                {cta.label}
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="landing-nav-link py-2"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href={cta.href}
+                  className="landing-btn-primary text-center"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {cta.label}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       ) : null}

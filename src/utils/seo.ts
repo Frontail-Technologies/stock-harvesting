@@ -27,3 +27,19 @@ export function getAdminOrigin() {
   const adminHost = getAdminHost();
   return adminHost ? `${getSiteUrl().protocol}//${adminHost}` : null;
 }
+
+// Maps an internal Next.js route (e.g. "/admin/users") to the URL that
+// should actually appear in the browser. When the admin panel is split
+// onto its own host, src/proxy.ts rewrites every non-"/admin" path there
+// into "/admin/..." internally - the "/admin" prefix must never be
+// user-visible, so links/redirects inside the admin app should target the
+// stripped form ("/users") and let the rewrite map it back. Without host
+// separation configured, "/admin/..." is the real (only) path, so it's
+// returned unchanged - this keeps the no-NEXT_PUBLIC_ADMIN_HOST local-dev
+// mode working exactly as before.
+export function adminPath(internalPath: string): string {
+  if (!getAdminHost()) return internalPath;
+  if (internalPath === "/admin") return "/";
+  if (internalPath.startsWith("/admin/")) return internalPath.slice("/admin".length);
+  return internalPath;
+}

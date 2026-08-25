@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LandingOpenWorkspaceLink } from "./LandingOpenWorkspaceLink";
 import { Reveal } from "./Reveal";
 
 export function FinalCtaSection() {
@@ -31,10 +31,7 @@ export function FinalCtaSection() {
           </p>
 
           <div className="mt-9 flex justify-center">
-            <Link href="/login" className="landing-btn-primary landing-btn-lg gap-2 inline-flex items-center">
-              Open Workspace
-              <span aria-hidden="true">-&gt;</span>
-            </Link>
+            <LandingOpenWorkspaceLink />
           </div>
         </Reveal>
       </div>

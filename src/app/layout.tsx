@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
+import { AuthBootstrap } from "@/features/auth";
+import { QueryProvider } from "@/features/api";
+import { GlobalSearchCommandDialog } from "@/features/global-search/components/GlobalSearchCommandDialog";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
 import { PwaProvider } from "@/features/pwa";
 import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
@@ -130,7 +133,18 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <PwaProvider />
-        {children}
+        <QueryProvider>
+          {/* Runs on every route, including the public landing page - not
+              just once a protected (app) route happens to mount - so the
+              session is known (or known to be absent) before any
+              auth-aware UI (landing navbar/CTA, /login) ever has to
+              guess. */}
+          <AuthBootstrap />
+          {/* Ctrl+K / Cmd+K global stock search - one instance, works from
+              the landing page and every app route alike. */}
+          <GlobalSearchCommandDialog />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

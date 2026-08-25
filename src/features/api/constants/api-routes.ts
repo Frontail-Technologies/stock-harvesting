@@ -1,6 +1,7 @@
 export const API_ROUTES = {
   auth: {
-    googleUrl: "/api/auth/google/url",
+    googleUrl: (portal?: "admin") =>
+      portal ? `/api/auth/google/url?portal=${portal}` : "/api/auth/google/url",
     refresh: "/api/auth/refresh",
     me: "/api/auth/me",
     logout: "/api/auth/logout",
@@ -65,6 +66,13 @@ export const API_ROUTES = {
       `/api/admin/market-collections/${encodeURIComponent(id)}/import/dry-run`,
     marketCollectionImport: (id: string) =>
       `/api/admin/market-collections/${encodeURIComponent(id)}/import`,
+    monetization: "/api/admin/monetization",
+    monetizationSettings: "/api/admin/monetization/settings",
+    monetizationPlacement: (key: string) =>
+      `/api/admin/monetization/placements/${encodeURIComponent(key)}`,
+    dataProviders: "/api/admin/data-providers",
+    dataProviderSettings: (key: string) =>
+      `/api/admin/data-providers/${encodeURIComponent(key)}`,
   },
   ai: {
     ask: (symbol: string) => `/api/ai/scanner/${encodeURIComponent(symbol)}/ask`,
@@ -76,6 +84,16 @@ export const API_ROUTES = {
   pushSubscriptions: {
     root: "/api/push-subscriptions",
     publicKey: "/api/push-subscriptions/public-key",
+  },
+  watchlists: {
+    root: "/api/watchlists",
+    byId: (id: string) => `/api/watchlists/${encodeURIComponent(id)}`,
+    items: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/items`,
+    item: (id: string, itemId: string) =>
+      `/api/watchlists/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
+  },
+  monetization: {
+    config: "/api/monetization/config",
   },
 } as const;
 

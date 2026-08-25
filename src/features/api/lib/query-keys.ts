@@ -108,5 +108,15 @@ export const queryKeys = {
     aiSettings: ["admin", "ai-settings"] as const,
     aiSettingsKey: ["admin", "ai-settings", "key"] as const,
     jobs: ["admin", "jobs"] as const,
+    monetization: ["admin", "monetization"] as const,
+    dataProviders: ["admin", "data-providers"] as const,
+  },
+  watchlists: {
+    list: ["watchlists", "list"] as const,
+    detail: (id: string) => ["watchlists", "detail", id] as const,
+  },
+  priceAlerts: {
+    list: (input: { exchange?: string; symbol?: string; status?: string }) =>
+      ["price-alerts", "list", input] as const,
   },
 } as const;

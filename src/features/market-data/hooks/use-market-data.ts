@@ -26,6 +26,15 @@ const STOCK_SEARCH_STALE_TIME_MS = 10 * 60_000;
 const STOCK_LIST_STALE_TIME_MS = 5 * 60_000;
 const CANDLE_STALE_TIME_MS = 30 * 60_000;
 const SCANNER_SEARCH_DEBOUNCE_MS = 450;
+// `query.data ?? []` would otherwise construct a brand-new array on every
+// render while the query has no data yet (disabled, or still in flight) -
+// consumers that key an effect/memo off this array's identity (e.g.
+// resetting a highlighted index whenever "the results changed") would see
+// a "new" array every render even though nothing changed, which can
+// cascade into a render loop. Reusing one stable empty array for that
+// case fixes it at the source instead of asking every consumer to work
+// around it.
+const EMPTY_STOCK_ROWS: Stock[] = [];
 
 function dedupeStocksByMarketKey(rows: Stock[]) {
   const seen = new Set<string>();
@@ -243,7 +252,7 @@ export function useStockSearch(
     ? searchStocks(mockStocks, normalizedQuery).slice(0, limit)
     : mockStocks.slice(0, limit);
   const rows =
-    query.isError && DEV_MOCK_FALLBACK_ENABLED ? fallbackRows : query.data ?? [];
+    query.isError && DEV_MOCK_FALLBACK_ENABLED ? fallbackRows : (query.data ?? EMPTY_STOCK_ROWS);
 
   return {
     ...query,

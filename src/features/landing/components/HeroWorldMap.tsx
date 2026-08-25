@@ -1,20 +1,16 @@
 import type { CSSProperties } from "react";
-import { AU, CA, EU, GB, IN, JP, SG, US } from "country-flag-icons/string/3x2";
 import { DottedMap, type Marker } from "@/components/ui/dotted-map";
 import { cn } from "@/utils/cn";
+import { flagUri } from "../lib/flag-uri";
 
 const MAP_WIDTH = 200;
 const MAP_HEIGHT = 100;
-
-const FLAG_SVG: Record<string, string> = { IN, US, JP, AU, GB, CA, SG, EU };
-const flagUri = (code: string) => `data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}`;
 
 type CountryMarker = Marker & {
   code: string;
   label: string;
   tier: "primary" | "secondary" | "expanding";
   labelSide: "left" | "right";
-  mobileHidden?: boolean;
 };
 
 const COUNTRY_MARKERS: CountryMarker[] = [
@@ -22,15 +18,19 @@ const COUNTRY_MARKERS: CountryMarker[] = [
   { code: "US", lat: 39.8, lng: -98.6, size: 0, label: "United States", tier: "primary", labelSide: "right" },
   { code: "JP", lat: 36.2, lng: 138.3, size: 0, label: "Japan", tier: "secondary", labelSide: "left" },
   { code: "AU", lat: -25.3, lng: 133.8, size: 0, label: "Australia", tier: "secondary", labelSide: "left" },
-  { code: "GB", lat: 54, lng: -2.5, size: 0, label: "United Kingdom", tier: "secondary", labelSide: "right", mobileHidden: true },
-  { code: "CA", lat: 56.1, lng: -106, size: 0, label: "Canada", tier: "secondary", labelSide: "right", mobileHidden: true },
-  { code: "SG", lat: 1.35, lng: 103.8, size: 0, label: "Singapore", tier: "secondary", labelSide: "left", mobileHidden: true },
-  { code: "EU", lat: 50, lng: 9, size: 0, label: "Europe", tier: "expanding", labelSide: "left", mobileHidden: true },
+  { code: "GB", lat: 54, lng: -2.5, size: 0, label: "United Kingdom", tier: "secondary", labelSide: "right" },
+  { code: "CA", lat: 56.1, lng: -106, size: 0, label: "Canada", tier: "secondary", labelSide: "right" },
+  { code: "SG", lat: 1.35, lng: 103.8, size: 0, label: "Singapore", tier: "secondary", labelSide: "left" },
+  { code: "EU", lat: 50, lng: 9, size: 0, label: "Europe", tier: "expanding", labelSide: "left" },
 ];
 
+// Desktop/tablet only (sm:+) - mobile renders HeroWorldMapMobile instead,
+// with its own hand-placed marker grid, rather than this geography-accurate
+// layout scaled down (which is what caused most labels to get hidden below
+// sm in the first place).
 export function HeroWorldMap() {
   return (
-    <div className="landing-hero-map">
+    <div className="landing-hero-map hidden sm:block">
       <DottedMap
         width={MAP_WIDTH}
         height={MAP_HEIGHT}
@@ -47,7 +47,7 @@ export function HeroWorldMap() {
 
           return (
             <g
-              className={cn("landing-map-marker", marker.mobileHidden && "max-sm:hidden")}
+              className="landing-map-marker"
               style={{ "--landing-map-marker-delay": `${0.3 + index * 0.08}s` } as CSSProperties}
             >
               <image

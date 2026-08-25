@@ -15,6 +15,7 @@ than starting in a half-configured state.
 | `NODE_ENV` | No | `development` | `development` \| `test` \| `production` |
 | `PORT` | No | `4000` | API listen port |
 | `WEB_APP_URL` | No | `http://localhost:3000` | Main frontend origin (used in OAuth redirects etc.) |
+| `ADMIN_WEB_APP_URL` | No | falls back to `WEB_APP_URL` | Admin frontend origin — where a Google login started from the admin portal (`?portal=admin`) round-trips back to after auth, instead of the main site. Mirrors the frontend's `NEXT_PUBLIC_ADMIN_HOST`; only needed if the admin panel is split onto its own host |
 | `API_BASE_URL` | No | `http://localhost:4000` | This API's own base URL |
 | `CORS_ORIGIN` | No | `http://localhost:3000` | Comma-separated list of allowed origins. Must include every frontend host that calls this API — e.g. add the admin subdomain host here if `NEXT_PUBLIC_ADMIN_HOST` is set on the frontend |
 | `DATABASE_URL` | **Yes** | — | Postgres connection string. Currently a Neon pooler endpoint — see `docs/DATABASE.md` |
@@ -85,13 +86,19 @@ max-connections calculation before raising `DB_POOL_MAX`).
 |---|---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | **Yes** | Backend API origin the frontend calls directly (cross-origin `fetch`, `credentials: "include"`) |
 | `NEXT_PUBLIC_SITE_URL` | No | Canonical site URL — used for metadata/OG tags, sitemap/robots generation, and as the fallback origin when reconstructing the admin URL's protocol |
-| `NEXT_PUBLIC_ADMIN_HOST` | No | Host (not full URL) that serves the admin panel on its own subdomain, e.g. `admin.example.com`. Unset keeps `/admin` on the main host — see `src/proxy.ts` |
+| `NEXT_PUBLIC_ADMIN_HOST` | No | Host (not full URL) that serves the admin panel on its own subdomain, e.g. `admin.example.com`. Unset keeps `/admin` on the main host — see `src/proxy.ts`. When set, the admin host gets its own login (`/login` there → `AdminLoginScreen`, not the main site's login) and every admin URL is prefix-less (`admin.example.com/users`, not `.../admin/users`) — pair with the backend's `ADMIN_WEB_APP_URL` and add the admin origin to `CORS_ORIGIN` |
 | `NEXT_PUBLIC_DEV_MOCK_FALLBACK` | No | `"true"` enables mock-data fallbacks in dev when the backend is unavailable |
 | `NEXT_PUBLIC_DEBUG_MARKET_STREAM` | No | Verbose console logging for the live market-data WebSocket stream |
-| `NEXT_PUBLIC_ADSENSE_CLIENT` | No | Google AdSense client id, e.g. `ca-pub-...`. If missing, ad placements collapse in production |
-| `NEXT_PUBLIC_ADSENSE_LANDING_PRIMARY_SLOT` | No | Manual AdSense slot after the landing chart workspace section |
-| `NEXT_PUBLIC_ADSENSE_LANDING_SECONDARY_SLOT` | No | Manual AdSense slot after the landing market coverage section |
-| `NEXT_PUBLIC_ADSENSE_SCANNER_SLOT` | No | Manual AdSense slot below scanner chart controls |
+
+AdSense is no longer environment-configured. Mode (off/preview/live), the
+AdSense publisher ID, and each placement's enabled/slot-ID are all runtime
+settings, stored in Postgres (`monetization_settings`/`ad_placements`) and
+managed from Admin → Monetization → Ads (`/admin/ads`). The frontend reads
+them from the public `GET /api/monetization/config` endpoint at runtime —
+there is no `NEXT_PUBLIC_ADSENSE_*` env var anymore, so there's exactly one
+source of truth and it takes effect without a redeploy. A fresh database
+defaults to `mode = off` with every placement disabled, so no ads render
+until an admin explicitly configures them.
 
 ## Adding a new variable
 
