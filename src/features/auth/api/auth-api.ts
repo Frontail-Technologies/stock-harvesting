@@ -1,14 +1,14 @@
 import { apiFetch, API_ROUTES, clearApiAccessToken, refreshAccessToken } from "@/features/api";
 import type { AuthUser, RefreshResponse } from "../types";
 
-export async function getGoogleLoginUrl() {
-  return apiFetch<{ url: string }>(API_ROUTES.auth.googleUrl, {
+export async function getGoogleLoginUrl(portal?: "admin") {
+  return apiFetch<{ url: string }>(API_ROUTES.auth.googleUrl(portal), {
     skipAuthRefresh: true,
   });
 }
 
-export async function startGoogleLogin() {
-  const { url } = await getGoogleLoginUrl();
+export async function startGoogleLogin(portal?: "admin") {
+  const { url } = await getGoogleLoginUrl(portal);
   window.location.href = url;
 }
 

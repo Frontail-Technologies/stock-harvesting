@@ -6,8 +6,8 @@ import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { cn } from "@/utils/cn";
-import { getAdminOrigin } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
 import { useSessionStore } from "../stores/session-store";
 
@@ -204,38 +204,50 @@ export function LoginScreen() {
   const router = useRouter();
   const googleLogin = useGoogleLogin();
   const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
+  const bootstrapResolved = useSessionStore((state) => state.bootstrapResolved);
   const [error, setError] = useState<string | null>(null);
+  // With a cached session snapshot, `status` usually resolves to
+  // "authenticated" (and the redirect effect below fires) within a frame
+  // or two - showing the spinner only once that's taken a moment avoids a
+  // flash of "Checking session..." on what's normally an instant bounce
+  // to /scanner.
+  const showChecking = useDelayedFlag(status !== "guest");
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    // `status === "authenticated"` alone can mean nothing more than "a
+    // cached snapshot from a previous visit said so" - if that snapshot's
+    // refresh cookie has since expired, redirecting on it alone would send
+    // this boot to /scanner just to get bounced straight back to /login a
+    // moment later once the real check catches up. Waiting for
+    // `bootstrapResolved` means this only navigates once THIS boot's
+    // authoritative refresh has actually confirmed it (or given up and
+    // kept the cached value after a network hiccup - see
+    // useAuthBootstrap) - the wait itself stays invisible in the common
+    // case since it's the same fast check `showChecking` above already
+    // tolerates without flashing a spinner.
+    if (status !== "authenticated" || !bootstrapResolved) return;
 
+    // The main site's login never routes by role - every account (admin
+    // included) continues into the normal product. "next" is only honored
+    // for destinations within this same app, never the separate admin
+    // portal, so this can't be used to bounce someone into /admin either.
     const params = new URLSearchParams(window.location.search);
     const nextPath = params.get("next");
     const validNext =
       nextPath &&
       nextPath.startsWith("/") &&
       !nextPath.startsWith("//") &&
-      !nextPath.startsWith("/login");
-    // No explicit deep link: send admins to the admin panel by default,
-    // everyone else to the scanner.
-    const target = validNext ? nextPath : user?.role === "admin" ? "/admin" : "/scanner";
-
-    // "/admin" lives on its own host once that's configured — a relative
-    // router navigation can't cross origins reliably, so go there directly.
-    const adminOrigin = getAdminOrigin();
-    if (adminOrigin && target.startsWith("/admin")) {
-      window.location.href = `${adminOrigin}${target}`;
-      return;
-    }
+      !nextPath.startsWith("/login") &&
+      !nextPath.startsWith("/admin");
+    const target = validNext ? nextPath : "/scanner";
 
     router.replace(target);
-  }, [router, status, user]);
+  }, [bootstrapResolved, router, status]);
 
   async function handleGoogleLogin() {
     setError(null);
     try {
-      await googleLogin.mutateAsync();
+      await googleLogin.mutateAsync(undefined);
     } catch {
       setError(
         "Google login is not available. Please check backend auth setup.",
@@ -246,10 +258,12 @@ export function LoginScreen() {
   if (status !== "guest") {
     return (
       <div className="grid min-h-dvh place-items-center bg-brand-charcoal px-4">
-        <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80">
-          <Spinner size="sm" />
-          Checking session...
-        </div>
+        {showChecking && (
+          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80">
+            <Spinner size="sm" />
+            Checking session...
+          </div>
+        )}
       </div>
     );
   }
