@@ -22,6 +22,33 @@ import {
 
 export const marketDataRouter = Router();
 
+// Public: the global stock search (navbar, landing hero, Ctrl+K command
+// panel) must work for signed-out visitors on the public marketing site,
+// not just inside the authenticated app. This is a pure read of public
+// market data (symbol/name/exchange/price) - no user-specific data, no
+// mutation - so it's safe to expose without a session. Registered before
+// the router-wide requireAuth below so only this one route is public;
+// every other market-data route (including the near-identical /stocks
+// list) stays authenticated exactly as before.
+marketDataRouter.get(
+  "/stocks/search",
+  validate({ query: stockListQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const query = req.query as unknown as {
+      q?: string;
+      page: number;
+      limit: number;
+      sortBy: "symbol" | "name" | "close" | "changePct" | "volume";
+      sortDirection: "asc" | "desc";
+      exchange: string;
+      moveFilter: MoveFilter;
+      minVolume?: number;
+      includeUnpriced?: boolean;
+    };
+    sendData(res, await listStocks(query));
+  })
+);
+
 marketDataRouter.use(requireAuth);
 
 marketDataRouter.get("/exchanges", asyncHandler(async (_req, res) => {
@@ -55,25 +82,6 @@ marketDataRouter.get("/stocks", validate({ query: stockListQuerySchema }), async
   };
   sendData(res, await listStocks(query));
 }));
-
-marketDataRouter.get(
-  "/stocks/search",
-  validate({ query: stockListQuerySchema }),
-  asyncHandler(async (req, res) => {
-    const query = req.query as unknown as {
-      q?: string;
-      page: number;
-      limit: number;
-      sortBy: "symbol" | "name" | "close" | "changePct" | "volume";
-      sortDirection: "asc" | "desc";
-      exchange: string;
-      moveFilter: MoveFilter;
-      minVolume?: number;
-      includeUnpriced?: boolean;
-    };
-    sendData(res, await listStocks(query));
-  })
-);
 
 marketDataRouter.get(
   "/history-range",

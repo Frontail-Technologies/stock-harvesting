@@ -134,3 +134,25 @@ export const importCollectionCsvBodySchema = z
     sourceDate: z.string().date().optional(),
   })
   .strict();
+
+export const dataProviderKeyParamsSchema = z
+  .object({
+    key: z.string().trim().min(1).max(32),
+  })
+  .strict();
+
+// Empty string clears a previously-set disable reason, matching the
+// monetization module's own empty-string-means-clear convention.
+export const updateDataProviderSettingsBodySchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    priority: z.coerce.number().int().min(1).max(1000).optional(),
+    disabledReason: z
+      .string()
+      .trim()
+      .max(200)
+      .transform((value) => (value.length === 0 ? null : value))
+      .nullable()
+      .optional(),
+  })
+  .strict();

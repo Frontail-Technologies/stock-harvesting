@@ -29,6 +29,17 @@ import {
   getProviderStatus,
   saveProviderToken,
 } from "../data-provider/data-provider.service";
+import {
+  getDataProviderAdapterByProvider,
+  getProviderCapabilities,
+  listDataProviderAdapters,
+} from "../data-provider/data-provider.registry";
+import {
+  listProviderSettings,
+  updateProviderSettings,
+  type DataProviderSettingsRow,
+} from "../data-provider/data-provider-settings.service";
+import { closeMarketStreamProviderByKey } from "../market-stream/market-stream.service";
 import { getMarketDataQueue } from "../jobs/queues";
 import { logger } from "../../shared/logger";
 
@@ -232,6 +243,108 @@ export async function getAdminProviderStatus() {
 
 export async function getAdminProviderStatuses() {
   return getAllProviderStatuses();
+}
+
+export type AdminDataProviderHealth = "disabled" | "healthy" | "error" | "unknown";
+
+export function deriveDataProviderHealth(input: {
+  enabled: boolean;
+  lastSuccessAt: Date | null;
+  lastFailureAt: Date | null;
+}): AdminDataProviderHealth {
+  if (!input.enabled) return "disabled";
+  if (!input.lastSuccessAt && !input.lastFailureAt) return "unknown";
+
+  const mostRecentIsFailure =
+    input.lastFailureAt &&
+    (!input.lastSuccessAt || input.lastFailureAt.getTime() >= input.lastSuccessAt.getTime());
+
+  return mostRecentIsFailure ? "error" : "healthy";
+}
+
+// Operational admin view: enabled (admin decision), configuration (env/OAuth
+// presence, from the existing getProviderStatus), and health (derived from
+// tracked success/failure timestamps) are kept as three explicit, separate
+// fields - never conflated - per the "enabled=ON, health=Error is a valid,
+// meaningful state" requirement.
+export async function getAdminDataProviderSettings() {
+  const [settingsRows, statuses] = await Promise.all([
+    listProviderSettings(),
+    Promise.all(
+      listDataProviderAdapters().map(async (adapter) => ({
+        provider: adapter.providerKey,
+        status: await getProviderStatus(adapter.providerKey),
+      }))
+    ),
+  ]);
+  const statusByProvider = new Map(statuses.map((entry) => [entry.provider, entry.status]));
+
+  return settingsRows
+    .map((row) => {
+      const adapter = getDataProviderAdapterByProvider(row.key);
+      const status = statusByProvider.get(row.key);
+      const configured = adapter
+        ? adapter.requiresConnection
+          ? Boolean(status?.connected)
+          : Boolean(status?.providerConfigured)
+        : false;
+
+      return {
+        key: row.key,
+        displayName: row.displayName,
+        enabled: row.enabled,
+        priority: row.priority,
+        disabledReason: row.disabledReason,
+        configured,
+        capabilities: adapter ? getProviderCapabilities(adapter) : [],
+        health: deriveDataProviderHealth({
+          enabled: row.enabled,
+          lastSuccessAt: row.lastSuccessAt,
+          lastFailureAt: row.lastFailureAt,
+        }),
+        lastSuccessAt: row.lastSuccessAt?.toISOString() ?? null,
+        lastFailureAt: row.lastFailureAt?.toISOString() ?? null,
+        lastError: row.lastError,
+        updatedAt: row.updatedAt.toISOString(),
+      };
+    })
+    .sort((a, b) => a.priority - b.priority);
+}
+
+export async function updateAdminDataProviderSettings(input: {
+  actorUserId: string;
+  key: string;
+  enabled?: boolean;
+  priority?: number;
+  disabledReason?: string | null;
+}) {
+  const before: DataProviderSettingsRow | undefined = (await listProviderSettings()).find(
+    (row) => row.key === input.key
+  );
+
+  const updated = await updateProviderSettings(input);
+
+  // A true -> false transition also force-closes any open realtime
+  // connection for this provider immediately, rather than waiting for its
+  // own close/reconnect cycle to notice - see market-stream.service.ts.
+  // Re-enabling doesn't need a matching force-reconnect: subscribe requests
+  // already lazily (re)connect on demand, so the next relevant subscription
+  // naturally picks the provider back up.
+  if (before?.enabled && !updated.enabled) {
+    try {
+      closeMarketStreamProviderByKey(updated.key);
+    } catch (error) {
+      logger.warn(
+        {
+          provider: updated.key,
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        "Failed to close realtime connection after provider disable"
+      );
+    }
+  }
+
+  return updated;
 }
 
 export async function createProviderConnectUrl(actorUserId: string) {

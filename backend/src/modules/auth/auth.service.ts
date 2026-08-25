@@ -87,6 +87,27 @@ export function createGoogleAuthUrl() {
   };
 }
 
+// Pure so it's directly unit-testable without a real OAuth round-trip -
+// this is the one place that decides which frontend origin (and which
+// path) a Google login bounces back to. An admin-portal login must never
+// land on the main site's /scanner, and a main-site login must never
+// require ADMIN_WEB_APP_URL to be configured at all.
+export function resolveOauthDestination(
+  portal: string | undefined,
+  config: { webAppUrl: string; adminWebAppUrl?: string }
+): { origin: string; successPath: string } {
+  if (portal === "admin") {
+    return {
+      origin: config.adminWebAppUrl ?? config.webAppUrl,
+      // Never /admin (or /scanner) - the admin login page itself re-checks
+      // the real session and role before entering the dashboard.
+      successPath: "/login",
+    };
+  }
+
+  return { origin: config.webAppUrl, successPath: "/scanner" };
+}
+
 async function exchangeGoogleCode(code: string) {
   ensureGoogleConfig();
 

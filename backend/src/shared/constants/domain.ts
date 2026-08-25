@@ -98,6 +98,37 @@ export const DATA_PROVIDER_KEY = {
   globalDatafeeds: "global-datafeeds",
 } as const;
 
+// Capabilities actually implemented today (see DataProviderAdapter in
+// data-provider.types.ts) - historical/latest candles are on every adapter,
+// search/token/exchange-list are optional per-adapter methods, and
+// realtime_ws corresponds to a market-stream/providers/* class existing for
+// that provider key (a separate mechanism from the DataProviderAdapter
+// interface, not a method on it).
+export const PROVIDER_CAPABILITIES = [
+  "instrument_sync",
+  "historical_daily_candles",
+  "latest_daily_candles",
+  "instrument_search",
+  "instrument_token",
+  "exchange_list",
+  "realtime_ws",
+] as const;
+export type ProviderCapability = (typeof PROVIDER_CAPABILITIES)[number];
+
+// Seed data only (display name + starting priority) - enabled always starts
+// true for every provider on first seed, since before this feature existed
+// every implemented provider was effectively always "on"; seeding anything
+// else would silently break production traffic on migration.
+export const DATA_PROVIDER_SETTINGS_SEEDS: ReadonlyArray<{
+  key: string;
+  displayName: string;
+  priority: number;
+}> = [
+  { key: DATA_PROVIDER_KEY.zerodha, displayName: "Zerodha Kite", priority: 1 },
+  { key: DATA_PROVIDER_KEY.globalDatafeeds, displayName: "Global DataFeeds", priority: 1 },
+  { key: DATA_PROVIDER_KEY.eodhd, displayName: "EODHD", priority: 100 },
+];
+
 export const BRANDING_DEFAULTS = {
   id: 1,
   brandName: "Stock Harvesting",
@@ -123,3 +154,47 @@ export const AI_SETTINGS_DEFAULTS = {
   id: 1,
   model: "gemini-flash-latest" as SupportedAiModelCode,
 } as const;
+
+export const MONETIZATION_MODES = ["off", "preview", "live"] as const;
+export type MonetizationMode = (typeof MONETIZATION_MODES)[number];
+
+export const MONETIZATION_MODE = {
+  off: "off",
+  preview: "preview",
+  live: "live",
+} as const satisfies Record<MonetizationMode, MonetizationMode>;
+
+export const MONETIZATION_SETTINGS_DEFAULTS = {
+  id: 1,
+  provider: "adsense",
+  mode: MONETIZATION_MODE.off as MonetizationMode,
+} as const;
+
+// Stable internal identifiers, never display labels - these are the only
+// placements the product actually renders today. "insights_article" has no
+// real ad location yet; it's seeded disabled so admin can pre-configure it
+// ahead of that page existing.
+export const AD_PLACEMENTS = [
+  {
+    key: "landing_primary",
+    label: "Landing — Primary",
+    description: "After Chart Workspace",
+  },
+  {
+    key: "landing_secondary",
+    label: "Landing — Secondary",
+    description: "After Market Coverage",
+  },
+  {
+    key: "scanner_bottom",
+    label: "Scanner — Bottom",
+    description: "Below chart workspace",
+  },
+  {
+    key: "insights_article",
+    label: "Insights — Article",
+    description: "Future placement, disabled by default",
+  },
+] as const;
+export type AdPlacementKey = (typeof AD_PLACEMENTS)[number]["key"];
+export const AD_PLACEMENT_KEYS = AD_PLACEMENTS.map((p) => p.key) as AdPlacementKey[];

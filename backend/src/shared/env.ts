@@ -5,6 +5,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   WEB_APP_URL: z.string().url().default("http://localhost:3000"),
+  // Only needed if the admin panel is split onto its own host (mirrors the
+  // frontend's NEXT_PUBLIC_ADMIN_HOST). Unset means "no admin portal" -
+  // an admin-portal OAuth login falls back to WEB_APP_URL, same as before
+  // this existed.
+  ADMIN_WEB_APP_URL: z.string().url().optional(),
   API_BASE_URL: z.string().url().default("http://localhost:4000"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1),

@@ -9,6 +9,8 @@ export const API_ROUTES = {
   ai: "/api/ai",
   priceAlerts: "/api/price-alerts",
   pushSubscriptions: "/api/push-subscriptions",
+  watchlists: "/api/watchlists",
+  monetization: "/api/monetization",
 } as const;
 
 export const AUTH_ROUTES = {

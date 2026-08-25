@@ -16,16 +16,24 @@ import { normalizeSymbol } from "../../shared/normalize";
 import {
   getActiveProviderAccessToken,
   getDataProviderAdapterForExchange,
+  getEligibleProviderAdapter,
   getEodhdDataProviderAdapter,
   markProviderConnectionExpired,
 } from "../data-provider/data-provider.service";
+import {
+  isProviderEnabled,
+  recordProviderFailure,
+  recordProviderSuccess,
+} from "../data-provider/data-provider-settings.service";
 import { NSE_INDEX_EXCHANGE } from "../data-provider/adapters/zerodha-data-provider.adapter";
 import type {
+  DataProviderAdapter,
   ProviderDailyCandle,
   ProviderExchange,
   ProviderSymbolDailyCandle,
 } from "../data-provider/data-provider.types";
 import { aggregateMonthlyCandles, aggregateWeeklyCandles } from "./candle-aggregation";
+import { getLatestExpectedTradingDay } from "./trading-calendar";
 import type { MoveFilter } from "./market-data.schemas";
 
 const CHART_HISTORY_YEARS = 30;
@@ -63,6 +71,7 @@ const failedLatestCandleSyncAtBySymbol = new Map<string, number>();
 const chartBackfillPromises = new Map<string, Promise<unknown>>();
 const completedChartBackfillAtByKey = new Map<string, number>();
 const COMPLETED_CHART_BACKFILL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const latestCandleRefreshPromises = new Map<string, Promise<unknown>>();
 
 type StockSortField = "symbol" | "name" | "close" | "changePct" | "volume";
 type StockSortDirection = "asc" | "desc";
@@ -905,6 +914,23 @@ export async function getChartCandles(input: {
       to: input.to,
       exchange,
     });
+  } else if (isLatestDailyCandleStale(dailyRows, exchange)) {
+    // The branch above only ever fires for empty/split/missing-history
+    // data - once a symbol has any daily history, this is the only check
+    // that keeps serving it forever from re-checking freshness. Only the
+    // latest row is out of date, so this does a targeted incremental fetch
+    // (syncLatestDailyCandlesForSymbols, a ~14-day window) instead of the
+    // full-range backfill above.
+    await safeProviderAction("market-data.chart-candle-freshness-refresh", () =>
+      runLatestCandleRefreshOnce({ symbol, exchange })
+    );
+    dailyRows = await readChartCandles({
+      symbol,
+      timeframe: CANDLE_TIMEFRAME.day,
+      from: input.from,
+      to: input.to,
+      exchange,
+    });
   }
 
   if (dailyRows.length > 0) {
@@ -986,7 +1012,12 @@ async function fetchRuntimeChartCandles(input: {
   to: string;
   exchange: string;
 }) {
-  const adapter = getDataProviderAdapterForExchange(input.exchange);
+  const adapter = await getEligibleProviderAdapter({
+    exchange: input.exchange,
+    capability: "historical_daily_candles",
+  });
+  if (!adapter) return [];
+
   const accessToken = await getActiveProviderAccessToken(adapter.providerKey);
   const [instrument] = await db
     .select({
@@ -1006,14 +1037,21 @@ async function fetchRuntimeChartCandles(input: {
       ? await adapter.getInstrumentToken(input.symbol, input.exchange)
       : input.symbol);
 
-  const daily = await adapter.fetchDailyCandles({
-    accessToken,
-    instrumentToken,
-    symbol: input.symbol,
-    from: input.from,
-    to: input.to,
-    exchangeCode: input.exchange,
-  });
+  let daily: ProviderDailyCandle[];
+  try {
+    daily = await adapter.fetchDailyCandles({
+      accessToken,
+      instrumentToken,
+      symbol: input.symbol,
+      from: input.from,
+      to: input.to,
+      exchangeCode: input.exchange,
+    });
+    void recordProviderSuccess(adapter.providerKey);
+  } catch (error) {
+    void recordProviderFailure(adapter.providerKey, error);
+    throw error;
+  }
 
   const chartRows = aggregateRuntimeChartCandles(daily, input.timeframe);
   return chartRows.map(toChartCandleResponse);
@@ -1057,6 +1095,35 @@ function shouldBackfillRequestedHistory(
   if (!oldest) return false;
 
   return oldest > requestedFrom;
+}
+
+export function isLatestDailyCandleStale(
+  rows: Array<{ time: string }>,
+  exchange: string,
+  at: Date = new Date()
+) {
+  const latest = rows[rows.length - 1]?.time;
+  if (!latest) return false;
+  return latest < getLatestExpectedTradingDay(exchange, at);
+}
+
+// Concurrent chart requests for the same stale exchange+symbol collapse into
+// one provider call instead of each firing its own - same in-flight-Promise
+// pattern as runChartBackfillOnce above, keyed more loosely (just
+// exchange:symbol, not also a date range) since this always targets "the
+// latest candle", not a specific from/to window.
+function runLatestCandleRefreshOnce(input: { symbol: string; exchange: string }) {
+  const key = `${input.exchange}:${input.symbol}`;
+  const existing = latestCandleRefreshPromises.get(key);
+  if (existing) return existing;
+
+  const promise = syncLatestDailyCandlesForSymbols([input.symbol], input.exchange).finally(
+    () => {
+      latestCandleRefreshPromises.delete(key);
+    }
+  );
+  latestCandleRefreshPromises.set(key, promise);
+  return promise;
 }
 
 function runChartBackfillOnce(input: {
@@ -1403,12 +1470,21 @@ function calculateEma(values: number[], period: number) {
 }
 
 export async function syncProviderInstruments(exchange: string = DEFAULT_EXCHANGE) {
-  const adapter = getDataProviderAdapterForExchange(exchange);
+  const adapter = await getEligibleProviderAdapter({ exchange, capability: "instrument_sync" });
+  if (!adapter) return { count: 0 };
+
   const accessToken = await getActiveProviderAccessToken(adapter.providerKey);
-  const providerInstruments = await adapter.fetchInstruments({
-    accessToken,
-    exchangeCode: exchange,
-  });
+  let providerInstruments;
+  try {
+    providerInstruments = await adapter.fetchInstruments({
+      accessToken,
+      exchangeCode: exchange,
+    });
+    void recordProviderSuccess(adapter.providerKey);
+  } catch (error) {
+    void recordProviderFailure(adapter.providerKey, error);
+    throw error;
+  }
 
   await upsertInstruments(providerInstruments, adapter.providerKey);
 
@@ -1426,6 +1502,18 @@ export async function backfillDailyCandles(
 ) {
   const symbol = normalizeSymbol(input.symbol);
   const exchange = input.exchange ?? DEFAULT_EXCHANGE;
+
+  // Checked before touching anything (including instrument creation) - a
+  // disabled/unconfigured provider must be a true no-op here, never a
+  // reason to delete or alter existing stored candles.
+  const adapter = await getEligibleProviderAdapter({
+    exchange,
+    capability: "historical_daily_candles",
+  });
+  if (!adapter) {
+    return { insertedDaily: 0, insertedWeekly: 0, insertedMonthly: 0 };
+  }
+
   const instrument = await getOrCreateInstrument(symbol, exchange, dbClient);
 
   if (!instrument) {
@@ -1436,16 +1524,22 @@ export async function backfillDailyCandles(
   // vendor errors, rate limits) happens before we touch existing rows -
   // deleteCandlesForRefresh only runs once we already have validated
   // replacement data in hand, inside the transaction below.
-  const adapter = getDataProviderAdapterForExchange(exchange);
   const accessToken = await getActiveProviderAccessToken(adapter.providerKey);
-  const daily = await adapter.fetchDailyCandles({
-    accessToken,
-    instrumentToken: instrument.instrumentToken,
-    symbol,
-    from: input.from,
-    to: input.to,
-    exchangeCode: exchange,
-  });
+  let daily: ProviderDailyCandle[];
+  try {
+    daily = await adapter.fetchDailyCandles({
+      accessToken,
+      instrumentToken: instrument.instrumentToken,
+      symbol,
+      from: input.from,
+      to: input.to,
+      exchangeCode: exchange,
+    });
+    void recordProviderSuccess(adapter.providerKey);
+  } catch (error) {
+    void recordProviderFailure(adapter.providerKey, error);
+    throw error;
+  }
 
   const weekly = aggregateWeeklyCandles(daily);
   const monthly = aggregateMonthlyCandles(daily);
@@ -1627,22 +1721,36 @@ const GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES: ProviderExchange[] = [
 
 // EODHD's exchange list is the source of truth for everything except NSE
 // (Zerodha-only, not covered by EODHD at all - confirmed live). Cached for
-// 24h since this essentially never changes.
+// 24h since the underlying exchange metadata essentially never changes; the
+// per-provider enabled checks below are what keep this responsive to admin
+// data-provider toggles (data-provider-settings.service.ts invalidates this
+// same cache prefix on every settings change, so the 24h TTL never actually
+// delays a disable/enable from taking effect).
 export async function listSupportedExchanges(): Promise<ProviderExchange[]> {
   return getOrSetCache("supportedExchanges", SUPPORTED_EXCHANGES_CACHE_TTL_MS, async () => {
     const eodhdAdapter = getEodhdDataProviderAdapter();
-    let eodhdExchanges: ProviderExchange[] = [];
+    const [nseEnabled, globalDatafeedsEnabled, eodhdEnabled] = await Promise.all([
+      isProviderEnabled(DATA_PROVIDER_KEY.zerodha),
+      isProviderEnabled(DATA_PROVIDER_KEY.globalDatafeeds),
+      isProviderEnabled(eodhdAdapter.providerKey),
+    ]);
 
-    try {
-      eodhdExchanges = (await eodhdAdapter.fetchExchanges?.()) ?? [];
-    } catch (error) {
-      logger.warn(
-        { message: error instanceof Error ? error.message : "Unknown provider error" },
-        "Unable to fetch EODHD exchanges list"
-      );
+    let eodhdExchanges: ProviderExchange[] = [];
+    if (eodhdEnabled) {
+      try {
+        eodhdExchanges = (await eodhdAdapter.fetchExchanges?.()) ?? [];
+      } catch (error) {
+        logger.warn(
+          { message: error instanceof Error ? error.message : "Unknown provider error" },
+          "Unable to fetch EODHD exchanges list"
+        );
+      }
     }
 
-    const fixedExchanges = [NSE_PROVIDER_EXCHANGE, ...GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES];
+    const fixedExchanges = [
+      ...(nseEnabled ? [NSE_PROVIDER_EXCHANGE] : []),
+      ...(globalDatafeedsEnabled ? GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES : []),
+    ];
     const fixedCodes = new Set(fixedExchanges.map((exchange) => exchange.code));
 
     return [
@@ -1766,25 +1874,33 @@ async function syncLatestDailyCandlesForSymbols(
   const symbolsToSync = uniqueSymbols.filter(shouldRetryLatestCandleSync);
   if (symbolsToSync.length === 0) return { insertedDaily: 0 };
 
-  const adapter = getDataProviderAdapterForExchange(exchange);
-  if (!adapter.fetchLatestDailyCandles) return { insertedDaily: 0 };
+  const adapter = await getEligibleProviderAdapter({ exchange, capability: "latest_daily_candles" });
+  if (!adapter || !adapter.fetchLatestDailyCandles) return { insertedDaily: 0 };
 
   await ensureInstrumentsForSymbols(symbolsToSync, exchange);
   const instrumentsBySymbol = await getInstrumentsBySymbol(symbolsToSync, exchange);
   const accessToken = await getActiveProviderAccessToken(adapter.providerKey);
-  const latestCandles =
-    adapter.providerKey === DATA_PROVIDER_KEY.zerodha
-      ? await fetchLatestDailyCandlesFromStoredInstruments({
-          accessToken,
-          exchange,
-          symbols: symbolsToSync,
-          instrumentsBySymbol,
-        })
-      : await adapter.fetchLatestDailyCandles({
-          accessToken,
-          symbols: symbolsToSync,
-          exchangeCode: exchange,
-        });
+  let latestCandles: ProviderSymbolDailyCandle[];
+  try {
+    latestCandles =
+      adapter.providerKey === DATA_PROVIDER_KEY.zerodha
+        ? await fetchLatestDailyCandlesFromStoredInstruments({
+            adapter,
+            accessToken,
+            exchange,
+            symbols: symbolsToSync,
+            instrumentsBySymbol,
+          })
+        : await adapter.fetchLatestDailyCandles({
+            accessToken,
+            symbols: symbolsToSync,
+            exchangeCode: exchange,
+          });
+    void recordProviderSuccess(adapter.providerKey);
+  } catch (error) {
+    void recordProviderFailure(adapter.providerKey, error);
+    throw error;
+  }
 
   const candlesToUpsert: CandleUpsertInput[] = [];
   for (const candle of latestCandles) {
@@ -1820,12 +1936,13 @@ async function syncLatestDailyCandlesForSymbols(
 }
 
 async function fetchLatestDailyCandlesFromStoredInstruments(input: {
+  adapter: DataProviderAdapter;
   accessToken?: string;
   exchange: string;
   symbols: string[];
   instrumentsBySymbol: Map<string, typeof instruments.$inferSelect>;
 }) {
-  const adapter = getDataProviderAdapterForExchange(input.exchange);
+  const adapter = input.adapter;
   const from = getDateDaysAgo(14);
   const to = getTodayDate();
   const latestCandles: ProviderSymbolDailyCandle[] = [];
@@ -1932,7 +2049,7 @@ async function ensureInstrumentsForSymbols(
 
   const synced = await getInstrumentsBySymbol(missingSymbols, exchange);
   const stillMissingSymbols = missingSymbols.filter((symbol) => !synced.has(symbol));
-  if (!canCreateFallbackInstrument(exchange)) return;
+  if (!(await canCreateFallbackInstrument(exchange))) return;
 
   for (const symbol of stillMissingSymbols) {
     await createFallbackInstrument(symbol, exchange);
@@ -1943,18 +2060,28 @@ async function syncProviderInstrumentSearch(
   query: string,
   exchange: string = DEFAULT_EXCHANGE
 ) {
-  const adapter = getDataProviderAdapterForExchange(exchange);
   const searchQuery = normalizeSymbol(query);
-
-  if (!adapter.searchInstruments) {
+  // No eligible provider AND "eligible but doesn't implement search" (e.g.
+  // Zerodha for NSE) both land here - either way, the existing fallback is
+  // the same: a full instrument sync through this exchange's own primary
+  // provider, which is itself independently eligibility-gated already.
+  const adapter = await getEligibleProviderAdapter({ exchange, capability: "instrument_search" });
+  if (!adapter || !adapter.searchInstruments) {
     await syncProviderInstruments(exchange);
     return { count: 0 };
   }
 
-  const providerInstruments = await adapter.searchInstruments(searchQuery, exchange);
+  let providerInstruments;
+  try {
+    providerInstruments = await adapter.searchInstruments(searchQuery, exchange);
+    void recordProviderSuccess(adapter.providerKey);
+  } catch (error) {
+    void recordProviderFailure(adapter.providerKey, error);
+    throw error;
+  }
 
   if (providerInstruments.length === 0) {
-    if (!canCreateFallbackInstrument(exchange)) return { count: 0 };
+    if (!(await canCreateFallbackInstrument(exchange))) return { count: 0 };
     await createFallbackInstrument(searchQuery, exchange);
     return { count: 1 };
   }
@@ -1965,7 +2092,7 @@ async function syncProviderInstrumentSearch(
 }
 
 async function hydrateDefaultFallbackInstruments(exchange: string = DEFAULT_EXCHANGE) {
-  if (!canCreateFallbackInstrument(exchange)) return { count: 0 };
+  if (!(await canCreateFallbackInstrument(exchange))) return { count: 0 };
 
   // Only a curated list for this exact exchange is safe to seed - falling
   // back to DEFAULT_EXCHANGE's list here would silently seed US tickers
@@ -1991,8 +2118,9 @@ async function hydrateDefaultFallbackInstruments(exchange: string = DEFAULT_EXCH
   return { count };
 }
 
-function canCreateFallbackInstrument(exchange: string) {
-  return Boolean(getDataProviderAdapterForExchange(exchange).getInstrumentToken);
+async function canCreateFallbackInstrument(exchange: string) {
+  const adapter = await getEligibleProviderAdapter({ exchange, capability: "instrument_token" });
+  return Boolean(adapter?.getInstrumentToken);
 }
 
 async function hydrateDefaultMarketInstruments(exchange: string = DEFAULT_EXCHANGE) {
@@ -2126,14 +2254,23 @@ async function getInstrumentsBySymbol(symbols: string[], exchange: string = DEFA
 
 async function createFallbackInstrument(symbol: string, exchange: string = DEFAULT_EXCHANGE) {
   const normalizedSymbol = normalizeSymbol(symbol);
-  const adapter = getDataProviderAdapterForExchange(exchange);
-  const instrumentToken = adapter.getInstrumentToken
-    ? await adapter.getInstrumentToken(normalizedSymbol, exchange)
+  // Tagging (which provider's instrument-token format this row uses) is
+  // separate from "which provider may we actually call right now" - the
+  // static registry mapping is fine for the tag even when the provider is
+  // currently disabled, but the token itself is only ever fetched from an
+  // eligible adapter.
+  const staticAdapter = getDataProviderAdapterForExchange(exchange);
+  const eligibleAdapter = await getEligibleProviderAdapter({
+    exchange,
+    capability: "instrument_token",
+  });
+  const instrumentToken = eligibleAdapter?.getInstrumentToken
+    ? await eligibleAdapter.getInstrumentToken(normalizedSymbol, exchange)
     : normalizedSymbol;
   const [instrument] = await db
     .insert(instruments)
     .values({
-      provider: adapter.providerKey,
+      provider: staticAdapter.providerKey,
       exchange,
       symbol: normalizedSymbol,
       name: normalizedSymbol,
@@ -2143,7 +2280,7 @@ async function createFallbackInstrument(symbol: string, exchange: string = DEFAU
     .onConflictDoUpdate({
       target: [instruments.exchange, instruments.symbol],
       set: {
-        provider: adapter.providerKey,
+        provider: staticAdapter.providerKey,
         active: true,
         updatedAt: new Date(),
       },

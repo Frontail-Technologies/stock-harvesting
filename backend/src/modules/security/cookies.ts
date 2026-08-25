@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import {
+  OAUTH_PORTAL_COOKIE_NAME,
   OAUTH_STATE_COOKIE_NAME,
   OAUTH_STATE_TTL_MINUTES,
   REFRESH_COOKIE_NAME,
@@ -44,6 +45,18 @@ export function setOauthStateCookie(res: Response, state: string) {
 
 export function clearOauthStateCookie(res: Response) {
   res.clearCookie(OAUTH_STATE_COOKIE_NAME, { path: "/" });
+}
+
+export function setOauthPortalCookie(res: Response, portal: string) {
+  res.cookie(
+    OAUTH_PORTAL_COOKIE_NAME,
+    portal,
+    secureCookieOptions(OAUTH_STATE_TTL_MINUTES * 60 * 1000)
+  );
+}
+
+export function clearOauthPortalCookie(res: Response) {
+  res.clearCookie(OAUTH_PORTAL_COOKIE_NAME, { path: "/" });
 }
 
 export function getCookie(req: Request, name: string) {

@@ -2,7 +2,9 @@ import { EodhdMarketStreamProvider } from "./providers/eodhd-market-stream.provi
 import { GlobalDatafeedsMarketStreamProvider } from "./providers/global-datafeeds-market-stream.provider";
 import { KiteMarketStreamProvider } from "./providers/kite-market-stream.provider";
 import type { MarketStreamSymbol } from "./market-stream.types";
+import { DATA_PROVIDER_KEY } from "../../shared/constants";
 import { logger } from "../../shared/logger";
+import { isProviderEnabled } from "../data-provider/data-provider-settings.service";
 
 const eodhdProvider = new EodhdMarketStreamProvider();
 const kiteProvider = new KiteMarketStreamProvider();
@@ -27,7 +29,12 @@ function splitByProvider(symbols: MarketStreamSymbol[]): {
   };
 }
 
-export function subscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {
+// Admin-disabled providers never receive new subscriptions, which also
+// means they never get a reason to reconnect - each provider class's own
+// reconnect loop is gated on "do I have active subscriptions", so simply
+// not routing new symbols to a disabled provider is sufficient here without
+// touching any of the three hand-rolled reconnect implementations.
+export async function subscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {
   const { nse, globalDatafeeds, other } = splitByProvider(symbols);
   logger.info(
     {
@@ -39,9 +46,40 @@ export function subscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {
     },
     "Market stream subscribe"
   );
-  if (other.length > 0) eodhdProvider.subscribe(other);
-  if (nse.length > 0) void kiteProvider.subscribe(nse);
-  if (globalDatafeeds.length > 0) void globalDatafeedsProvider.subscribe(globalDatafeeds);
+
+  const [eodhdEnabled, kiteEnabled, globalDatafeedsEnabled] = await Promise.all([
+    isProviderEnabled(DATA_PROVIDER_KEY.eodhd),
+    isProviderEnabled(DATA_PROVIDER_KEY.zerodha),
+    isProviderEnabled(DATA_PROVIDER_KEY.globalDatafeeds),
+  ]);
+
+  if (other.length > 0) {
+    if (eodhdEnabled) eodhdProvider.subscribe(other);
+    else logger.debug({ symbolCount: other.length }, "Realtime subscribe skipped: EODHD disabled");
+  }
+  if (nse.length > 0) {
+    if (kiteEnabled) void kiteProvider.subscribe(nse);
+    else logger.debug({ symbolCount: nse.length }, "Realtime subscribe skipped: Zerodha disabled");
+  }
+  if (globalDatafeeds.length > 0) {
+    if (globalDatafeedsEnabled) void globalDatafeedsProvider.subscribe(globalDatafeeds);
+    else
+      logger.debug(
+        { symbolCount: globalDatafeeds.length },
+        "Realtime subscribe skipped: Global DataFeeds disabled"
+      );
+  }
+}
+
+// Force-closes one provider's realtime connection - called from the admin
+// settings write path (admin.service.ts, not here, to avoid a circular
+// import between this module and data-provider-settings.service.ts) right
+// after a provider transitions enabled -> disabled, so an already-open
+// connection doesn't linger until its next natural close/reconnect cycle.
+export function closeMarketStreamProviderByKey(providerKey: string) {
+  if (providerKey === DATA_PROVIDER_KEY.eodhd) eodhdProvider.close();
+  else if (providerKey === DATA_PROVIDER_KEY.zerodha) kiteProvider.close();
+  else if (providerKey === DATA_PROVIDER_KEY.globalDatafeeds) globalDatafeedsProvider.close();
 }
 
 export function unsubscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {

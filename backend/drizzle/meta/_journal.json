@@ -64,6 +64,27 @@
       "when": 1786775090607,
       "tag": "0008_natural_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787296132825,
+      "tag": "0009_bored_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787594505120,
+      "tag": "0010_daffy_tattoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787597344609,
+      "tag": "0011_parched_human_robot",
+      "breakpoints": true
     }
   ]
 }

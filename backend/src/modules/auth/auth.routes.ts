@@ -5,39 +5,63 @@ import { env } from "../../shared/env";
 import { unauthorized } from "../../shared/errors";
 import { sendData } from "../../shared/http";
 import { asyncHandler, getAuthUserId, requireAuth, validate } from "../../shared/middleware";
-import { OAUTH_STATE_COOKIE_NAME, REFRESH_COOKIE_NAME } from "../../shared/constants";
 import {
+  OAUTH_PORTAL_COOKIE_NAME,
+  OAUTH_STATE_COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
+} from "../../shared/constants";
+import {
+  clearOauthPortalCookie,
   clearOauthStateCookie,
   clearRefreshCookie,
   getCookie,
+  setOauthPortalCookie,
   setOauthStateCookie,
   setRefreshCookie,
 } from "../security/cookies";
-import { googleCallbackQuerySchema } from "./auth.schemas";
+import { googleAuthUrlQuerySchema, googleCallbackQuerySchema } from "./auth.schemas";
 import {
   completeGoogleLogin,
   createGoogleAuthUrl,
   getCurrentUser,
+  resolveOauthDestination,
   revokeRefreshToken,
   rotateRefreshToken,
 } from "./auth.service";
 
 export const authRouter = Router();
 
-authRouter.get(AUTH_ROUTES.googleUrl, (_req, res) => {
-  const { state, url } = createGoogleAuthUrl();
-  setOauthStateCookie(res, state);
-  sendData(res, { url });
-});
+authRouter.get(
+  AUTH_ROUTES.googleUrl,
+  validate({ query: googleAuthUrlQuerySchema }),
+  (req, res) => {
+    const portal = (req.query as { portal?: "admin" }).portal ?? "main";
+    const { state, url } = createGoogleAuthUrl();
+    setOauthStateCookie(res, state);
+    setOauthPortalCookie(res, portal);
+    sendData(res, { url });
+  }
+);
 
 authRouter.get(
   AUTH_ROUTES.googleCallback,
   validate({ query: googleCallbackQuerySchema }),
   asyncHandler(async (req, res) => {
     const query = req.query as { code?: string; state?: string; error?: string };
+    // Admin-portal logins round-trip back to the admin origin instead of
+    // the main site - falls back to WEB_APP_URL if no admin host is
+    // configured, so an unset ADMIN_WEB_APP_URL behaves exactly like this
+    // feature doesn't exist.
+    const portal = getCookie(req, OAUTH_PORTAL_COOKIE_NAME);
+    const destination = resolveOauthDestination(portal, {
+      webAppUrl: env.WEB_APP_URL,
+      adminWebAppUrl: env.ADMIN_WEB_APP_URL,
+    });
+
     const redirectToLogin = (reason: string) => {
       clearOauthStateCookie(res);
-      return res.redirect(`${env.WEB_APP_URL}/login?auth=${encodeURIComponent(reason)}`);
+      clearOauthPortalCookie(res);
+      return res.redirect(`${destination.origin}/login?auth=${encodeURIComponent(reason)}`);
     };
 
     if (query.error || !query.code || !query.state) {
@@ -53,7 +77,8 @@ authRouter.get(
       const session = await completeGoogleLogin(query.code);
       setRefreshCookie(res, session.refreshToken);
       clearOauthStateCookie(res);
-      return res.redirect(`${env.WEB_APP_URL}/scanner?auth=success`);
+      clearOauthPortalCookie(res);
+      return res.redirect(`${destination.origin}${destination.successPath}?auth=success`);
     } catch {
       return redirectToLogin("failed");
     }

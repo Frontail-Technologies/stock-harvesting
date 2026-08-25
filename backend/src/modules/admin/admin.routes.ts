@@ -7,7 +7,13 @@ import {
   updateAiApiKey,
   updateAiSettings,
 } from "../ai/ai.service";
-import { SUPPORTED_AI_MODELS, type UserPlan, type UserRole } from "../../shared/constants";
+import {
+  SUPPORTED_AI_MODELS,
+  type AdPlacementKey,
+  type MonetizationMode,
+  type UserPlan,
+  type UserRole,
+} from "../../shared/constants";
 import { sendAccepted, sendData } from "../../shared/http";
 import {
   asyncHandler,
@@ -23,6 +29,7 @@ import {
   brandingBodySchema,
   collectionIdParamsSchema,
   createCollectionBodySchema,
+  dataProviderKeyParamsSchema,
   importCollectionCsvBodySchema,
   indexCandleBackfillBodySchema,
   providerConnectBodySchema,
@@ -30,6 +37,7 @@ import {
   updateAiSettingsBodySchema,
   updateAiKeyBodySchema,
   updateCollectionBodySchema,
+  updateDataProviderSettingsBodySchema,
   updateUserPlanBodySchema,
   updateUserRoleBodySchema,
   userIdParamsSchema,
@@ -39,6 +47,7 @@ import {
   createProviderConnectUrl,
   deleteUser,
   exportAdminUsersCsv,
+  getAdminDataProviderSettings,
   getAdminProviderStatus,
   getAdminProviderStatuses,
   getBrandingSettings,
@@ -49,6 +58,7 @@ import {
   triggerInstrumentSync,
   triggerPriceRefresh,
   triggerSectorClassificationSync,
+  updateAdminDataProviderSettings,
   updateBrandingSettings,
   updateUserPlan,
   updateUserRole,
@@ -63,6 +73,16 @@ import {
   updateCollection,
 } from "../market-collections/market-collections.service";
 import { collectionMembersQuerySchema } from "../market-collections/market-collections.schemas";
+import {
+  adPlacementKeyParamsSchema,
+  updateAdPlacementBodySchema,
+  updateMonetizationSettingsBodySchema,
+} from "../monetization/monetization.schemas";
+import {
+  getAdminMonetizationConfig,
+  updateAdPlacement,
+  updateMonetizationSettings,
+} from "../monetization/monetization.service";
 
 export const adminRouter = Router();
 
@@ -142,6 +162,24 @@ adminRouter.get("/data-provider/status", asyncHandler(async (_req, res) => {
 adminRouter.get("/data-provider/statuses", asyncHandler(async (_req, res) => {
   sendData(res, await getAdminProviderStatuses());
 }));
+
+adminRouter.get("/data-providers", asyncHandler(async (_req, res) => {
+  sendData(res, { providers: await getAdminDataProviderSettings() });
+}));
+
+adminRouter.put(
+  "/data-providers/:key",
+  validate({ params: dataProviderKeyParamsSchema, body: updateDataProviderSettingsBodySchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { key: string };
+    const provider = await updateAdminDataProviderSettings({
+      actorUserId: getAuthUserId(req),
+      key: params.key,
+      ...(req.body as { enabled?: boolean; priority?: number; disabledReason?: string | null }),
+    });
+    sendData(res, { provider });
+  })
+);
 
 adminRouter.post("/data-provider/connect-url", asyncHandler(async (req, res) => {
   sendData(res, await createProviderConnectUrl(getAuthUserId(req)));
@@ -284,6 +322,36 @@ adminRouter.put(
 adminRouter.delete("/ai-settings/key", asyncHandler(async (req, res) => {
   sendData(res, { key: await deleteAiApiKey({ actorUserId: getAuthUserId(req) }) });
 }));
+
+adminRouter.get("/monetization", asyncHandler(async (_req, res) => {
+  sendData(res, await getAdminMonetizationConfig());
+}));
+
+adminRouter.put(
+  "/monetization/settings",
+  validate({ body: updateMonetizationSettingsBodySchema }),
+  asyncHandler(async (req, res) => {
+    const settings = await updateMonetizationSettings({
+      actorUserId: getAuthUserId(req),
+      ...(req.body as { mode: MonetizationMode; publisherId: string | null }),
+    });
+    sendData(res, { settings });
+  })
+);
+
+adminRouter.put(
+  "/monetization/placements/:key",
+  validate({ params: adPlacementKeyParamsSchema, body: updateAdPlacementBodySchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { key: AdPlacementKey };
+    const placement = await updateAdPlacement({
+      actorUserId: getAuthUserId(req),
+      key: params.key,
+      ...(req.body as { enabled: boolean; slotId: string | null }),
+    });
+    sendData(res, { placement });
+  })
+);
 
 adminRouter.get("/market-collections", asyncHandler(async (_req, res) => {
   sendData(res, { collections: await listCollections({}) });
