@@ -107,3 +107,57 @@ export type AdminSyncJob = {
 export type AdminJobsResponse = {
   jobs: AdminSyncJob[];
 };
+
+export type MonetizationMode = "off" | "preview" | "live";
+
+export type AdminAdPlacementKey =
+  | "landing_primary"
+  | "landing_secondary"
+  | "scanner_bottom"
+  | "insights_article";
+
+export type AdminAdPlacement = {
+  key: AdminAdPlacementKey;
+  label: string;
+  description: string;
+  enabled: boolean;
+  slotId: string | null;
+  updatedAt: string | null;
+  renderable: boolean;
+};
+
+export type AdminMonetizationConfig = {
+  mode: MonetizationMode;
+  publisherId: string | null;
+  placements: AdminAdPlacement[];
+};
+
+export type AdminDataProviderCapability =
+  | "instrument_sync"
+  | "historical_daily_candles"
+  | "latest_daily_candles"
+  | "instrument_search"
+  | "instrument_token"
+  | "exchange_list"
+  | "realtime_ws";
+
+export type AdminDataProviderHealth = "disabled" | "healthy" | "error" | "unknown";
+
+export type AdminDataProviderSettingsRow = {
+  key: string;
+  displayName: string;
+  enabled: boolean;
+  priority: number;
+  disabledReason: string | null;
+  configured: boolean;
+  capabilities: AdminDataProviderCapability[];
+  health: AdminDataProviderHealth;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
+  updatedAt: string;
+};
+
+export type AdminDataProviderSettingsResponse = {
+  providers: AdminDataProviderSettingsRow[];
+};

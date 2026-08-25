@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { adminPath } from "@/utils/seo";
 import { formatAdminDate } from "../../lib/admin-formatters";
 import { useAdminMarketCollection } from "../../hooks/use-admin-market-collections";
 import { AdminCollectionImportDialog } from "./AdminCollectionImportDialog";
@@ -24,7 +25,7 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
   return (
     <div className="flex w-full flex-col gap-5">
       <Link
-        href="/admin/market-collections"
+        href={adminPath("/admin/market-collections")}
         className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />

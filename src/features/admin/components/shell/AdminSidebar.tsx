@@ -28,7 +28,16 @@ import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
 import { IS_PRODUCTION_LOCKDOWN } from "@/utils/production-lockdown";
+import { adminPath, getSiteUrl } from "@/utils/seo";
 import { ADMIN_NAV_ITEMS } from "../../constants/admin-nav";
+
+// The admin panel can live on its own host, where "/admin" must never be
+// visible in the URL bar (src/proxy.ts rewrites clean paths into the
+// internal "/admin/*" tree) - ADMIN_NAV_ITEMS still stores the internal
+// form so `pathname` (from usePathname(), which always reflects the
+// rewritten internal path) can be compared against it directly for the
+// active-link state; only the rendered href needs the stripped form.
+const SCANNER_URL = `${getSiteUrl().origin}/scanner`;
 
 type AdminSidebarProps = {
   pathname: string | null;
@@ -59,7 +68,7 @@ export function AdminSidebar({
     >
       <SidebarHeader>
         <Link
-          href="/admin/users"
+          href={adminPath("/admin/users")}
           onClick={onNavigate}
           className={cn(
             "flex min-w-0 flex-col",
@@ -116,7 +125,7 @@ export function AdminSidebar({
 
             return (
               <AdminSidebarTooltip key={item.href} label={item.label}>
-                <Link href={item.href} onClick={onNavigate}>
+                <Link href={adminPath(item.href)} onClick={onNavigate}>
                   {menuItem}
                 </Link>
               </AdminSidebarTooltip>
@@ -129,8 +138,8 @@ export function AdminSidebar({
         {collapsed ? (
           <>
             <AdminSidebarTooltip label="Open app">
-              <Link
-                href="/scanner"
+              <a
+                href={SCANNER_URL}
                 onClick={onNavigate}
                 aria-label="Open app"
                 className={cn(
@@ -139,7 +148,7 @@ export function AdminSidebar({
                 )}
               >
                 <Home className="size-4" />
-              </Link>
+              </a>
             </AdminSidebarTooltip>
             <AdminSidebarTooltip label="Change theme">
               <ThemeToggle />
@@ -182,8 +191,8 @@ export function AdminSidebar({
             <div className="flex w-full items-center justify-between gap-2">
               <SidebarTrigger className="border border-sidebar-border/70 bg-sidebar-accent/25" />
               <div className="flex items-center gap-1.5">
-                <Link
-                  href="/scanner"
+                <a
+                  href={SCANNER_URL}
                   onClick={onNavigate}
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),
@@ -191,7 +200,7 @@ export function AdminSidebar({
                   )}
                 >
                   App
-                </Link>
+                </a>
                 <ThemeToggle />
               </div>
             </div>

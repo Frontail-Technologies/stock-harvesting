@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DEFAULT_MARKET_EXCHANGE, useMarketExchanges } from "@/features/market";
+import { adminPath } from "@/utils/seo";
 import { useCreateAdminMarketCollection } from "../../hooks/use-admin-market-collections";
 import { AdminSelect } from "../users/AdminSelect";
 
@@ -53,7 +54,7 @@ export function AdminCreateCollectionDialog() {
         onSuccess: (data) => {
           setOpen(false);
           resetForm();
-          router.push(`/admin/market-collections/${data.collection.id}`);
+          router.push(adminPath(`/admin/market-collections/${data.collection.id}`));
         },
       }
     );

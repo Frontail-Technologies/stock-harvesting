@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { adminPath } from "@/utils/seo";
 import { useAdminMarketCollections } from "../../hooks/use-admin-market-collections";
 import { AdminCreateCollectionDialog } from "./AdminCreateCollectionDialog";
 
@@ -55,7 +56,7 @@ export function AdminMarketCollectionsPage() {
               <TableRow key={collection.id} className="hover:bg-muted/30">
                 <TableCell className="border-r border-border px-4">
                   <Link
-                    href={`/admin/market-collections/${collection.id}`}
+                    href={adminPath(`/admin/market-collections/${collection.id}`)}
                     className="font-medium text-foreground hover:underline"
                   >
                     {collection.code}
@@ -73,7 +74,7 @@ export function AdminMarketCollectionsPage() {
                   {collection.memberCount}
                 </TableCell>
                 <TableCell className="px-4">
-                  <Link href={`/admin/market-collections/${collection.id}`}>
+                  <Link href={adminPath(`/admin/market-collections/${collection.id}`)}>
                     <ChevronRight className="size-4 text-muted-foreground" />
                   </Link>
                 </TableCell>

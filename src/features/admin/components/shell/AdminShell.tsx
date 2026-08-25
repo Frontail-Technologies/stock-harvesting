@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSessionStore } from "@/features/auth";
+import { adminPath } from "@/utils/seo";
 import { AdminForbiddenState, AdminLoadingState } from "./AdminAccessState";
 import { AdminSidebar } from "./AdminSidebar";
 
@@ -22,8 +23,15 @@ export function AdminShell({ children }: AdminShellProps) {
   const isAdmin = status === "authenticated" && user?.role === "admin";
 
   useEffect(() => {
-    if (status === "guest") router.replace("/login");
-  }, [router, status]);
+    if (status !== "guest") return;
+    // pathname is the internal "/admin/..." route - convert back to the
+    // clean, user-visible form before handing it to AdminLoginScreen as
+    // the post-login destination.
+    const next = adminPath(pathname ?? "/admin");
+    const params = new URLSearchParams();
+    params.set("next", next);
+    router.replace(`/login?${params.toString()}`);
+  }, [pathname, router, status]);
 
   if (status === "unknown" || status === "guest") return <AdminLoadingState />;
   if (!isAdmin || !user) return <AdminForbiddenState />;

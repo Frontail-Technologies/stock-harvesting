@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
+import { adminPath } from "@/utils/seo";
 import { useConnectAdminDataProvider } from "../../hooks/use-admin-data-provider";
 
 const CONSUMED_TOKEN_STORAGE_PREFIX = "stock-harvesting:zerodha-callback-token:";
@@ -109,10 +110,10 @@ function CallbackState({
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>
         <div className="mt-5 flex justify-center">
           <Link
-            href="/admin/data-provider"
+            href={adminPath("/admin/data-providers")}
             className={cn(buttonVariants({ variant: "default", size: "default" }))}
           >
-            Back to data provider
+            Back to data providers
           </Link>
         </div>
       </section>

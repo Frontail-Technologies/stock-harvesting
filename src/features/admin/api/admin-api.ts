@@ -7,15 +7,19 @@ import type {
   MarketCollection,
 } from "@/features/market-collections";
 import type {
+  AdminAdPlacementKey,
   AdminAiKeyResponse,
   AdminAiSettingsResponse,
   AdminDataProviderConnectResponse,
   AdminDataProviderConnectUrlResponse,
+  AdminDataProviderSettingsResponse,
   AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
   AdminJobsResponse,
+  AdminMonetizationConfig,
   AdminUserFilters,
   AdminUsersResponse,
+  MonetizationMode,
 } from "../types";
 
 function withQuery(path: string, query: Record<string, string | number | undefined>) {
@@ -102,6 +106,48 @@ export function updateAdminAiKey(input: { apiKey: string }) {
 export function deleteAdminAiKey() {
   return apiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey, {
     method: "DELETE",
+  });
+}
+
+export function getAdminMonetization() {
+  return apiFetch<AdminMonetizationConfig>(API_ROUTES.admin.monetization);
+}
+
+export function updateAdminMonetizationSettings(input: {
+  mode: MonetizationMode;
+  publisherId: string | null;
+}) {
+  return apiFetch<{ settings: unknown }>(API_ROUTES.admin.monetizationSettings, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateAdminMonetizationPlacement(input: {
+  key: AdminAdPlacementKey;
+  enabled: boolean;
+  slotId: string | null;
+}) {
+  return apiFetch<{ placement: unknown }>(API_ROUTES.admin.monetizationPlacement(input.key), {
+    method: "PUT",
+    body: JSON.stringify({ enabled: input.enabled, slotId: input.slotId }),
+  });
+}
+
+export function getAdminDataProviders() {
+  return apiFetch<AdminDataProviderSettingsResponse>(API_ROUTES.admin.dataProviders);
+}
+
+export function updateAdminDataProviderSettings(input: {
+  key: string;
+  enabled?: boolean;
+  priority?: number;
+  disabledReason?: string | null;
+}) {
+  const { key, ...body } = input;
+  return apiFetch<{ provider: unknown }>(API_ROUTES.admin.dataProviderSettings(key), {
+    method: "PUT",
+    body: JSON.stringify(body),
   });
 }
 
