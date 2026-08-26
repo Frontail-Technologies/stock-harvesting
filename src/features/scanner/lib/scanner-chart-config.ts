@@ -100,13 +100,23 @@ export function scannerCrosshairOptions(
   return {
     mode: CrosshairMode.Normal,
     vertLine: {
-      visible,
+      // The native line always renders on the chart's own canvas, which
+      // sits BELOW the drawing overlay's SVG (z-index 14) in the DOM - any
+      // committed vertical-line/horizontal-line drawing (or any other
+      // overlay content) would always paint over it. DrawingOverlay draws
+      // its own crosshair lines on top of everything instead (see
+      // CustomCrosshair there); this native line stays off so the two
+      // don't double-render. labelVisible is untouched - the axis price/
+      // time readout still uses the native crosshair position.
+      visible: false,
+      labelVisible: visible,
       color: getScannerChartTheme(theme).crosshair,
       width: 1 as const,
       style: LineStyle.Dashed,
     },
     horzLine: {
-      visible,
+      visible: false,
+      labelVisible: visible,
       color: getScannerChartTheme(theme).crosshair,
       width: 1 as const,
       style: LineStyle.Dashed,

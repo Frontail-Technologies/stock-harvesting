@@ -22,14 +22,17 @@ const sizeClasses = {
   sm: {
     root: "h-10",
     image: "h-10",
+    text: "text-xl",
   },
   md: {
     root: "h-12",
     image: "h-12",
+    text: "text-2xl",
   },
   lg: {
     root: "h-16",
     image: "h-16",
+    text: "text-3xl",
   },
 };
 
@@ -42,9 +45,10 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const classes = sizeClasses[size];
   const { theme } = useTheme();
+  const resolvedTheme = forceTheme ?? theme;
 
   return (
-    <span className={cn("inline-flex items-center", classes.root, className)}>
+    <span className={cn("inline-flex items-center gap-2", classes.root, className)}>
       <span
         className={cn(
           "relative inline-flex h-full shrink-0 overflow-visible",
@@ -53,15 +57,30 @@ export function BrandLogo({
         aria-hidden="true"
       >
         <Image
-          src={getBrandLogoPath(forceTheme ?? theme)}
+          src={getBrandLogoPath(resolvedTheme)}
           alt=""
           width={420}
-          height={160}
+          height={420}
           loading="eager"
           className={cn("h-full w-auto max-w-none object-contain", classes.image)}
         />
       </span>
-      {textClassName ? <span className="sr-only">Stock Harvesting</span> : null}
+      {/* The mark-only artwork has no wordmark baked in anymore - "Stock"
+          follows the resolved theme's ink color the same way the mark
+          itself does, "Harvesting" stays the brand gold in both themes,
+          matching the previous cropped artwork's own two-tone wordmark. */}
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-baseline gap-1 font-bold leading-none tracking-tight whitespace-nowrap",
+          classes.text,
+          textClassName,
+        )}
+      >
+        <span className={resolvedTheme === "dark" ? "text-white" : "text-foreground"}>
+          Stock
+        </span>
+        <span className="text-brand-gold">Harvesting</span>
+      </span>
     </span>
   );
 }

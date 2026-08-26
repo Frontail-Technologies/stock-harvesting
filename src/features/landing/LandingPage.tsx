@@ -14,7 +14,7 @@ import { SmoothScroll } from "./components/SmoothScroll";
 
 export function LandingPage() {
   return (
-    <div className="t">
+    <div className="landing-root">
       <SmoothScroll />
       <Navbar />
       <AdsenseScript placementKeys={["landing_primary", "landing_secondary"]} />

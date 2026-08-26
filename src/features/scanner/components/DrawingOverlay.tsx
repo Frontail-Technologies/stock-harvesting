@@ -1558,6 +1558,37 @@ export function DrawingOverlay({
     }
   }, [chart, drawing.activeTool, drawing.crosshairActive]);
 
+  // The native crosshair lines are turned off (see scannerCrosshairOptions)
+  // because they render on the chart's own canvas, which sits below this
+  // overlay's SVG - any drawing on top of the chart would always paint over
+  // them. Tracking the position here instead lets the crosshair below be
+  // drawn as the last elements in the drawing SVG, guaranteeing it's above
+  // every committed drawing (including yellow vertical/horizontal-line
+  // annotations) rather than hidden behind them.
+  const [crosshairPoint, setCrosshairPoint] = useState<ScreenPoint | null>(null);
+
+  useEffect(() => {
+    const handleCrosshairMove = (param: { point?: { x: number; y: number } }) => {
+      setCrosshairPoint(param.point ? { x: param.point.x, y: param.point.y } : null);
+    };
+
+    try {
+      chart.subscribeCrosshairMove(handleCrosshairMove);
+    } catch {
+      return;
+    }
+
+    return () => {
+      try {
+        chart.unsubscribeCrosshairMove(handleCrosshairMove);
+      } catch {
+      }
+    };
+  }, [chart]);
+
+  const showCustomCrosshair =
+    drawing.crosshairActive && isCursorTool(drawing.activeTool) && crosshairPoint !== null;
+
   const getScreenPointFromEvent = (event: {
     clientX: number;
     clientY: number;
@@ -2194,6 +2225,30 @@ export function DrawingOverlay({
             size={{ x: size.width, y: size.height }}
             onPointerDown={handleMeasurementPointerDown}
           />
+        )}
+        {showCustomCrosshair && crosshairPoint && (
+          <g pointerEvents="none">
+            <line
+              x1={0}
+              y1={crosshairPoint.y}
+              x2={size.width}
+              y2={crosshairPoint.y}
+              stroke="var(--scanner-crosshair)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              vectorEffect="non-scaling-stroke"
+            />
+            <line
+              x1={crosshairPoint.x}
+              y1={0}
+              x2={crosshairPoint.x}
+              y2={size.height}
+              stroke="var(--scanner-crosshair)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              vectorEffect="non-scaling-stroke"
+            />
+          </g>
         )}
       </svg>
 

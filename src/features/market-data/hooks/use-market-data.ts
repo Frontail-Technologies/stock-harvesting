@@ -286,7 +286,7 @@ export function useCandles(input: CandleListInput) {
       const response = await getCandles(input);
       return response.candles;
     },
-    enabled: authStatus !== "unknown" && Boolean(input.symbol),
+    enabled: authStatus !== "unknown" && Boolean(input.symbol) && Boolean(input.exchange),
     retry: false,
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,

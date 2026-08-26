@@ -243,16 +243,23 @@ export function ScannerChartStage({
       }}
     >
       <div ref={containerRef} className="relative z-10 h-full w-full" />
-      <div className="pointer-events-none absolute bottom-9 right-20 z-20 flex max-w-27.5 select-none justify-end bg-transparent opacity-80 sm:bottom-10 sm:right-20 sm:max-w-45">
+      <div className="pointer-events-none absolute bottom-9 right-20 z-20 flex select-none items-center gap-1.5 bg-transparent opacity-80 sm:bottom-10 sm:right-20">
         <NextImage
           src={getBrandLogoPath(theme)}
           alt=""
           width={220}
           height={70}
           loading="eager"
-          className="h-6 w-auto object-contain sm:h-9"
+          className="h-6 w-auto shrink-0 object-contain sm:h-9"
           unoptimized
         />
+        <span
+          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-sm font-bold leading-none tracking-tight sm:text-lg"
+          style={{ color: getScreenshotTextColors(theme).text }}
+        >
+          <span>Stock</span>
+          <span style={{ color: getScreenshotTextColors(theme).primary }}>Harvesting</span>
+        </span>
       </div>
       <ChartInfoOverlay
         stock={stock}
@@ -788,12 +795,37 @@ async function drawBottomRightScreenshotLogo(
     const scale = Math.min(maxWidth / imageWidth, maxHeight / imageHeight);
     const width = imageWidth * scale;
     const height = imageHeight * scale;
-    const x = rect.width - width - 72;
+
+    // "Stock Harvesting" wordmark, same two-tone convention as the live
+    // on-chart watermark (BrandLogo) and sized off the logo mark's own
+    // height so the two stay proportional to each other.
+    const colors = getScreenshotTextColors(theme);
+    const gap = 10;
+    const fontSize = Math.round(height * 0.42);
+    context.font = `700 ${fontSize}px Arial, sans-serif`;
+    const stockText = "Stock";
+    const harvestingText = "Harvesting";
+    const wordGap = fontSize * 0.18;
+    const stockWidth = context.measureText(stockText).width;
+    const harvestingWidth = context.measureText(harvestingText).width;
+    const textWidth = stockWidth + wordGap + harvestingWidth;
+
+    const totalWidth = width + gap + textWidth;
+    const x = rect.width - totalWidth - 72;
     const y = rect.height - height - 42;
 
     context.save();
     context.globalAlpha = 0.92;
     context.drawImage(image, x, y, width, height);
+
+    context.textBaseline = "alphabetic";
+    const textY = y + height * 0.72;
+    let textX = x + width + gap;
+    context.fillStyle = colors.text;
+    context.fillText(stockText, textX, textY);
+    textX += stockWidth + wordGap;
+    context.fillStyle = colors.primary;
+    context.fillText(harvestingText, textX, textY);
     context.restore();
   } catch {}
 }

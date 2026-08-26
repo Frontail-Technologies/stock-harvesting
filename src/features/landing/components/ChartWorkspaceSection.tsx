@@ -47,14 +47,14 @@ function ChartReviewIllustration() {
             y={30}
             width={to - from}
             height={210}
-            fill="rgb(245 184 0 / 0.1)"
+            fill="var(--landing-highlight-fill)"
           />
         );
       })}
 
-      <line x1="0" y1="240" x2="640" y2="240" stroke="rgb(255 255 255 / 0.08)" />
+      <line x1="0" y1="240" x2="640" y2="240" stroke="var(--landing-border)" />
       {[60, 120, 180].map((y) => (
-        <line key={y} x1="624" y1={y} x2="636" y2={y} stroke="rgb(255 255 255 / 0.22)" />
+        <line key={y} x1="624" y1={y} x2="636" y2={y} stroke="var(--landing-diagram-secondary)" />
       ))}
 
       <g
@@ -82,7 +82,7 @@ function ChartReviewIllustration() {
               y={290 - c.volume}
               width="7"
               height={c.volume}
-              fill="rgb(255 255 255 / 0.12)"
+              fill="var(--landing-diagram-secondary)"
             />
           </g>
         ))}
@@ -146,7 +146,7 @@ function SaveExportIllustration() {
         width={frame.width}
         height={frame.height}
         fill="none"
-        stroke="rgb(255 255 255 / 0.16)"
+        stroke="var(--landing-border-strong)"
       />
       <MiniChartMarks frame={frame} />
 
@@ -166,7 +166,7 @@ function SaveExportIllustration() {
         y1={midY}
         x2={out.x}
         y2={midY}
-        stroke="rgb(255 255 255 / 0.3)"
+        stroke="var(--landing-diagram-primary)"
         strokeDasharray="3 3"
       />
       <rect
@@ -179,7 +179,7 @@ function SaveExportIllustration() {
 
       <g
       >
-        <rect x={out.x} y={out.y} width={out.width} height={out.height} fill="none" stroke="rgb(255 255 255 / 0.28)" />
+        <rect x={out.x} y={out.y} width={out.width} height={out.height} fill="none" stroke="var(--landing-border-strong)" />
         <rect x={out.x + out.width / 2 - 3} y={out.y + out.height / 2 - 3} width="6" height="6" fill="var(--brand-gold)" />
       </g>
 
@@ -223,12 +223,12 @@ function ShareReviewIllustration() {
         width={frame.width}
         height={frame.height}
         fill="none"
-        stroke="rgb(255 255 255 / 0.16)"
+        stroke="var(--landing-border-strong)"
       />
       <MiniChartMarks frame={frame} />
 
       <g
-        stroke="rgb(255 255 255 / 0.28)"
+        stroke="var(--landing-diagram-primary)"
         strokeWidth="1"
         fill="none"
       >
@@ -251,8 +251,8 @@ function ShareReviewIllustration() {
       >
         {REVIEWER_NODES.map((n) => (
           <g key={n.y}>
-            <circle cx={n.x} cy={n.y} r="8" fill="none" stroke="rgb(255 255 255 / 0.4)" strokeWidth="1" />
-            <circle cx={n.x} cy={n.y} r="1.6" fill="rgb(255 255 255 / 0.45)" />
+            <circle cx={n.x} cy={n.y} r="8" fill="none" stroke="var(--landing-diagram-primary)" strokeWidth="1" />
+            <circle cx={n.x} cy={n.y} r="1.6" fill="var(--landing-diagram-primary)" />
           </g>
         ))}
       </g>
@@ -271,7 +271,7 @@ export function ChartWorkspaceSection() {
   return (
     <section
       id="chart-workspace"
-      className="landing-section relative overflow-hidden border-t border-white/8"
+      className="landing-section relative overflow-hidden border-t border-landing-border"
       aria-labelledby="workspace-heading"
     >
       <div className="absolute inset-0 landing-container" aria-hidden="true">

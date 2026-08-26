@@ -36,7 +36,7 @@ export function HeroWorldMap() {
         height={MAP_HEIGHT}
         mapSamples={2400}
         dotRadius={0.3}
-        dotColor="rgb(255 255 255 / 0.1)"
+        dotColor="var(--landing-dot)"
         markers={COUNTRY_MARKERS}
         renderMarkerOverlay={({ marker, index, x, y }) => {
           const primary = marker.tier === "primary";
@@ -64,7 +64,7 @@ export function HeroWorldMap() {
                 width={fw}
                 height={fh}
                 fill="none"
-                stroke={primary ? "var(--brand-gold)" : "rgb(255 255 255 / 0.35)"}
+                stroke={primary ? "var(--brand-gold)" : "var(--landing-border-strong)"}
                 strokeWidth="0.3"
               />
               <text

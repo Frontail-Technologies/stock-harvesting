@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/utils/cn";
 import {
   buildRedditShareUrl,
   buildTelegramShareUrl,
@@ -23,13 +24,14 @@ type ShareMenuProps = {
   stock: Stock;
   compact?: boolean;
   className?: string;
+  disabled?: boolean;
 };
 
 function openShareWindow(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function ShareMenu({ stock, compact, className }: ShareMenuProps) {
+export function ShareMenu({ stock, compact, className, disabled }: ShareMenuProps) {
   const shareUrl = getScannerShareUrl(stock);
   const caption = getScannerShareCaption(stock);
 
@@ -40,8 +42,12 @@ export function ShareMenu({ stock, compact, className }: ShareMenuProps) {
           <TooltipTrigger
             render={
               <DropdownMenuTrigger
+                disabled={disabled}
                 aria-label="Share chart"
-                className={`flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 ${className ?? ""}`}
+                className={cn(
+                  "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground",
+                  className
+                )}
               />
             }
           >
@@ -51,13 +57,15 @@ export function ShareMenu({ stock, compact, className }: ShareMenuProps) {
           <TooltipTrigger
             render={
               <DropdownMenuTrigger
+                disabled={disabled}
                 render={
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     aria-label="Share chart"
-                    className={`cursor-pointer ${className ?? ""}`}
+                    disabled={disabled}
+                    className={cn("cursor-pointer", className)}
                   />
                 }
               />

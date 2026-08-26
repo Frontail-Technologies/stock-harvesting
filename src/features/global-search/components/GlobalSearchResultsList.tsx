@@ -13,7 +13,24 @@ type GlobalSearchResultsListProps = {
   onSelect: (stock: Stock) => void;
   listId?: string;
   className?: string;
+  // Shown before the user has typed anything - a restrained hint rather
+  // than leaving the results area looking blank/broken. Omit to render
+  // nothing before a query exists (the original behavior).
+  emptyBeforeQuery?: string;
 };
+
+// First letters of the company name (falling back to the symbol when a
+// name isn't available) - same "first letter of first two words, else
+// first two characters" convention as getAvatarInitials, just sourced
+// from stock data instead of a person's name/email.
+function getStockBadgeText(stock: Stock): string {
+  const source = (stock.name || stock.symbol).trim();
+  const words = source.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
 
 // Shared by every search presentation - one place that decides how a
 // result row (symbol / company name / exchange), the loading state, the
@@ -29,8 +46,16 @@ export function GlobalSearchResultsList({
   onSelect,
   listId,
   className,
+  emptyBeforeQuery,
 }: GlobalSearchResultsListProps) {
-  if (!hasQuery) return null;
+  if (!hasQuery) {
+    if (!emptyBeforeQuery) return null;
+    return (
+      <div className={cn("flex items-start justify-center px-3 pt-12 pb-10 text-xs text-muted-foreground/80", className)}>
+        {emptyBeforeQuery}
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -57,7 +82,7 @@ export function GlobalSearchResultsList({
   }
 
   return (
-    <ul id={listId} role="listbox" className={cn("py-1", className)}>
+    <ul id={listId} role="listbox" className={cn("divide-y divide-border/60 py-1", className)}>
       {results.map((stock, index) => {
         const active = index === highlightedIndex;
         return (
@@ -71,21 +96,28 @@ export function GlobalSearchResultsList({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect(stock)}
               className={cn(
-                "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors",
-                active ? "bg-accent text-accent-foreground" : "text-popover-foreground"
+                "flex min-h-[48px] w-full items-center gap-3 border-l-2 px-3 text-left transition-colors",
+                active
+                  ? "border-l-primary bg-primary/10"
+                  : "border-l-transparent text-popover-foreground hover:border-l-primary/40 hover:bg-muted/50"
               )}
             >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold text-foreground">
-                  {stock.symbol}
-                </span>
-                {stock.name && (
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {stock.name}
-                  </span>
-                )}
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[0.65rem] font-bold tracking-tight text-primary"
+              >
+                {getStockBadgeText(stock)}
               </span>
-              <span className="shrink-0 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-muted-foreground">
+
+              <span className="w-28 shrink-0 truncate text-sm font-semibold text-foreground">
+                {stock.symbol}
+              </span>
+
+              <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                {stock.name}
+              </span>
+
+              <span className="shrink-0 font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
                 {stock.exchange}
               </span>
             </button>

@@ -19,6 +19,7 @@ type ChartSnapshotMenuProps = {
   stock: Stock;
   compact?: boolean;
   className?: string;
+  disabled?: boolean;
 };
 
 // Short cooldown after any action click, not a real completion signal (the
@@ -28,7 +29,7 @@ type ChartSnapshotMenuProps = {
 // what the user experienced as a single click.
 const ACTION_COOLDOWN_MS = 1200;
 
-export function ChartSnapshotMenu({ compact, className }: ChartSnapshotMenuProps) {
+export function ChartSnapshotMenu({ compact, className, disabled }: ChartSnapshotMenuProps) {
   const requestCapture = useScannerUiStore((state) => state.requestCapture);
   const [busy, setBusy] = useState(false);
   // navigator.share support is read once on mount (client-only, avoids an
@@ -75,12 +76,14 @@ export function ChartSnapshotMenu({ compact, className }: ChartSnapshotMenuProps
         <TooltipTrigger
           render={
             <DropdownMenuTrigger
+              disabled={disabled}
               render={
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   aria-label="Chart snapshot"
+                  disabled={disabled}
                   className={cn("cursor-pointer", className)}
                 />
               }

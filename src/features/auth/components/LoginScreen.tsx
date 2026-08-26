@@ -91,7 +91,7 @@ function GrainHead({
   delay: number;
 }) {
   const armLength = mature ? 7 : 5;
-  const strokeColor = mature ? "rgb(245 184 0 / 0.55)" : "rgb(255 255 255 / 0.22)";
+  const strokeColor = mature ? "rgb(245 184 0 / 0.55)" : "var(--landing-diagram-secondary)";
   const arms = mature
     ? [
         [x, y, x - armLength, y - armLength * 0.7],
@@ -116,7 +116,7 @@ function GrainHead({
           strokeWidth={mature ? 1.25 : 1}
         />
       ))}
-      <circle cx={x} cy={y} r={mature ? 3 : 2} fill={mature ? "var(--brand-gold)" : "rgb(255 255 255 / 0.24)"} />
+      <circle cx={x} cy={y} r={mature ? 3 : 2} fill={mature ? "var(--brand-gold)" : "var(--landing-diagram-secondary)"} />
     </g>
   );
 
@@ -156,7 +156,7 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
         <motion.path
           key={d}
           d={d}
-          stroke="rgb(255 255 255 / 0.14)"
+          stroke="var(--landing-diagram-secondary)"
           strokeWidth="1"
           fill="none"
           initial={{ pathLength: 0 }}
@@ -172,12 +172,12 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
           y={p.y}
           width={p.size}
           height={p.size}
-          fill={`rgb(255 255 255 / ${p.opacity})`}
+          fill={`rgb(var(--landing-fg-rgb) / calc(${p.opacity} * var(--landing-noise-scale)))`}
         />
       ))}
 
       {FIELD_ROW_LINES.map((d) => (
-        <path key={d} d={d} stroke="rgb(255 255 255 / 0.045)" strokeWidth="1" fill="none" />
+        <path key={d} d={d} stroke="var(--landing-grid-line)" strokeWidth="1" fill="none" />
       ))}
 
       {FIELD_STALKS.map((s, i) => {
@@ -189,7 +189,7 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
               y1={s.groundY}
               x2={s.x}
               y2={s.topY}
-              stroke={mature ? "rgb(245 184 0 / 0.4)" : "rgb(255 255 255 / 0.16)"}
+              stroke={mature ? "rgb(245 184 0 / 0.4)" : "var(--landing-diagram-faint)"}
               strokeWidth="1"
             />
             <GrainHead x={s.x} y={s.topY} mature={mature} delay={1.1 + i * 0.05} />
@@ -257,9 +257,9 @@ export function LoginScreen() {
 
   if (status !== "guest") {
     return (
-      <div className="grid min-h-dvh place-items-center bg-brand-charcoal px-4">
+      <div className="grid min-h-dvh place-items-center bg-landing-bg px-4">
         {showChecking && (
-          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80">
+          <div className="flex items-center gap-2 rounded-lg border border-landing-border bg-landing-fg/5 px-4 py-3 text-sm font-medium text-landing-text-strong">
             <Spinner size="sm" />
             Checking session...
           </div>
@@ -269,7 +269,7 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="login-split bg-brand-charcoal">
+    <div className="login-split bg-landing-bg">
       <div className="login-visual" aria-hidden="true">
         <div className="login-visual-grid" />
         <SignalHarvestIllustration />
@@ -284,18 +284,18 @@ export function LoginScreen() {
         </div>
 
         <div className="login-auth-surface">
-          <BrandLogo size="md" forceTheme="dark" />
+          <BrandLogo size="md" />
 
-          <h1 className="mt-8 text-2xl font-bold tracking-tight text-white">
+          <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
             Welcome back
           </h1>
-          <p className="mt-2 text-sm text-white/55">
+          <p className="mt-2 text-sm text-landing-text-secondary">
             Sign in to continue to your Stock Harvesting workspace.
           </p>
 
           <Button
             variant="outline"
-            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-white/15 bg-white/5 text-base font-semibold text-white shadow-sm hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed"
+            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
             onClick={handleGoogleLogin}
             disabled={googleLogin.isPending}
           >
@@ -308,13 +308,13 @@ export function LoginScreen() {
           </Button>
 
           {error && (
-            <p className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-white/60">
+            <p className="mt-4 rounded-lg border border-landing-border bg-landing-fg/5 px-3 py-2 text-center text-sm text-landing-text-body">
               {error}
             </p>
           )}
 
-          <div className="mt-6 border-t border-white/8 pt-4">
-            <p className="text-xs text-white/35">Secure authentication via Google</p>
+          <div className="mt-6 border-t border-landing-border pt-4">
+            <p className="text-xs text-landing-text-muted">Secure authentication via Google</p>
           </div>
         </div>
       </div>

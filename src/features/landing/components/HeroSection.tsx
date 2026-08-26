@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { HeroWorldMap } from "./HeroWorldMap";
 import { HeroWorldMapMobile } from "./HeroWorldMapMobile";
-import { LandingHeroSearch } from "./LandingHeroSearch";
 import { LandingOpenWorkspaceLink } from "./LandingOpenWorkspaceLink";
 
 export function HeroSection() {
@@ -37,7 +36,7 @@ export function HeroSection() {
         </h1>
 
         <p
-          className="landing-reveal max-w-xl text-base md:text-lg text-white/65 leading-relaxed mt-5"
+          className="landing-reveal max-w-xl text-base md:text-lg text-landing-text-secondary leading-relaxed mt-5"
           style={{ "--landing-reveal-delay": "0.12s" } as CSSProperties}
         >
           Surface relevant market context and review it in one focused
@@ -45,15 +44,8 @@ export function HeroSection() {
         </p>
 
         <div
-          className="landing-reveal w-full px-6 mt-7"
+          className="landing-reveal flex flex-wrap items-center justify-center gap-3 mt-8"
           style={{ "--landing-reveal-delay": "0.15s" } as CSSProperties}
-        >
-          <LandingHeroSearch />
-        </div>
-
-        <div
-          className="landing-reveal flex flex-wrap items-center justify-center gap-3 mt-5"
-          style={{ "--landing-reveal-delay": "0.2s" } as CSSProperties}
         >
           <LandingOpenWorkspaceLink id="hero-cta-primary" />
           <Link

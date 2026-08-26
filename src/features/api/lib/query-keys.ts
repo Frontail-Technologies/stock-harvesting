@@ -88,7 +88,6 @@ export const queryKeys = {
       ["scanner", "workspace-drawings", input] as const,
     backtest: (input: { symbol: string; exchange?: string; lookback?: string }) =>
       ["scanner", "backtest", input] as const,
-    defaultStock: (exchange: string) => ["scanner", "default-stock", exchange] as const,
   },
   admin: {
     usersRoot: ["admin", "users"] as const,

@@ -96,7 +96,7 @@ export function useScannerResults(
       });
       return mapScannerResultsToScanBands(response.results);
     },
-    enabled: authStatus === "authenticated" && enabled && Boolean(symbol),
+    enabled: authStatus === "authenticated" && enabled && Boolean(symbol) && Boolean(exchange),
     retry: false,
     staleTime: 10 * 60_000,
     gcTime: 30 * 60_000,
@@ -106,45 +106,6 @@ export function useScannerResults(
     ...query,
     scanBands: query.data ?? [],
   };
-}
-
-const PLAUSIBLE_EQUITY_SYMBOL_PATTERN = /^[A-Z][A-Z0-9.-]{0,9}$/;
-
-export function useExchangeDefaultStock(exchange: string, enabled: boolean) {
-  const authStatus = useSessionStore((state) => state.status);
-  const query = useQuery({
-    queryKey: queryKeys.scanner.defaultStock(exchange),
-    queryFn: async (): Promise<Stock | null> => {
-      const response = await getStocks({
-        exchange,
-        limit: 25,
-        sortBy: "name",
-        sortDirection: "asc",
-        includeUnpriced: true,
-      });
-      const stock =
-        response.stocks.find((row) => PLAUSIBLE_EQUITY_SYMBOL_PATTERN.test(row.symbol)) ??
-        response.stocks[0];
-      if (!stock) return null;
-
-      return {
-        symbol: stock.symbol,
-        name: stock.name,
-        exchange: stock.exchange,
-        close: stock.close ?? 0,
-        changePct: stock.changePct ?? null,
-        volume: stock.volume ?? 0,
-        open: stock.open,
-        hasMarketData: stock.close !== undefined,
-      };
-    },
-    enabled: authStatus === "authenticated" && enabled && Boolean(exchange),
-    retry: false,
-    staleTime: 60 * 60_000,
-    gcTime: 60 * 60_000,
-  });
-
-  return query.data ?? null;
 }
 
 export function useScannerBacktest(
@@ -157,7 +118,7 @@ export function useScannerBacktest(
   const query = useQuery({
     queryKey: queryKeys.scanner.backtest({ symbol, exchange, lookback }),
     queryFn: () => getScannerBacktest({ symbol, exchange, lookback }),
-    enabled: authStatus === "authenticated" && enabled && Boolean(symbol),
+    enabled: authStatus === "authenticated" && enabled && Boolean(symbol) && Boolean(exchange),
     retry: false,
     staleTime: 10 * 60_000,
     gcTime: 30 * 60_000,

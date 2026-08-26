@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 const PRODUCT_LINKS = [
   { label: "Analysis", href: "#scanner-method" },
@@ -25,7 +25,7 @@ export function Footer() {
         <div className="landing-footer-main">
           <div className="landing-footer-brand">
             <Link href="/" aria-label="Stock Harvesting home" className="w-fit">
-              <Image src="/images/logo-dark-cropped.png" alt="Stock Harvesting" width={210} height={80} className="h-10 w-auto" />
+              <BrandLogo size="sm" />
             </Link>
             <p className="landing-footer-description">
               Stock intelligence and chart review workspace built for focused

@@ -23,6 +23,7 @@ import { useDeletePriceAlert, usePriceAlerts } from "../hooks/use-price-alerts";
 
 type ScannerPriceAlertMenuProps = {
   stock: Stock;
+  disabled?: boolean;
 };
 
 // A target/condition carried over from a different symbol would be stale,
@@ -30,7 +31,7 @@ type ScannerPriceAlertMenuProps = {
 // key={`${exchange}:${symbol}`} so switching stocks remounts it with a
 // clean draft (and closes an open popover/sheet) instead of resetting
 // state inside an effect.
-export function ScannerPriceAlertMenu({ stock }: ScannerPriceAlertMenuProps) {
+export function ScannerPriceAlertMenu({ stock, disabled }: ScannerPriceAlertMenuProps) {
   const [open, setOpen] = useState(false);
   // Decided by real viewport width, not by which TopToolbar row this
   // instance happens to be mounted in - a 320px popover can still feel
@@ -140,7 +141,8 @@ export function ScannerPriceAlertMenu({ stock }: ScannerPriceAlertMenuProps) {
 
   const triggerClassName = cn(
     "inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60",
-    open && "bg-muted text-primary"
+    open && "bg-muted text-primary",
+    "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
   );
 
   const formBody = (
@@ -177,7 +179,13 @@ export function ScannerPriceAlertMenu({ stock }: ScannerPriceAlertMenuProps) {
       <Sheet open={open} onOpenChange={setOpen}>
         <Tooltip>
           <TooltipTrigger
-            render={<SheetTrigger className={triggerClassName} aria-label="Price alerts" />}
+            render={
+              <SheetTrigger
+                disabled={disabled}
+                className={triggerClassName}
+                aria-label="Price alerts"
+              />
+            }
           >
             <Bell className="size-4" />
           </TooltipTrigger>
@@ -199,7 +207,13 @@ export function ScannerPriceAlertMenu({ stock }: ScannerPriceAlertMenuProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger
-          render={<PopoverTrigger className={triggerClassName} aria-label="Price alerts" />}
+          render={
+            <PopoverTrigger
+              disabled={disabled}
+              className={triggerClassName}
+              aria-label="Price alerts"
+            />
+          }
         >
           <Bell className="size-4" />
         </TooltipTrigger>

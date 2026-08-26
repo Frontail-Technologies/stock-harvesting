@@ -65,6 +65,22 @@
   --color-brand-light: var(--brand-light);
   --color-brand-text-dark: var(--brand-text-dark);
   --color-brand-muted: var(--brand-muted);
+  --color-landing-bg: var(--landing-bg);
+  --color-landing-fg: rgb(var(--landing-fg-rgb));
+  --color-landing-text-strong: var(--landing-text-strong);
+  --color-landing-text-body: var(--landing-text-body);
+  --color-landing-text-secondary: var(--landing-text-secondary);
+  --color-landing-text-muted: var(--landing-text-muted);
+  --color-landing-text-subtle: var(--landing-text-subtle);
+  --color-landing-border-strong: var(--landing-border-strong);
+  --color-landing-border: var(--landing-border);
+  --color-landing-grid-line: var(--landing-grid-line);
+  --color-landing-dot: var(--landing-dot);
+  --color-landing-accent: var(--landing-accent);
+  --color-landing-accent-text: var(--landing-accent-text);
+  --color-landing-diagram-primary: var(--landing-diagram-primary);
+  --color-landing-diagram-secondary: var(--landing-diagram-secondary);
+  --color-landing-diagram-faint: var(--landing-diagram-faint);
 }
 
 :root {
@@ -121,6 +137,68 @@
   --brand-light: #fbfaf6;
   --brand-text-dark: #171816;
   --brand-muted: #68665f;
+  /* Landing/Login marketing surface. Same light-default/.dark-override
+     pattern as every other token above - dark values here match the
+     page's original hardcoded charcoal palette exactly (zero visual
+     change in dark mode), light values are the new warm-light palette. */
+  --landing-bg: #fbfaf6;
+  --landing-fg-rgb: 23 24 22;
+  --landing-shadow: rgb(23 24 22 / 0.14);
+
+  /* Text/border/grid contrast tiers - independently tuned per theme, not
+     a mirrored opacity. The original light-mode pass reused each dark
+     rule's white-on-charcoal alpha verbatim as ink-on-off-white; a low
+     alpha that reads as legible dim white against near-black collapses to
+     near-invisible as dim near-black against this near-white background
+     (e.g. 0.5 alpha here is ~3.4:1 contrast, under the 4.5:1 body-text
+     bar - the exact "washed out" complaint). Each tier below was picked
+     against WCAG contrast math for THIS background, not copied from the
+     dark figure alongside it.
+     text-primary: headings - full ink already (rgb(var(--landing-fg-rgb))
+       with no alpha), no token needed.
+     text-strong:    ~11:1  - near-primary copy (ghost button, FAQ question,
+                              exchange name, analysis row label)
+     text-body:      ~6.9:1 - running body copy (root default, nav links)
+     text-secondary: ~5.6:1 - supporting paragraphs under headings
+     text-muted:     ~3.9:1 - metadata/annotation labels, still legible
+     border-strong:  a visible-but-soft card/divider outline
+     border:         the common row/card separator - present, not a ruled table
+     grid-line:      diagram/illustration grid - was ~1:1 (invisible), now
+                      actually reads as a grid
+     dot:            decorative dot patterns (hero globe dots)
+     watermark:      the giant footer wordmark - stays deliberately faint */
+  --landing-text-strong: rgb(var(--landing-fg-rgb) / 0.85);
+  --landing-text-body: rgb(var(--landing-fg-rgb) / 0.72);
+  --landing-text-secondary: rgb(var(--landing-fg-rgb) / 0.66);
+  --landing-text-muted: rgb(var(--landing-fg-rgb) / 0.55);
+  --landing-text-subtle: rgb(var(--landing-fg-rgb) / 0.42);
+  --landing-border-strong: rgb(var(--landing-fg-rgb) / 0.18);
+  --landing-border: rgb(var(--landing-fg-rgb) / 0.13);
+  --landing-grid-line: rgb(var(--landing-fg-rgb) / 0.14);
+  --landing-dot: rgb(var(--landing-fg-rgb) / 0.16);
+  --landing-watermark: rgb(var(--landing-fg-rgb) / 0.035);
+  /* Diagram/illustration stroke weights - same reasoning as the text tiers
+     above, tuned for line art rather than type. */
+  --landing-diagram-primary: rgb(var(--landing-fg-rgb) / 0.55);
+  --landing-diagram-secondary: rgb(var(--landing-fg-rgb) / 0.35);
+  --landing-diagram-faint: rgb(var(--landing-fg-rgb) / 0.18);
+  /* Scales the per-point computed opacity in the noise/texture scatter
+     illustrations (Analysis, Review Workflow) - those alphas were tuned
+     as a density GRADIENT (thins out toward the detected area), which a
+     flat token can't reproduce, so the gradient math stays in the
+     component and only the overall weight is scaled per theme here. */
+  --landing-noise-scale: 2.2;
+  /* Soft "detected area" highlight wash behind candles/annotations, and
+     its matching outline. */
+  --landing-highlight-fill: rgb(245 184 0 / 0.16);
+  --landing-accent-border: rgb(245 184 0 / 0.55);
+  /* The bright harvest yellow reads fine as a fill/dot/larger highlighted
+     word, but at ~1.7:1 it's too low-contrast for small text on this
+     background - a separate, darker accent-text token for labels/eyebrows/
+     diagram annotations. Fills/dots/buttons keep using --landing-accent
+     (the same bright yellow) unchanged. */
+  --landing-accent: var(--brand-gold);
+  --landing-accent-text: #8a6000;
 }
 .scanner-shell,
 .scanner-portal {
@@ -296,6 +374,33 @@
   --scrollbar-track: rgba(255, 255, 255, 0.04);
   --scrollbar-thumb: rgba(245, 184, 0, 0.32);
   --scrollbar-thumb-hover: rgba(245, 184, 0, 0.55);
+  --landing-bg: #141414;
+  --landing-fg-rgb: 255 255 255;
+  --landing-shadow: rgb(0 0 0 / 0.3);
+  /* Unchanged from the original per-rule dark literals (see :root above
+     for the light-mode reasoning) - dark landing must not visually move.
+     A couple of rules converge onto the nearest tier here rather than
+     keeping their own one-off value (e.g. 0.48/0.5/0.55 all becoming
+     text-secondary's 0.5) - differences of a couple hundredths of alpha,
+     not a perceptible change. */
+  --landing-text-strong: rgb(var(--landing-fg-rgb) / 0.88);
+  --landing-text-body: rgb(var(--landing-fg-rgb) / 0.7);
+  --landing-text-secondary: rgb(var(--landing-fg-rgb) / 0.5);
+  --landing-text-muted: rgb(var(--landing-fg-rgb) / 0.32);
+  --landing-text-subtle: rgb(var(--landing-fg-rgb) / 0.22);
+  --landing-border-strong: rgb(var(--landing-fg-rgb) / 0.12);
+  --landing-border: rgb(var(--landing-fg-rgb) / 0.08);
+  --landing-grid-line: rgb(var(--landing-fg-rgb) / 0.045);
+  --landing-dot: rgb(var(--landing-fg-rgb) / 0.08);
+  --landing-watermark: rgb(var(--landing-fg-rgb) / 0.024);
+  --landing-diagram-primary: rgb(var(--landing-fg-rgb) / 0.45);
+  --landing-diagram-secondary: rgb(var(--landing-fg-rgb) / 0.25);
+  --landing-diagram-faint: rgb(var(--landing-fg-rgb) / 0.1);
+  --landing-noise-scale: 1;
+  --landing-highlight-fill: rgb(245 184 0 / 0.1);
+  --landing-accent-border: rgb(245 184 0 / 0.3);
+  --landing-accent: var(--brand-gold);
+  --landing-accent-text: var(--brand-gold);
 }
 .admin-shell {
   --background: #f3f1ea;
@@ -458,10 +563,11 @@ html.lenis body {
 }
 
 .landing-root {
-  /* Marketing landing is dark-only and paints correctly before theme JavaScript runs. */
-  background-color: var(--brand-charcoal);
-  color: rgb(255 255 255 / 0.7);
-  color-scheme: dark;
+  /* Theme restored from stored/system preference before first paint by the
+     shared themeInitScript in app/layout.tsx - see the landing-bg/
+     landing-fg-rgb tokens above for the actual light/dark values. */
+  background-color: var(--landing-bg);
+  color: var(--landing-text-body);
   min-height: 100vh;
   overflow-x: hidden;
   font-family: var(--font-manrope), var(--font-sans);
@@ -492,25 +598,25 @@ html.lenis body {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #68665f;
+  color: var(--landing-text-muted);
 }
 
 .landing-section-heading {
   font-size: clamp(1.875rem, 3.2vw, 2.375rem);
   font-weight: 800;
-  color: #171816;
+  color: rgb(var(--landing-fg-rgb));
   line-height: 1.2;
   letter-spacing: -0.015em;
 }
 
 .landing-section-subheading {
   font-size: 1rem;
-  color: #68665f;
+  color: var(--landing-text-secondary);
   line-height: 1.65;
 }
 
 .landing-gradient-text {
-  color: var(--brand-gold);
+  color: var(--landing-accent);
 }
 
 .landing-eyebrow {
@@ -521,17 +627,11 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--brand-gold);
+  color: var(--landing-accent-text);
 }
 
 #scanner-method.landing-section {
-  background-color: var(--brand-charcoal);
-}
-#scanner-method .landing-section-heading {
-  color: #ffffff;
-}
-#scanner-method .landing-section-subheading {
-  color: rgb(255 255 255 / 0.55);
+  background-color: var(--landing-bg);
 }
 
 .landing-analysis-grid {
@@ -548,10 +648,10 @@ html.lenis body {
 
 .landing-analysis-copy-row {
   padding-block: 1rem;
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--landing-border);
 }
 .landing-analysis-copy-row:last-child {
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
 }
 
 .landing-analysis-row-label {
@@ -560,13 +660,13 @@ html.lenis body {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.85);
+  color: var(--landing-text-strong);
 }
 
 .landing-analysis-row-text {
   margin-top: 0.3rem;
   font-size: 0.875rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--landing-text-secondary);
   line-height: 1.6;
 }
 
@@ -580,8 +680,8 @@ html.lenis body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(
     ellipse 85% 85% at 55% 50%,
@@ -597,20 +697,14 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  fill: rgb(255 255 255 / 0.32);
+  fill: var(--landing-text-muted);
 }
 .landing-analysis-label-active {
-  fill: rgb(245 184 0 / 0.75);
+  fill: var(--landing-accent-text);
 }
 
 #chart-workspace.landing-section {
-  background-color: var(--brand-charcoal);
-}
-#chart-workspace .landing-section-heading {
-  color: #ffffff;
-}
-#chart-workspace .landing-section-subheading {
-  color: rgb(255 255 255 / 0.55);
+  background-color: var(--landing-bg);
 }
 
 .landing-workspace-grid {
@@ -653,24 +747,24 @@ html.lenis body {
 }
 
 .landing-workspace-block {
-  border: 1px solid rgb(255 255 255 / 0.08);
+  border: 1px solid var(--landing-border);
   border-radius: 0.625rem;
-  background: rgb(255 255 255 / 0.015);
+  background: rgb(var(--landing-fg-rgb) / 0.015);
   overflow: hidden;
 }
 
 .landing-workspace-block-media {
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
 }
 
 .landing-workspace-illustration {
   position: relative;
   width: 100%;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 .landing-workspace-illustration-primary {
@@ -690,13 +784,13 @@ html.lenis body {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--brand-gold);
+  color: var(--landing-accent-text);
 }
 
 .landing-workspace-block-text {
   margin-top: 0.35rem;
   font-size: 0.8125rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--landing-text-secondary);
   line-height: 1.55;
 }
 
@@ -706,17 +800,11 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.28);
+  color: var(--landing-text-muted);
 }
 
 #workflow.landing-section {
-  background-color: var(--brand-charcoal);
-}
-#workflow .landing-section-heading {
-  color: #ffffff;
-}
-#workflow .landing-section-subheading {
-  color: rgb(255 255 255 / 0.55);
+  background-color: var(--landing-bg);
 }
 
 .landing-workflow-rows {
@@ -732,7 +820,7 @@ html.lenis body {
   padding-block: 3rem;
 }
 .landing-workflow-row + .landing-workflow-row {
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--landing-border);
 }
 @media (min-width: 1024px) {
   .landing-workflow-row {
@@ -761,14 +849,14 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--brand-gold);
+  color: var(--landing-accent-text);
 }
 
 .landing-workflow-step-heading {
   margin-top: 0.85rem;
   font-size: clamp(1.375rem, 2.2vw, 1.625rem);
   font-weight: 700;
-  color: #ffffff;
+  color: rgb(var(--landing-fg-rgb));
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -776,7 +864,7 @@ html.lenis body {
 .landing-workflow-step-text {
   margin-top: 0.85rem;
   font-size: 0.9375rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--landing-text-secondary);
   line-height: 1.65;
 }
 
@@ -789,8 +877,8 @@ html.lenis body {
   position: absolute;
   inset: -12%;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(
     ellipse 75% 75% at 50% 50%,
@@ -803,22 +891,22 @@ html.lenis body {
 .landing-navbar {
   background-color: transparent;
 
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
   transition:
     background-color 0.3s,
     border-color 0.3s,
     box-shadow 0.3s;
 }
 .landing-navbar[data-scrolled="true"] {
-  background-color: var(--brand-charcoal);
-  border-bottom-color: rgb(255 255 255 / 0.1);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  background-color: var(--landing-bg);
+  border-bottom-color: var(--landing-border-strong);
+  box-shadow: 0 8px 24px var(--landing-shadow);
 }
 
 .landing-nav-link {
   font-size: 0.875rem;
   font-weight: 500;
-  color: rgb(255 255 255 / 0.72);
+  color: var(--landing-text-body);
   padding-inline: 0.75rem;
   padding-block: 0.5rem;
   border-radius: 0.5rem;
@@ -828,15 +916,15 @@ html.lenis body {
   text-decoration: none;
 }
 .landing-nav-link:hover {
-  color: #ffffff;
-  background-color: rgb(255 255 255 / 0.08);
+  color: rgb(var(--landing-fg-rgb));
+  background-color: var(--landing-border);
 }
 
 .landing-hamburger-bar {
   display: block;
   width: 1.25rem;
   height: 2px;
-  background-color: rgb(255 255 255 / 0.85);
+  background-color: var(--landing-text-strong);
   border-radius: 9999px;
   transition:
     transform 0.3s,
@@ -849,7 +937,7 @@ html.lenis body {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgb(255 255 255 / 0.08);
+  background: var(--landing-border);
   pointer-events: none;
 }
 .landing-frame-line-left {
@@ -862,7 +950,7 @@ html.lenis body {
 .landing-nav-divider {
   width: 1px;
   height: 1.25rem;
-  background: rgb(255 255 255 / 0.16);
+  background: var(--landing-border-strong);
   flex-shrink: 0;
 }
 
@@ -893,13 +981,13 @@ html.lenis body {
 
 .landing-btn-ghost {
   background-color: transparent;
-  color: rgb(255 255 255 / 0.85);
+  color: var(--landing-text-strong);
   font-size: 0.875rem;
   font-weight: 600;
   padding-inline: 1.25rem;
   padding-block: 0.5rem;
   border-radius: 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.22);
+  border: 1px solid rgb(var(--landing-fg-rgb) / 0.22);
   transition:
     background-color 0.2s,
     color 0.2s,
@@ -909,9 +997,9 @@ html.lenis body {
   text-decoration: none;
 }
 .landing-btn-ghost:hover {
-  background-color: rgb(255 255 255 / 0.08);
-  color: #ffffff;
-  border-color: rgb(255 255 255 / 0.34);
+  background-color: rgb(var(--landing-fg-rgb) / 0.08);
+  color: rgb(var(--landing-fg-rgb));
+  border-color: rgb(var(--landing-fg-rgb) / 0.34);
 }
 
 .landing-btn-lg {
@@ -931,14 +1019,11 @@ html.lenis body {
 }
 
 .landing-hero-bg {
-  background-color: var(--brand-charcoal);
+  background-color: var(--landing-bg);
 }
 
 .landing-hero-dot-grid {
-  background-image: radial-gradient(
-    rgb(255 255 255 / 0.08) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(var(--landing-dot) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
 }
@@ -949,7 +1034,7 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--brand-gold);
+  color: var(--landing-accent-text);
 }
 
 .landing-hero-title {
@@ -957,7 +1042,7 @@ html.lenis body {
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: rgb(var(--landing-fg-rgb));
 }
 @media (min-width: 640px) {
   .landing-hero-title {
@@ -1010,8 +1095,8 @@ html.lenis body {
   position: absolute;
   inset: -3rem -2rem -3rem;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(
     ellipse 70% 60% at 50% 40%,
@@ -1062,16 +1147,16 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.4);
+  color: var(--landing-text-muted);
   font-variant-numeric: tabular-nums;
 }
 .landing-hero-meta-dot {
-  color: rgb(255 255 255 / 0.22);
+  color: var(--landing-text-subtle);
 }
 
 .landing-footer {
-  background-color: var(--brand-charcoal);
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  background-color: var(--landing-bg);
+  border-top: 1px solid var(--landing-border);
 }
 
 .landing-footer-wordmark {
@@ -1084,7 +1169,7 @@ html.lenis body {
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: rgb(255 255 255 / 0.024);
+  color: var(--landing-watermark);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
@@ -1114,7 +1199,7 @@ html.lenis body {
 .landing-footer-description {
   font-size: 0.9375rem;
   line-height: 1.65;
-  color: rgb(255 255 255 / 0.48);
+  color: var(--landing-text-secondary);
 }
 
 .landing-footer-links {
@@ -1139,7 +1224,7 @@ html.lenis body {
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.32);
+  color: var(--landing-text-muted);
 }
 
 .landing-footer-group-list {
@@ -1153,7 +1238,7 @@ html.lenis body {
   display: inline-block;
   width: fit-content;
   font-size: 0.875rem;
-  color: rgb(255 255 255 / 0.6);
+  color: var(--landing-text-body);
   text-decoration: none;
   transition: color 0.2s;
 }
@@ -1164,12 +1249,12 @@ html.lenis body {
   top: 50%;
   width: 2px;
   height: 0.7em;
-  background: var(--brand-gold);
+  background: var(--landing-accent);
   transform: translateY(-50%) scaleY(0);
   transition: transform 0.2s;
 }
 .landing-footer-link:hover {
-  color: #ffffff;
+  color: rgb(var(--landing-fg-rgb));
 }
 .landing-footer-link:hover::before {
   transform: translateY(-50%) scaleY(1);
@@ -1182,7 +1267,7 @@ html.lenis body {
   gap: 0.75rem;
   align-items: flex-start;
   padding-block: 1.5rem;
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--landing-border);
 }
 @media (min-width: 640px) {
   .landing-footer-bottom {
@@ -1194,7 +1279,7 @@ html.lenis body {
 
 .landing-footer-copyright {
   font-size: 0.8125rem;
-  color: rgb(255 255 255 / 0.35);
+  color: var(--landing-text-muted);
 }
 
 .landing-footer-status {
@@ -1203,7 +1288,7 @@ html.lenis body {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--landing-text-subtle);
 }
 
 .login-split {
@@ -1221,7 +1306,7 @@ html.lenis body {
   position: relative;
   display: none;
   overflow: hidden;
-  border-right: 1px solid rgb(255 255 255 / 0.08);
+  border-right: 1px solid var(--landing-border);
 }
 @media (min-width: 1024px) {
   .login-visual {
@@ -1233,8 +1318,8 @@ html.lenis body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+    linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(
     ellipse 85% 70% at 50% 45%,
@@ -1250,7 +1335,7 @@ html.lenis body {
   margin-inline: -1.75rem;
   margin-bottom: 2rem;
   overflow: hidden;
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
 }
 @media (min-width: 640px) {
   .login-visual-mobile {
@@ -1296,25 +1381,19 @@ html.lenis body {
     font-weight: 500;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgb(255 255 255 / 0.3);
+    color: var(--landing-text-subtle);
   }
 }
 
 #markets.landing-section {
-  background-color: var(--brand-charcoal);
-}
-#markets .landing-section-heading {
-  color: #ffffff;
-}
-#markets .landing-section-subheading {
-  color: rgb(255 255 255 / 0.55);
+  background-color: var(--landing-bg);
 }
 
 .landing-market-map {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 1;
-  border-block: 1px solid rgb(255 255 255 / 0.08);
+  border-block: 1px solid var(--landing-border);
   padding-block: 1.5rem;
   overflow: hidden;
 }
@@ -1326,17 +1405,17 @@ html.lenis body {
 .landing-market-marker-label-primary {
   font-weight: 600;
   letter-spacing: 0.06em;
-  fill: var(--brand-gold);
+  fill: var(--landing-accent-text);
 }
 .landing-market-marker-label-secondary {
   font-weight: 500;
   letter-spacing: 0.05em;
-  fill: rgb(255 255 255 / 0.4);
+  fill: var(--landing-text-muted);
 }
 .landing-market-marker-label-tertiary {
   font-weight: 500;
   letter-spacing: 0.07em;
-  fill: rgb(255 255 255 / 0.28);
+  fill: var(--landing-text-subtle);
 }
 
 .landing-market-status {
@@ -1354,10 +1433,10 @@ html.lenis body {
   font-family: var(--font-mono);
 }
 .landing-market-status-row:not(:first-child) {
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--landing-border);
 }
 .landing-market-status-row:last-child {
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
 }
 
 .landing-market-status-header .landing-market-status-col {
@@ -1365,7 +1444,7 @@ html.lenis body {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.3);
+  color: var(--landing-text-subtle);
 }
 
 .landing-market-name {
@@ -1375,7 +1454,7 @@ html.lenis body {
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgb(255 255 255 / 0.88);
+  color: var(--landing-text-strong);
 }
 
 .landing-market-flag {
@@ -1383,7 +1462,7 @@ html.lenis body {
   height: auto;
   flex-shrink: 0;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12);
+  box-shadow: 0 0 0 1px var(--landing-border);
 }
 .landing-market-flag-placeholder {
   width: 1.15rem;
@@ -1393,14 +1472,14 @@ html.lenis body {
 .landing-market-region {
   font-size: 0.75rem;
   font-weight: 400;
-  color: rgb(255 255 255 / 0.35);
+  color: var(--landing-text-muted);
 }
 
 .landing-market-stocks {
   font-size: 0.8125rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: rgb(255 255 255 / 0.55);
+  color: var(--landing-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1416,10 +1495,10 @@ html.lenis body {
   white-space: nowrap;
 }
 .landing-market-status-value-active {
-  color: var(--brand-gold);
+  color: var(--landing-accent-text);
 }
 .landing-market-status-value-expanding {
-  color: rgb(255 255 255 / 0.4);
+  color: var(--landing-text-muted);
 }
 
 .landing-market-status-dot {
@@ -1432,22 +1511,16 @@ html.lenis body {
 }
 .landing-market-status-dot-expanding {
   background: transparent;
-  border: 1px solid rgb(255 255 255 / 0.35);
+  border: 1px solid var(--landing-border-strong);
 }
 
 .landing-market-note {
   font-size: 0.75rem;
-  color: rgb(255 255 255 / 0.32);
+  color: var(--landing-text-muted);
 }
 
 #faq.landing-section {
-  background-color: var(--brand-charcoal);
-}
-#faq .landing-section-heading {
-  color: #ffffff;
-}
-#faq .landing-section-subheading {
-  color: rgb(255 255 255 / 0.55);
+  background-color: var(--landing-bg);
 }
 
 .landing-faq-grid {
@@ -1468,10 +1541,10 @@ html.lenis body {
 }
 
 .landing-faq-item {
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--landing-border);
 }
 .landing-faq-item:last-child {
-  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid var(--landing-border);
 }
 
 .landing-faq-trigger {
@@ -1490,18 +1563,18 @@ html.lenis body {
 .landing-faq-question {
   font-size: 1rem;
   font-weight: 600;
-  color: rgb(255 255 255 / 0.92);
+  color: rgb(var(--landing-fg-rgb) / 0.92);
   line-height: 1.4;
 }
 
 .landing-faq-icon {
   flex-shrink: 0;
   display: inline-flex;
-  color: rgb(255 255 255 / 0.45);
+  color: var(--landing-text-muted);
   transition: color 0.2s;
 }
 .landing-faq-trigger:hover .landing-faq-icon {
-  color: var(--brand-gold);
+  color: var(--landing-accent);
 }
 
 .landing-faq-answer {
@@ -1513,18 +1586,18 @@ html.lenis body {
   padding-bottom: 1.35rem;
   padding-right: 2rem;
   font-size: 0.9375rem;
-  color: rgb(255 255 255 / 0.5);
+  color: var(--landing-text-secondary);
   line-height: 1.65;
 }
 
 #cta.landing-section {
-  background-color: var(--brand-charcoal);
+  background-color: var(--landing-bg);
 }
 
 .landing-cta-panel {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 0.1);
+  border: 1px solid var(--landing-border-strong);
   border-radius: 0.625rem;
   padding: 4rem 1.5rem;
   text-align: center;
@@ -1558,7 +1631,7 @@ html.lenis body {
   margin-top: 1rem;
   font-size: clamp(2.25rem, 5vw, 3.5rem);
   font-weight: 800;
-  color: #ffffff;
+  color: rgb(var(--landing-fg-rgb));
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
@@ -1568,7 +1641,7 @@ html.lenis body {
   max-width: 32rem;
   margin-inline: auto;
   font-size: 1rem;
-  color: rgb(255 255 255 / 0.55);
+  color: var(--landing-text-secondary);
   line-height: 1.65;
 }
 
@@ -1707,7 +1780,7 @@ html.lenis body {
   }
 
   .landing-market-status {
-    border-top: 1px solid rgb(255 255 255 / 0.08);
+    border-top: 1px solid var(--landing-border);
   }
 
   .landing-market-status-header {
@@ -1727,7 +1800,7 @@ html.lenis body {
   }
 
   .landing-market-status-row:not(:first-child) {
-    border-top: 1px solid rgb(255 255 255 / 0.08);
+    border-top: 1px solid var(--landing-border);
   }
 
   .landing-market-name {

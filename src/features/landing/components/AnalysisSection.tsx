@@ -119,7 +119,7 @@ export function AnalysisSection() {
                 <path
                   key={source.path}
                   d={source.path}
-                  stroke="rgb(255 255 255 / 0.1)"
+                  stroke="var(--landing-diagram-primary)"
                   strokeWidth="1"
                   fill="none"
                 />
@@ -132,7 +132,7 @@ export function AnalysisSection() {
                   y={p.y}
                   width={p.size}
                   height={p.size}
-                  fill={`rgb(255 255 255 / ${p.opacity})`}
+                  fill={`rgb(var(--landing-fg-rgb) / calc(${p.opacity} * var(--landing-noise-scale)))`}
                 />
               ))}
 
@@ -143,7 +143,7 @@ export function AnalysisSection() {
                     y={source.y - 2}
                     width="4"
                     height="4"
-                    fill="rgb(255 255 255 / 0.5)"
+                    fill="var(--landing-diagram-primary)"
                   />
                   <text
                     x={source.anchor === "end" ? source.x - 8 : source.x + 8}

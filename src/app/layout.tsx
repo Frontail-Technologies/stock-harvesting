@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthBootstrap } from "@/features/auth";
 import { QueryProvider } from "@/features/api";
-import { GlobalSearchCommandDialog } from "@/features/global-search/components/GlobalSearchCommandDialog";
+import { GlobalStockSearchModal } from "@/features/global-search/components/GlobalStockSearchModal";
+import { ThemeProvider } from "@/features/theme/components/ThemeProvider";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
 import { PwaProvider } from "@/features/pwa";
 import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
@@ -97,17 +99,16 @@ const themeInitScript = `
 (() => {
   try {
     var storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
-    var path = window.location.pathname;
-    // Dark-only public surfaces (marketing landing, login) force dark before
-    // first paint so no light background/scrollbar flashes. The scanner and
-    // other product routes keep the user's selectable light/dark preference.
-    var forcedDark = path === "/" || path === "/login";
+    // One theme preference now applies across the whole main site - Landing,
+    // Login, Scanner, Watchlists alike - restored here, before first paint,
+    // so there's no flash of the opposite theme on any of them. Landing and
+    // Login used to force dark unconditionally regardless of what was
+    // stored; that's what made the account menu's theme toggle feel
+    // Scanner-only, since switching it never visibly affected those routes.
     var stored = window.localStorage.getItem(storageKey);
-    var theme = forcedDark
-      ? "dark"
-      : stored === "light" || stored === "dark"
-        ? stored
-        : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    var theme = stored === "light" || stored === "dark"
+      ? stored
+      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
   } catch {}
@@ -140,10 +141,21 @@ export default function RootLayout({
               auth-aware UI (landing navbar/CTA, /login) ever has to
               guess. */}
           <AuthBootstrap />
-          {/* Ctrl+K / Cmd+K global stock search - one instance, works from
-              the landing page and every app route alike. */}
-          <GlobalSearchCommandDialog />
-          {children}
+          {/* Theme and tooltips also need to be live on every route now,
+              not just inside the (app) group - the landing navbar's
+              account menu reads useTheme() and renders Tooltip-wrapped
+              controls, and Login now honors the same shared theme. */}
+          <ThemeProvider>
+            <TooltipProvider>
+              {/* The one canonical global stock search modal - opened by
+                  the landing navbar, the app navbar, Ctrl+K/Cmd+K, and the
+                  mobile search icon alike (see search-modal-store.ts). One
+                  instance, works from the landing page and every app route
+                  alike. */}
+              <GlobalStockSearchModal />
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
         </QueryProvider>
       </body>
     </html>

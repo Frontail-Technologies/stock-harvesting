@@ -5,7 +5,7 @@ export function FinalCtaSection() {
   return (
     <section
       id="cta"
-      className="landing-section relative overflow-hidden border-t border-white/8"
+      className="landing-section relative overflow-hidden border-t border-landing-border"
       aria-labelledby="cta-heading"
     >
       <div className="absolute inset-0 landing-container" aria-hidden="true">

@@ -26,5 +26,5 @@ export function useLandingCta(): LandingCta {
     return { status: "loading", href: "/login", label: "Open Workspace" };
   }
 
-  return { status: "unauthenticated", href: "/login", label: "Login" };
+  return { status: "unauthenticated", href: "/login", label: "Open Workspace" };
 }

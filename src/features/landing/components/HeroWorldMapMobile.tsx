@@ -50,7 +50,7 @@ export function HeroWorldMapMobile() {
         height={MAP_HEIGHT}
         mapSamples={1200}
         dotRadius={0.32}
-        dotColor="rgb(255 255 255 / 0.1)"
+        dotColor="var(--landing-dot)"
         markers={[]}
       />
       <svg
@@ -86,7 +86,7 @@ export function HeroWorldMapMobile() {
                 width={fw}
                 height={fh}
                 fill="none"
-                stroke={primary ? "var(--brand-gold)" : "rgb(255 255 255 / 0.35)"}
+                stroke={primary ? "var(--brand-gold)" : "var(--landing-border-strong)"}
                 strokeWidth="0.35"
               />
               <text

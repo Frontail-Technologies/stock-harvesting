@@ -49,11 +49,19 @@ marketDataRouter.get(
   })
 );
 
-marketDataRouter.use(requireAuth);
-
+// Public for the same reason /stocks/search above is: the landing hero's
+// exchange selector (and every other exchange picker built on
+// MarketSelector) needs this list before a visitor has ever signed in -
+// it's public exchange metadata (code/name/currency/country), not
+// user-specific data. Previously sat after the router-wide requireAuth
+// below, which meant every logged-out visitor's dropdown silently got an
+// empty list and rendered "No exchanges found" even though real options
+// existed.
 marketDataRouter.get("/exchanges", asyncHandler(async (_req, res) => {
   sendData(res, { exchanges: await listSupportedExchanges() });
 }));
+
+marketDataRouter.use(requireAuth);
 
 marketDataRouter.get("/exchange-rates", asyncHandler(async (_req, res) => {
   sendData(res, await listExchangeRates());

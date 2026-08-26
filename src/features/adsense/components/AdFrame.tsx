@@ -19,7 +19,7 @@ export function AdFrame({ children, className, variant, placement }: AdFrameProp
         "w-full border-y",
         isScanner ? "py-1.5" : "py-6 sm:py-7",
         variant === "landing"
-          ? "border-white/10 bg-transparent text-white/45"
+          ? "border-landing-border bg-transparent text-landing-text-muted"
           : "border-border bg-background text-muted-foreground",
         className
       )}

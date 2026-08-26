@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { DEFAULT_MARKET_EXCHANGE, type MarketExchangeCode } from "@/features/market";
 import type { Stock } from "@/types/market";
 import type {
   ChartCaptureMode,
@@ -16,7 +17,20 @@ import { DEFAULT_SCANNER_LOOKBACK } from "../types";
 let captureRequestCounter = 0;
 
 type ScannerUiState = {
+  // Empty string means "no stock selected" - Scanner's startup identity
+  // comes solely from the URL (see ScannerPage.tsx); this and
+  // selectedExchange/selectedStock are an in-app cache of the last
+  // explicit in-app selection (search result, watchlist click, Scanner's
+  // own exchange switcher), used only to avoid re-deriving a placeholder
+  // while the URL sync effects catch up - never a startup fallback, and
+  // deliberately NOT persisted (see partialize below), so a stale
+  // previous stock can never reopen on a bare /scanner visit.
   selectedSymbol: string;
+  // Scanner's own exchange, not a read of some app-wide "current
+  // exchange" - this is the exchange of the stock Scanner currently has
+  // open (or, before any stock is explicitly chosen, just the toolbar's
+  // exchange selector preference for this session).
+  selectedExchange: MarketExchangeCode;
   selectedStock: Stock | null;
   timeframe: Timeframe;
   chartType: ScannerChartType;
@@ -36,7 +50,9 @@ type ScannerUiState = {
   showBacktestStats: boolean;
   scannerHighlightsVisible: boolean;
   setSelectedSymbol: (symbol: string) => void;
+  setSelectedExchange: (exchange: MarketExchangeCode) => void;
   setSelectedStock: (stock: Stock) => void;
+  clearSelectedStock: () => void;
   setTimeframe: (timeframe: Timeframe) => void;
   setChartType: (chartType: ScannerChartType) => void;
   setLookbackMultiplier: (lookbackMultiplier: ScannerLookbackMultiplier) => void;
@@ -52,7 +68,8 @@ type ScannerUiState = {
 export const useScannerUiStore = create<ScannerUiState>()(
   persist(
     (set) => ({
-      selectedSymbol: "AAPL",
+      selectedSymbol: "",
+      selectedExchange: DEFAULT_MARKET_EXCHANGE,
       selectedStock: null,
       timeframe: "1W",
       chartType: "candlestick",
@@ -65,11 +82,14 @@ export const useScannerUiStore = create<ScannerUiState>()(
       showBacktestStats: true,
       scannerHighlightsVisible: true,
       setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
+      setSelectedExchange: (selectedExchange) => set({ selectedExchange }),
       setSelectedStock: (selectedStock) =>
         set({
           selectedSymbol: selectedStock.symbol,
+          selectedExchange: selectedStock.exchange,
           selectedStock,
         }),
+      clearSelectedStock: () => set({ selectedSymbol: "", selectedStock: null }),
       setTimeframe: (timeframe) => set({ timeframe }),
       setChartType: (chartType) => set({ chartType }),
       setLookbackMultiplier: (lookbackMultiplier) => set({ lookbackMultiplier }),
@@ -95,8 +115,12 @@ export const useScannerUiStore = create<ScannerUiState>()(
     }),
     {
       name: "stock-harvesting-scanner-ui",
+      // Deliberately excludes selectedSymbol/selectedExchange/
+      // selectedStock - stock identity must come solely from the URL on
+      // every visit (see ScannerPage.tsx), never from a previous session's
+      // persisted selection. Everything below is a harmless UI
+      // preference, not stock-identity data.
       partialize: (state) => ({
-        selectedSymbol: state.selectedSymbol,
         timeframe: state.timeframe,
         chartType: state.chartType,
         lookbackMultiplier: state.lookbackMultiplier,

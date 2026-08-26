@@ -1,15 +1,26 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/ui/brand-logo";
+import { AccountMenu } from "@/features/layout/components/AccountMenu";
+import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
+import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { cn } from "@/utils/cn";
-import { useLandingCta } from "../hooks/use-landing-cta";
+
+// Landing's own navbar chrome for the search trigger/account menu - both
+// default to the regular app's neutral bg-background/border-input tokens,
+// which would look like a mismatched control sitting on landing's own
+// themed bar. Built from the landing-fg token so it inverts correctly
+// alongside the rest of the navbar in light mode. Kept intentionally
+// small (just these two spots) rather than reskinning the shared
+// components.
+const LANDING_NAV_CONTROL_CLASS =
+  "border-landing-border bg-landing-fg/6 text-landing-text-strong backdrop-blur-sm hover:border-landing-border-strong hover:bg-landing-fg/10 hover:text-landing-fg";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const cta = useLandingCta();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -36,41 +47,30 @@ export function Navbar() {
         </nav>
 
         <Link href="/" aria-label="Stock Harvesting home" className="justify-self-center shrink-0">
-          <Image src="/images/logo-dark-cropped.png" alt="Stock Harvesting" width={210} height={80} priority className="h-10 w-auto" />
+          <BrandLogo size="sm" />
         </Link>
 
-        <div className="flex items-center justify-self-end gap-3">
-          <div className="hidden md:flex items-center gap-3">
-            {cta.status === "loading" ? (
-              // Same footprint as the resolved states so nothing shifts
-              // once the session resolves - just no label committed to
-              // either "Login" or "Open Workspace" while status is unknown.
-              <span
-                className="landing-btn-primary invisible"
-                aria-hidden="true"
-              >
-                Open Workspace
-              </span>
-            ) : cta.status === "authenticated" ? (
-              <Link href={cta.href} className="landing-btn-primary">
-                {cta.label}
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="landing-nav-link">
-                  Login
-                </Link>
-                <span className="landing-nav-divider" aria-hidden="true" />
-                <Link href={cta.href} className="landing-btn-primary">
-                  {cta.label}
-                </Link>
-              </>
-            )}
+        <div className="flex items-center justify-self-end gap-2.5">
+          <div className="hidden lg:block lg:w-56 xl:w-64">
+            <GlobalSearchNavbarField className={LANDING_NAV_CONTROL_CLASS} />
+          </div>
+
+          <div className="hidden md:flex lg:hidden">
+            <GlobalSearchMobileSheet className={cn("rounded-md border", LANDING_NAV_CONTROL_CLASS)} />
+          </div>
+
+          <div className="hidden md:flex items-center gap-2.5">
+            <AccountMenu className="border border-landing-border" />
+          </div>
+
+          <div className="flex md:hidden items-center gap-1.5">
+            <GlobalSearchMobileSheet className={cn("rounded-md border", LANDING_NAV_CONTROL_CLASS)} />
+            <AccountMenu className="border border-landing-border" />
           </div>
 
           <button
             id="landing-mobile-menu-toggle"
-            className="md:hidden flex flex-col gap-1.5 p-2 rounded-md hover:bg-white/8 transition-colors cursor-pointer"
+            className="md:hidden flex flex-col gap-1.5 p-2 rounded-md hover:bg-landing-fg/8 transition-colors cursor-pointer"
             aria-label="Toggle menu"
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((prev) => !prev)}
@@ -83,7 +83,7 @@ export function Navbar() {
       </div>
 
       {mobileOpen ? (
-        <div className="md:hidden bg-brand-charcoal border-t border-white/8 px-6 py-4 flex flex-col gap-3">
+        <div className="md:hidden bg-landing-bg border-t border-landing-border px-6 py-4 flex flex-col gap-3">
           <Link href="#scanner-method" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
             Analysis
           </Link>
@@ -93,37 +93,8 @@ export function Navbar() {
           <Link href="#markets" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
             Markets
           </Link>
-          <div className="border-t border-white/8 pt-3 flex flex-col gap-2">
-            {cta.status === "loading" ? null : cta.status === "authenticated" ? (
-              <Link
-                href={cta.href}
-                className="landing-btn-primary text-center"
-                onClick={() => setMobileOpen(false)}
-              >
-                {cta.label}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="landing-nav-link py-2"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  href={cta.href}
-                  className="landing-btn-primary text-center"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {cta.label}
-                </Link>
-              </>
-            )}
-          </div>
         </div>
       ) : null}
     </header>
   );
 }
-

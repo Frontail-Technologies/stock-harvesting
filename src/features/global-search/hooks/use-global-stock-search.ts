@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useStockSearch } from "@/features/market-data";
-import { useMarketStore } from "@/features/market";
+import { useScannerUiStore } from "@/features/scanner";
 import type { Stock } from "@/types/market";
 
 const GLOBAL_SEARCH_RESULT_LIMIT = 8;
@@ -20,16 +20,19 @@ const EMPTY_RESULTS: Stock[] = [];
 // debounced, already routed through the backend's provider-eligibility
 // logic). Nothing here talks to an API directly.
 //
-// Scoped to the app's current exchange (useMarketStore, the same store
-// MarketSelector already reads/writes) rather than searching across every
-// exchange at once - the backend's search endpoint is exchange-scoped by
-// design (confirmed across every existing caller: StockSearchCombobox,
-// WatchlistStockSearchInput, MarketSelector's own list), so this reuses
-// that real behavior instead of inventing cross-exchange search that
-// doesn't exist server-side.
+// Exchange is owned right here, as plain component state - never a shared
+// store. Search reads Scanner's current exchange once, on mount, purely as
+// a convenient starting value (e.g. opening Search while Scanner has
+// RELIANCE/NSE open defaults Search to NSE too) - after that, Search's
+// exchange is entirely local. Changing it here never mutates Scanner, any
+// other feature, or a global store; the query key below already includes
+// exchange, so switching it here only ever changes what Search itself
+// fetches and displays.
 export function useGlobalStockSearch() {
   const [query, setQuery] = useState("");
-  const exchange = useMarketStore((state) => state.selectedExchange);
+  const [exchange, setExchange] = useState(
+    () => useScannerUiStore.getState().selectedExchange
+  );
 
   const trimmedQuery = query.trim();
   const search = useStockSearch(query, GLOBAL_SEARCH_RESULT_LIMIT, {
@@ -48,6 +51,7 @@ export function useGlobalStockSearch() {
     query,
     setQuery,
     exchange,
+    setExchange,
     results,
     hasQuery: trimmedQuery.length >= MIN_QUERY_LENGTH,
     isLoading: search.isLoading,

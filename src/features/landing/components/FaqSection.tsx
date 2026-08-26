@@ -5,7 +5,7 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="landing-section relative overflow-hidden border-t border-white/8"
+      className="landing-section relative overflow-hidden border-t border-landing-border"
       aria-labelledby="faq-heading"
     >
       <div className="absolute inset-0 landing-container" aria-hidden="true">

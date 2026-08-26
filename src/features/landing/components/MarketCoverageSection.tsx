@@ -27,7 +27,7 @@ export function MarketCoverageSection() {
   return (
     <section
       id="markets"
-      className="landing-section relative overflow-hidden border-t border-white/8"
+      className="landing-section relative overflow-hidden border-t border-landing-border"
       aria-labelledby="markets-heading"
     >
       <div className="absolute inset-0 landing-container" aria-hidden="true">

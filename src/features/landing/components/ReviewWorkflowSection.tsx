@@ -30,23 +30,23 @@ function SearchVisual() {
         width="320"
         height="36"
         rx="6"
-        fill="rgb(255 255 255 / 0.035)"
-        stroke="rgb(255 255 255 / 0.28)"
+        fill="rgb(var(--landing-fg-rgb) / 0.035)"
+        stroke="var(--landing-border-strong)"
       />
       <circle
         cx="44"
         cy="40"
         r="6"
-        stroke="rgb(255 255 255 / 0.45)"
+        stroke="var(--landing-diagram-primary)"
         fill="none"
       />
-      <line x1="49" y1="45" x2="55" y2="51" stroke="rgb(255 255 255 / 0.45)" />
+      <line x1="49" y1="45" x2="55" y2="51" stroke="var(--landing-diagram-primary)" />
       <text
         x="64"
         y="46"
         fontFamily="var(--font-mono)"
         fontSize="13"
-        fill="rgb(255 255 255 / 0.85)"
+        fill="var(--landing-text-strong)"
       >
         REL
       </text>
@@ -57,8 +57,8 @@ function SearchVisual() {
         width={panel.width}
         height={panel.height}
         rx="7"
-        fill="rgb(255 255 255 / 0.02)"
-        stroke="rgb(255 255 255 / 0.14)"
+        fill="rgb(var(--landing-fg-rgb) / 0.02)"
+        stroke="var(--landing-border-strong)"
       />
 
       <g>
@@ -72,7 +72,7 @@ function SearchVisual() {
                   y={rowY + 1}
                   width={panel.width - 2}
                   height={rowHeight - 2}
-                  fill="rgb(245 184 0 / 0.08)"
+                  fill="var(--landing-highlight-fill)"
                 />
               ) : null}
               {i > 0 ? (
@@ -81,7 +81,7 @@ function SearchVisual() {
                   y1={rowY}
                   x2={panel.x + panel.width}
                   y2={rowY}
-                  stroke="rgb(255 255 255 / 0.06)"
+                  stroke="var(--landing-border)"
                 />
               ) : null}
               <text
@@ -90,7 +90,7 @@ function SearchVisual() {
                 fontFamily="var(--font-sans)"
                 fontWeight="700"
                 fontSize="13"
-                fill="rgb(255 255 255 / 0.92)"
+                fill="rgb(var(--landing-fg-rgb) / 0.92)"
               >
                 {result.symbol}
               </text>
@@ -99,7 +99,7 @@ function SearchVisual() {
                 y={rowY + rowHeight * 0.74}
                 fontFamily="var(--font-sans)"
                 fontSize="10"
-                fill="rgb(255 255 255 / 0.48)"
+                fill="var(--landing-text-secondary)"
               >
                 {result.name}
               </text>
@@ -113,7 +113,7 @@ function SearchVisual() {
         y1={panel.y + rowHeight / 2}
         x2={glyph.x}
         y2={glyph.y + glyph.height / 2}
-        stroke="rgb(255 255 255 / 0.32)"
+        stroke="var(--landing-diagram-primary)"
         strokeWidth="1.25"
       />
       <circle
@@ -129,7 +129,7 @@ function SearchVisual() {
         width={glyph.width}
         height={glyph.height}
         fill="none"
-        stroke="rgb(245 184 0 / 0.4)"
+        stroke="var(--landing-accent-border)"
       />
       {[18, 38, 58, 78, 96].map((dx, i) => {
         const h = 16 + ((i * 10) % 34);
@@ -191,13 +191,13 @@ function ReviewVisual() {
           y1={y}
           x2="528"
           y2={y}
-          stroke="rgb(255 255 255 / 0.2)"
+          stroke="var(--landing-diagram-secondary)"
         />
       ))}
 
       <path
         d={REVIEW_PRICE_D}
-        stroke="rgb(255 255 255 / 0.22)"
+        stroke="var(--landing-diagram-primary)"
         strokeWidth="1.5"
         fill="none"
       />
@@ -208,7 +208,7 @@ function ReviewVisual() {
           cx={m.x}
           cy={m.y}
           r="2"
-          fill="rgb(255 255 255 / 0.28)"
+          fill="var(--landing-diagram-primary)"
         />
       ))}
 
@@ -218,11 +218,11 @@ function ReviewVisual() {
           y={REVIEW_HIGHLIGHT.y}
           width={REVIEW_HIGHLIGHT.width}
           height={REVIEW_HIGHLIGHT.height}
-          fill="rgb(245 184 0 / 0.09)"
-          stroke="rgb(245 184 0 / 0.3)"
+          fill="var(--landing-highlight-fill)"
+          stroke="var(--landing-accent-border)"
         />
 
-        <g stroke="rgb(255 255 255 / 0.55)" strokeWidth="1">
+        <g stroke="var(--landing-diagram-primary)" strokeWidth="1">
           <line
             x1={REVIEW_CROSSHAIR.x - 12}
             y1={REVIEW_CROSSHAIR.y}
@@ -315,7 +315,7 @@ function SaveShareVisual() {
         width={review.width}
         height={review.height}
         fill="none"
-        stroke="rgb(255 255 255 / 0.16)"
+        stroke="var(--landing-border-strong)"
       />
       <MiniCandles frame={review} />
       <rect
@@ -323,8 +323,8 @@ function SaveShareVisual() {
         y={review.y + 12}
         width={44}
         height={review.height - 24}
-        fill="rgb(245 184 0 / 0.1)"
-        stroke="rgb(245 184 0 / 0.3)"
+        fill="var(--landing-highlight-fill)"
+        stroke="var(--landing-accent-border)"
       />
 
       <line
@@ -332,7 +332,7 @@ function SaveShareVisual() {
         y1={reviewCenterY}
         x2={saved.x}
         y2={savedCenterY}
-        stroke="rgb(255 255 255 / 0.3)"
+        stroke="var(--landing-diagram-primary)"
         strokeDasharray="3 3"
       />
       <rect
@@ -350,7 +350,7 @@ function SaveShareVisual() {
           width={saved.width}
           height={saved.height}
           fill="none"
-          stroke="rgb(255 255 255 / 0.28)"
+          stroke="var(--landing-border-strong)"
         />
         <rect
           x={saved.x + saved.width / 2 - 3.5}
@@ -361,7 +361,7 @@ function SaveShareVisual() {
         />
       </g>
 
-      <g stroke="rgb(255 255 255 / 0.28)" strokeWidth="1" fill="none">
+      <g stroke="var(--landing-diagram-primary)" strokeWidth="1" fill="none">
         <line
           x1={saved.x + saved.width}
           y1={savedCenterY}
@@ -387,10 +387,10 @@ function SaveShareVisual() {
               cy={n.y}
               r="9"
               fill="none"
-              stroke="rgb(255 255 255 / 0.4)"
+              stroke="var(--landing-diagram-primary)"
               strokeWidth="1"
             />
-            <circle cx={n.x} cy={n.y} r="1.8" fill="rgb(255 255 255 / 0.45)" />
+            <circle cx={n.x} cy={n.y} r="1.8" fill="var(--landing-diagram-primary)" />
           </g>
         ))}
       </g>
@@ -446,7 +446,7 @@ export function ReviewWorkflowSection() {
   return (
     <section
       id="workflow"
-      className="landing-section relative overflow-hidden border-t border-white/8"
+      className="landing-section relative overflow-hidden border-t border-landing-border"
       aria-labelledby="workflow-heading"
     >
       <div className="absolute inset-0 landing-container" aria-hidden="true">

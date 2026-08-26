@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { MarketSelector, type MarketExchangeCode } from "@/features/market";
+import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
+import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { ScannerPriceAlertMenu } from "@/features/price-alerts";
 import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
@@ -23,14 +24,8 @@ import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
 import { ShareMenu } from "./ShareMenu";
-import { StockSearchCombobox } from "./StockSearchCombobox";
 import { TimeframeSelector } from "./TimeframeSelector";
 
-// Shared with MarketSelector's trigger and ThemeToggle below - both render
-// a bordered box by default (their shared default across the rest of the
-// app, e.g. AppHeader), but the scanner toolbar wants every compact
-// control to recede behind the chart until hovered/active, so only this
-// call site overrides it.
 const SCANNER_GHOST_TRIGGER_CLASS =
   "border-transparent bg-transparent hover:bg-muted hover:border-transparent";
 
@@ -39,12 +34,9 @@ type TopToolbarProps = {
   chartType: ScannerChartType;
   timeframe: Timeframe;
   lookbackMultiplier: ScannerLookbackMultiplier;
-  exchange: MarketExchangeCode;
   onChartTypeChange: (chartType: ScannerChartType) => void;
   onTimeframeChange: (timeframe: Timeframe) => void;
   onLookbackMultiplierChange: (value: ScannerLookbackMultiplier) => void;
-  onExchangeChange: (exchange: MarketExchangeCode) => void;
-  onSelectStock: (stock: Stock) => void;
 };
 
 function LookbackDropdown({
@@ -61,7 +53,7 @@ function LookbackDropdown({
       <DropdownMenuTrigger
         className={cn(
           "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted aria-expanded:bg-muted focus-visible:ring-2 focus-visible:ring-primary/60",
-          className
+          className,
         )}
       >
         <span>{lookbackMultiplier}</span>
@@ -78,7 +70,7 @@ function LookbackDropdown({
             className={cn(
               "flex h-8 cursor-pointer items-center rounded-md px-2 text-sm font-medium text-muted-foreground focus:bg-muted focus:text-foreground",
               option.value === lookbackMultiplier &&
-                "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground"
+                "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground",
             )}
           >
             <span>{option.label}</span>
@@ -94,30 +86,25 @@ export function TopToolbar({
   chartType,
   timeframe,
   lookbackMultiplier,
-  exchange,
   onChartTypeChange,
   onTimeframeChange,
   onLookbackMultiplierChange,
-  onExchangeChange,
-  onSelectStock,
 }: TopToolbarProps) {
+  // Snapshot/share/price-alerts all act on a specific chart/stock - with
+  // none open (stock.symbol is empty, the same placeholder convention
+  // ScannerPage uses for its own no-stock state) there's nothing for them
+  // to operate on, so they're disabled rather than left clickable against
+  // stale or empty data. Search and every other control here stays live.
+  const hasStock = Boolean(stock.symbol);
   return (
     <div className="flex shrink-0 flex-col gap-1 overflow-hidden border-b border-border bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
       <div className="flex min-h-10 items-center gap-1 sm:hidden">
-        <div className="min-w-0 flex-1">
-          <StockSearchCombobox
-            selectedStock={stock}
-            exchange={exchange}
-            onSelectStock={onSelectStock}
-          />
-        </div>
-        <MarketSelector
-          compact
-          portalClassName="scanner-portal"
-          triggerClassName={SCANNER_GHOST_TRIGGER_CLASS}
-          onExchangeChange={onExchangeChange}
+        <GlobalSearchMobileSheet />
+        <ScannerPriceAlertMenu
+          key={`${stock.exchange}:${stock.symbol}`}
+          stock={stock}
+          disabled={!hasStock}
         />
-        <ScannerPriceAlertMenu key={`${stock.exchange}:${stock.symbol}`} stock={stock} />
         <ScannerAccountMenu />
       </div>
 
@@ -146,20 +133,18 @@ export function TopToolbar({
 
       <div className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex">
         <div className="flex items-center gap-1.5">
-          <ChartSnapshotMenu stock={stock} />
-          <ShareMenu stock={stock} />
+          <ChartSnapshotMenu stock={stock} disabled={!hasStock} />
+          <ShareMenu stock={stock} disabled={!hasStock} />
         </div>
 
         <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex items-center gap-1.5">
-          <MarketSelector
-            compact
-            portalClassName="scanner-portal"
-            triggerClassName={SCANNER_GHOST_TRIGGER_CLASS}
-            onExchangeChange={onExchangeChange}
+          <ScannerPriceAlertMenu
+            key={`${stock.exchange}:${stock.symbol}`}
+            stock={stock}
+            disabled={!hasStock}
           />
-          <ScannerPriceAlertMenu key={`${stock.exchange}:${stock.symbol}`} stock={stock} />
           <ThemeToggle
             className={SCANNER_GHOST_TRIGGER_CLASS}
             tooltipPortalClassName="scanner-portal"
@@ -169,11 +154,9 @@ export function TopToolbar({
         <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex min-w-0 items-center gap-1.5">
-          <StockSearchCombobox
-            selectedStock={stock}
-            exchange={exchange}
-            onSelectStock={onSelectStock}
-          />
+          <div className="w-56 lg:w-72">
+            <GlobalSearchNavbarField />
+          </div>
           <ScannerAccountMenu />
         </div>
       </div>

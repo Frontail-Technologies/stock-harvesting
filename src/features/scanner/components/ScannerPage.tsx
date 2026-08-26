@@ -3,27 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { queryKeys } from "@/features/api";
 import { AdPlacement, AdsenseScript } from "@/features/adsense";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
 import type { Stock } from "@/types/market";
 import { AuthGuard, useSessionStore } from "@/features/auth";
 import { useMarketStream, type MarketStreamEvent } from "@/features/market-stream";
-import {
-  DEFAULT_MARKET_EXCHANGE,
-  isEnabledMarketExchange,
-  useMarketStore,
-  type MarketExchangeCode,
-} from "@/features/market";
+import { useSearchModalStore } from "@/features/global-search/stores/search-modal-store";
 import { useTheme } from "@/features/theme";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { mockScanBands } from "@/mocks/market/candles";
-import { mockStocks } from "@/mocks/market/stocks";
 import { cn } from "@/utils/cn";
-import { findStockBySymbol } from "@/utils/stock-search";
 import { useScannerDrawingState } from "../hooks/use-scanner-drawing-state";
 import {
-  useExchangeDefaultStock,
   useScannerBacktest,
   useSaveScannerDrawings,
   useScannerCandles,
@@ -57,68 +51,20 @@ import { TopToolbar } from "./TopToolbar";
 
 const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
 
-const DEFAULT_STOCK: Stock =
-  findStockBySymbol(mockStocks, "AAPL") ??
-  ({
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    exchange: "US",
-    close: 224.31,
-    changePct: 0.84,
-    volume: 52_814_300,
-  } satisfies Stock);
-
-const DEFAULT_STOCK_BY_EXCHANGE: Record<MarketExchangeCode, Stock> = {
-  US: DEFAULT_STOCK,
-  NSE: {
-    symbol: "RELIANCE",
-    name: "Reliance Industries Limited",
-    exchange: "NSE",
+// A placeholder for "the toolbar needs some Stock object to render, but
+// nothing is actually selected" - symbol is deliberately empty, which is
+// exactly what every stock-specific query/subscription below gates on, so
+// this never itself triggers a market-data call. Never a real default.
+function buildEmptyStock(exchange: string): Stock {
+  return {
+    symbol: "",
+    name: "",
+    exchange,
     close: 0,
     changePct: 0,
     volume: 0,
     hasMarketData: false,
-  },
-};
-
-// Only US/NSE have a curated mock default - every other exchange (all of
-// EODHD's ~70) falls back to a generic empty placeholder instead of a
-// hand-picked one; real data fills in once a symbol is actually selected.
-function getDefaultStock(exchange: MarketExchangeCode): Stock {
-  return (
-    DEFAULT_STOCK_BY_EXCHANGE[exchange] ?? {
-      symbol: "",
-      name: "",
-      exchange,
-      close: 0,
-      changePct: 0,
-      volume: 0,
-      hasMarketData: false,
-    }
-  );
-}
-
-function getFallbackStock(symbol: string, exchange: MarketExchangeCode) {
-  return (
-    mockStocks.find(
-      (stock) => stock.symbol === symbol && stock.exchange === exchange
-    ) ?? {
-      ...getDefaultStock(exchange),
-      symbol,
-      exchange,
-    }
-  );
-}
-
-function isMarketExchangeCode(value: string): value is MarketExchangeCode {
-  return value.trim().length > 0;
-}
-
-function normalizeExchange(exchange: string): MarketExchangeCode {
-  const trimmed = exchange.trim().toUpperCase();
-  return isMarketExchangeCode(trimmed) && isEnabledMarketExchange(trimmed)
-    ? trimmed
-    : DEFAULT_MARKET_EXCHANGE;
+  };
 }
 
 function isSameMarketStock(
@@ -126,26 +72,25 @@ function isSameMarketStock(
   symbol: string,
   exchange: string
 ): stock is Stock {
-  return Boolean(
-    stock &&
-      stock.symbol === symbol &&
-      normalizeExchange(stock.exchange) === exchange
-  );
+  return Boolean(stock && stock.symbol === symbol && stock.exchange === exchange);
 }
 
-function setSymbolParam({
+function setStockParams({
   pathname,
   router,
   searchParams,
   symbol,
+  exchange,
 }: {
   pathname: string;
   router: ReturnType<typeof useRouter>;
   searchParams: { toString: () => string };
   symbol: string;
+  exchange: string;
 }) {
   const params = new URLSearchParams(searchParams.toString());
   params.set("symbol", symbol);
+  params.set("exchange", exchange);
   router.replace(`${pathname}?${params.toString()}`, { scroll: false });
 }
 
@@ -154,12 +99,21 @@ export function ScannerPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
-  const storedExchange = useMarketStore((state) => state.selectedExchange);
-  const selectedExchange = normalizeExchange(storedExchange);
+  const openSearchModal = useSearchModalStore((state) => state.open);
+  // Scanner owns this exchange - it's the exchange of the stock Scanner
+  // currently has open, never a read of some shared app-wide "current
+  // exchange". See scanner-ui-store.ts. Neither this nor selectedSymbol is
+  // persisted across visits (see the store's partialize) - both exist only
+  // as an in-app cache of the last explicit in-app selection, kept in sync
+  // with the URL below. The URL is what actually decides whether a stock
+  // is open at all.
   const selectedSymbol = useScannerUiStore((state) => state.selectedSymbol);
+  const selectedExchange = useScannerUiStore((state) => state.selectedExchange);
   const selectedStockSnapshot = useScannerUiStore((state) => state.selectedStock);
   const setSelectedSymbol = useScannerUiStore((state) => state.setSelectedSymbol);
+  const setSelectedExchange = useScannerUiStore((state) => state.setSelectedExchange);
   const setSelectedStock = useScannerUiStore((state) => state.setSelectedStock);
+  const clearSelectedStock = useScannerUiStore((state) => state.clearSelectedStock);
   const chartType = useScannerUiStore((state) => state.chartType);
   const setChartType = useScannerUiStore((state) => state.setChartType);
   const lookbackMultiplier = useScannerUiStore((state) => state.lookbackMultiplier);
@@ -177,52 +131,27 @@ export function ScannerPage() {
   const scannerHighlightsVisible = useScannerUiStore((state) => state.scannerHighlightsVisible);
   const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
   const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
-  const selectedStock = useMemo<Stock>(() => {
-    if (isSameMarketStock(selectedStockSnapshot, selectedSymbol, selectedExchange)) {
+
+  // The URL is the sole source of truth for "is a stock open right now" -
+  // both symbol AND exchange must be present; a bare /scanner or a partial
+  // URL (only one of the two) is treated identically as no stock, never
+  // guessed or backfilled from a previous selection.
+  const symbolParam = searchParams.get("symbol")?.trim().toUpperCase() ?? "";
+  const exchangeParam = searchParams.get("exchange")?.trim().toUpperCase() ?? "";
+  const hasStockInUrl = Boolean(symbolParam) && Boolean(exchangeParam);
+
+  const selectedStock = useMemo<Stock | null>(() => {
+    if (!hasStockInUrl) return null;
+    if (isSameMarketStock(selectedStockSnapshot, symbolParam, exchangeParam)) {
       return selectedStockSnapshot;
     }
-
-    return getFallbackStock(selectedSymbol, selectedExchange);
-  }, [selectedExchange, selectedStockSnapshot, selectedSymbol]);
+    // The URL names a stock the in-app cache doesn't have full metadata
+    // for yet (direct link, external nav, back/forward) - a minimal
+    // placeholder keyed by the URL's own identity; the metadata/candle
+    // queries below fill in name/price once they resolve.
+    return { ...buildEmptyStock(exchangeParam), symbol: symbolParam };
+  }, [hasStockInUrl, symbolParam, exchangeParam, selectedStockSnapshot]);
   const symbolSyncOriginRef = useRef<"url" | "user" | null>(null);
-
-  // Only US/NSE have a hand-picked default symbol - every other exchange
-  // resolves to the empty placeholder from getDefaultStock() first, then
-  // gets backfilled here once a real symbol for that exchange loads.
-  const hasCuratedDefault = Boolean(DEFAULT_STOCK_BY_EXCHANGE[selectedExchange]);
-  const fetchedDefaultStock = useExchangeDefaultStock(selectedExchange, !hasCuratedDefault);
-
-  useEffect(() => {
-    const symbolInUrl = searchParams.get("symbol")?.trim();
-    if (symbolInUrl) return;
-    if (isSameMarketStock(selectedStockSnapshot, selectedSymbol, selectedExchange)) {
-      return;
-    }
-
-    const nextStock = getDefaultStock(selectedExchange);
-    symbolSyncOriginRef.current = "user";
-    setSelectedStock(nextStock);
-  }, [
-    searchParams,
-    selectedExchange,
-    selectedStockSnapshot,
-    selectedSymbol,
-    setSelectedStock,
-  ]);
-
-  useEffect(() => {
-    if (!fetchedDefaultStock) return;
-    if (selectedStock.symbol !== "" || selectedStock.exchange !== selectedExchange) return;
-
-    symbolSyncOriginRef.current = "user";
-    setSelectedStock(fetchedDefaultStock);
-    setSymbolParam({
-      pathname,
-      router,
-      searchParams,
-      symbol: fetchedDefaultStock.symbol,
-    });
-  }, [fetchedDefaultStock, pathname, router, searchParams, selectedExchange, selectedStock, setSelectedStock]);
 
   const handleSelectStock = (stock: Stock) => {
     symbolSyncOriginRef.current = "user";
@@ -248,47 +177,68 @@ export function ScannerPage() {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
-  const handleExchangeChange = (exchange: MarketExchangeCode) => {
-    const nextStock = getDefaultStock(exchange);
-    symbolSyncOriginRef.current = "user";
-    setSelectedStock(nextStock);
-    setSymbolParam({
-      pathname,
-      router,
-      searchParams,
-      symbol: nextStock.symbol,
-    });
-  };
-
+  // URL -> store, both directions: a URL that names a stock takes priority
+  // over whatever Scanner currently has open (this is what makes
+  // /scanner?symbol=TCS&exchange=BSE authoritative on a hard reload rather
+  // than falling back to a persisted preference) - and a URL that names NO
+  // stock (bare /scanner, a partial URL, or navigating back from a stock
+  // URL) clears the in-app cache too, so a stale previous selection can
+  // never leak back into the rendered stock via the store snapshot above.
   useEffect(() => {
-    const symbol = searchParams.get("symbol")?.trim().toUpperCase();
-    if (!symbol || symbol === selectedSymbol) return;
+    if (symbolSyncOriginRef.current === "user") return;
 
-    if (symbolSyncOriginRef.current === "user") {
+    if (!hasStockInUrl) {
+      if (!selectedSymbol) return;
+      symbolSyncOriginRef.current = "url";
+      clearSelectedStock();
       return;
     }
+
+    if (symbolParam === selectedSymbol && exchangeParam === selectedExchange) return;
 
     symbolSyncOriginRef.current = "url";
-    setSelectedSymbol(symbol);
-  }, [searchParams, selectedSymbol, setSelectedSymbol]);
+    setSelectedSymbol(symbolParam);
+    setSelectedExchange(exchangeParam);
+  }, [
+    hasStockInUrl,
+    symbolParam,
+    exchangeParam,
+    selectedSymbol,
+    selectedExchange,
+    setSelectedSymbol,
+    setSelectedExchange,
+    clearSelectedStock,
+  ]);
 
+  // Store -> URL: any in-app stock change (search result, a watchlist
+  // click) ends up here, and this is the one place that actually writes
+  // the URL - always both `symbol` and `exchange` together, so the address
+  // bar is always a complete, shareable, reloadable identity rather than
+  // symbol-only. An empty selection deliberately never writes anything by
+  // itself, so a bare /scanner is never fought back to a stock just
+  // because the store still remembers one.
   useEffect(() => {
-    const symbolInUrl = searchParams.get("symbol")?.trim().toUpperCase();
-    if (symbolInUrl === selectedSymbol) {
-      symbolSyncOriginRef.current = null;
-      return;
-    }
-
     if (symbolSyncOriginRef.current === "url") {
       symbolSyncOriginRef.current = null;
       return;
     }
 
+    if (!selectedSymbol || !selectedExchange) return;
+
+    if (symbolParam === selectedSymbol && exchangeParam === selectedExchange) {
+      symbolSyncOriginRef.current = null;
+      return;
+    }
+
     symbolSyncOriginRef.current = "user";
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("symbol", selectedSymbol);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams, selectedSymbol]);
+    setStockParams({
+      pathname,
+      router,
+      searchParams,
+      symbol: selectedSymbol,
+      exchange: selectedExchange,
+    });
+  }, [pathname, router, searchParams, selectedExchange, selectedSymbol, symbolParam, exchangeParam]);
 
   return (
     <AuthGuard
@@ -306,43 +256,68 @@ export function ScannerPage() {
         <AdsenseScript placementKeys={["scanner_bottom"]} />
         <Toaster />
         <TopToolbar
-          stock={selectedStock}
+          stock={selectedStock ?? buildEmptyStock(selectedExchange)}
           chartType={chartType}
           timeframe={timeframe}
           lookbackMultiplier={lookbackMultiplier}
-          exchange={selectedExchange}
           onChartTypeChange={setChartType}
           onTimeframeChange={setTimeframe}
           onLookbackMultiplierChange={setLookbackMultiplier}
-          onExchangeChange={handleExchangeChange}
-          onSelectStock={handleSelectStock}
         />
 
-        <ScannerDrawingWorkspace
-          key={`${selectedStock.exchange}:${selectedStock.symbol}:${timeframe}`}
-          stock={selectedStock}
-          chartType={chartType}
-          lookbackMultiplier={lookbackMultiplier}
-          rangeFilter={rangeFilter}
-          theme={theme}
-          timeframe={timeframe}
-          captureRequest={captureRequest}
-          autoScale={autoScale}
-          percentageScale={percentageScale}
-          showBacktestStats={showBacktestStats}
-          scannerHighlightsVisible={scannerHighlightsVisible}
-          onChartTypeChange={setChartType}
-          onRangeFilterChange={setRangeFilter}
-          onToggleAutoScale={toggleAutoScale}
-          onTogglePercentageScale={togglePercentageScale}
-          onToggleBacktestStats={toggleBacktestStats}
-          onToggleScannerHighlights={toggleScannerHighlights}
-          watchlistWidgetId={watchlistWidgetId}
-          onSelectStock={handleSelectStock}
-          onCloseWatchlistWidget={handleCloseWatchlistWidget}
-        />
+        {selectedStock ? (
+          <ScannerDrawingWorkspace
+            key={`${selectedStock.exchange}:${selectedStock.symbol}:${timeframe}`}
+            stock={selectedStock}
+            chartType={chartType}
+            lookbackMultiplier={lookbackMultiplier}
+            rangeFilter={rangeFilter}
+            theme={theme}
+            timeframe={timeframe}
+            captureRequest={captureRequest}
+            autoScale={autoScale}
+            percentageScale={percentageScale}
+            showBacktestStats={showBacktestStats}
+            scannerHighlightsVisible={scannerHighlightsVisible}
+            onChartTypeChange={setChartType}
+            onRangeFilterChange={setRangeFilter}
+            onToggleAutoScale={toggleAutoScale}
+            onTogglePercentageScale={togglePercentageScale}
+            onToggleBacktestStats={toggleBacktestStats}
+            onToggleScannerHighlights={toggleScannerHighlights}
+            watchlistWidgetId={watchlistWidgetId}
+            onSelectStock={handleSelectStock}
+            onCloseWatchlistWidget={handleCloseWatchlistWidget}
+          />
+        ) : (
+          <ScannerEmptyState onOpenSearch={() => openSearchModal()} />
+        )}
       </div>
     </AuthGuard>
+  );
+}
+
+// Deliberately minimal - this sits inside the same chart workspace chrome
+// (scanner tokens, no card/illustration/gradient) rather than reading as a
+// separate onboarding screen. No candle grid, axis, or stat placeholders
+// here - nothing that could be mistaken for a stock actually being open.
+function ScannerEmptyState({ onOpenSearch }: { onOpenSearch: () => void }) {
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="text-sm font-semibold text-foreground">Search for a stock to start</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Use search to open a stock and review its chart.
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="lg" onClick={onOpenSearch} className="gap-2">
+          <Search className="size-4" />
+          Search stocks
+        </Button>
+      </div>
+      <AdPlacement placementKey="scanner_bottom" variant="scanner" className="shrink-0" />
+    </div>
   );
 }
 

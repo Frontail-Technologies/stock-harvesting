@@ -3,20 +3,17 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
-import { useCurrentUser, useLogout } from "@/features/auth";
+import { useCurrentUser } from "@/features/auth";
 import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
-import { MarketSelector } from "@/features/market";
-import { ThemeToggle } from "@/features/theme";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
-import { getAvatarInitials } from "@/utils/api-client";
 import { getAdminOrigin } from "@/utils/seo";
+import { AccountMenu } from "./AccountMenu";
 
 type NavItem = {
   label: string;
@@ -38,62 +35,15 @@ const ADMIN_HREF = ADMIN_ORIGIN ?? "/admin";
 
 export function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentUser = useCurrentUser().data;
-  const logout = useLogout();
+  // Role is permission, hostname is portal - "Admin" only ever appears as
+  // an extra nav link into the separate admin host above, never an
+  // automatic redirect or a different UI just because role === admin.
   const navItems =
     currentUser?.role === "admin"
       ? [...NAV_ITEMS, { label: "Admin", href: ADMIN_HREF }]
       : NAV_ITEMS;
-  const avatarInitials = currentUser
-    ? getAvatarInitials(currentUser.name ?? "", currentUser.email)
-    : "SH";
-
-  const handleLogout = async () => {
-    await logout.mutateAsync().catch(() => undefined);
-    router.replace("/login");
-  };
-
-  const accountBlock = (
-    <div className="flex items-center justify-between gap-3 rounded-lg px-2 py-2">
-      <div className="flex min-w-0 items-center gap-3">
-        <Avatar className="size-9">
-          <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-            {avatarInitials}
-          </AvatarFallback>
-        </Avatar>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-sidebar-foreground">
-            {currentUser?.name ?? "Account"}
-          </span>
-          <span className="block truncate text-xs font-medium text-muted-foreground">
-            {currentUser?.email}
-          </span>
-        </span>
-      </div>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Log out"
-              disabled={logout.isPending}
-              onClick={() => {
-                setMobileOpen(false);
-                void handleLogout();
-              }}
-            />
-          }
-        >
-          <LogOut className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Log out</TooltipContent>
-      </Tooltip>
-    </div>
-  );
 
   const mobileDrawer =
     mobileOpen && typeof document !== "undefined"
@@ -147,9 +97,16 @@ export function AppHeader() {
                 })}
               </nav>
 
-              <div className="mt-auto space-y-3 border-t border-sidebar-border pt-4">
-                <MarketSelector className="w-full" />
-                {accountBlock}
+              <div className="mt-auto flex items-center justify-between gap-3 border-t border-sidebar-border pt-4">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-sidebar-foreground">
+                    {currentUser?.name ?? "Account"}
+                  </span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">
+                    {currentUser?.email}
+                  </span>
+                </span>
+                <AccountMenu />
               </div>
             </aside>
           </div>,
@@ -180,9 +137,9 @@ export function AppHeader() {
               <TooltipContent side="bottom">Open navigation</TooltipContent>
             </Tooltip>
             <Link href="/scanner" className="flex items-center gap-2">
-              <BrandLogo size="sm" textClassName="hidden text-sm sm:inline" />
+              <BrandLogo size="sm" textClassName="hidden text-sm sm:inline-flex" />
             </Link>
-            <GlobalSearchNavbarField className="ml-2 hidden xl:block" />
+            <GlobalSearchNavbarField className="ml-2 hidden xl:flex xl:w-64" />
           </div>
 
           <nav className="hidden items-center justify-center gap-6 lg:flex">
@@ -209,30 +166,7 @@ export function AppHeader() {
 
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
             <GlobalSearchMobileSheet className="xl:hidden" />
-            <MarketSelector className="hidden sm:block" />
-            <ThemeToggle />
-            <Avatar className="size-9">
-              <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                {avatarInitials}
-              </AvatarFallback>
-            </Avatar>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Log out"
-                    disabled={logout.isPending}
-                    onClick={() => void handleLogout()}
-                  />
-                }
-              >
-                <LogOut className="size-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Log out</TooltipContent>
-            </Tooltip>
+            <AccountMenu />
           </div>
         </div>
       </header>

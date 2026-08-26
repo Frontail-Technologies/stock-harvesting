@@ -1,0 +1,132 @@
+import {
+  AE,
+  AR,
+  AT,
+  AU,
+  BD,
+  BE,
+  BH,
+  BR,
+  CA,
+  CH,
+  CL,
+  CN,
+  CO,
+  DE,
+  DK,
+  EG,
+  ES,
+  FR,
+  GB,
+  HK,
+  ID,
+  IE,
+  IL,
+  IN,
+  IT,
+  JP,
+  KE,
+  KR,
+  KW,
+  LK,
+  MX,
+  MY,
+  NG,
+  NL,
+  NO,
+  NZ,
+  PE,
+  PH,
+  PK,
+  PL,
+  QA,
+  RU,
+  SA,
+  SE,
+  SG,
+  TH,
+  TR,
+  TW,
+  US,
+  VN,
+  ZA,
+} from "country-flag-icons/string/3x2";
+
+// Exchange metadata's `country` field is a plain display name (e.g.
+// "India", "United States" - confirmed from the backend's exchange
+// listings), not an ISO code, so it needs its own name -> flag lookup
+// distinct from flag-uri.ts (which is keyed by ISO code already). Covers
+// the countries realistically present in the exchange registry; anything
+// outside this list just renders without a flag rather than breaking.
+const COUNTRY_FLAG_SVG: Record<string, string> = {
+  "United States": US,
+  "United States of America": US,
+  USA: US,
+  India: IN,
+  Japan: JP,
+  "United Kingdom": GB,
+  UK: GB,
+  Australia: AU,
+  Canada: CA,
+  Singapore: SG,
+  Germany: DE,
+  France: FR,
+  "Hong Kong": HK,
+  China: CN,
+  "South Korea": KR,
+  Korea: KR,
+  Switzerland: CH,
+  Netherlands: NL,
+  Italy: IT,
+  Spain: ES,
+  Sweden: SE,
+  Norway: NO,
+  Denmark: DK,
+  Brazil: BR,
+  Mexico: MX,
+  "South Africa": ZA,
+  Israel: IL,
+  "United Arab Emirates": AE,
+  "Saudi Arabia": SA,
+  Taiwan: TW,
+  Thailand: TH,
+  Malaysia: MY,
+  Indonesia: ID,
+  Philippines: PH,
+  Vietnam: VN,
+  "New Zealand": NZ,
+  Ireland: IE,
+  Belgium: BE,
+  Austria: AT,
+  Poland: PL,
+  Turkey: TR,
+  Russia: RU,
+  Argentina: AR,
+  Chile: CL,
+  Colombia: CO,
+  Peru: PE,
+  Egypt: EG,
+  Nigeria: NG,
+  Kenya: KE,
+  Qatar: QA,
+  Kuwait: KW,
+  Bahrain: BH,
+  Pakistan: PK,
+  Bangladesh: BD,
+  "Sri Lanka": LK,
+};
+
+export function exchangeCountryFlagUri(country: string): string | null {
+  const svg = COUNTRY_FLAG_SVG[country.trim()];
+  if (!svg) return null;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+// The one canonical "Country (CODE)" label - e.g. "India (BSE)",
+// "United States (NASDAQ)". Built from {country, code} rather than trusting
+// each provider's own `name` field, since that's inconsistently formatted
+// across providers (NSE/BSE happen to already say "India (NSE)"/"India
+// (BSE)", but EODHD's raw exchange names don't follow that pattern).
+export function formatExchangeCountryLabel(exchange: { code: string; country: string }): string {
+  return `${exchange.country} (${exchange.code})`;
+}
