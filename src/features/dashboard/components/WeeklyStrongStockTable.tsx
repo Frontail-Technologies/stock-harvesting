@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -21,14 +21,58 @@ import {
 } from "@/features/market-collections";
 import { useScannerUiStore } from "@/features/scanner";
 import { StockQuickChartPreview } from "@/features/stocks";
+import { cn } from "@/utils/cn";
 import { formatCompactVolume } from "@/utils/formatters";
+import { filterWeeklyStrongByCrossFilter, type CrossFilterState } from "../lib/dashboard-cross-filter";
 
-export function WeeklyStrongStockTable({ code }: { code: string }) {
+// Sector/Industry are presentation-only removed from this table (Phase
+// D.9 #1) - the API still returns them (CollectionWeeklyStrongStock keeps
+// both fields) since the Backtest chart's stacking/legend/tooltip still
+// need them; this table just no longer renders those two columns.
+type SortKey = "symbol" | "name" | "close" | "changePct" | "volume";
+type SortDirection = "asc" | "desc";
+
+const SORTABLE_COLUMNS: Array<{ key: SortKey; label: string; align?: "right" }> = [
+  { key: "symbol", label: "Symbol" },
+  { key: "name", label: "Stock Name" },
+  { key: "close", label: "Close", align: "right" },
+  { key: "changePct", label: "% Change", align: "right" },
+  { key: "volume", label: "Volume", align: "right" },
+];
+
+function compareRows(a: CollectionWeeklyStrongStock, b: CollectionWeeklyStrongStock, key: SortKey) {
+  const av = a[key];
+  const bv = b[key];
+  if (typeof av === "number" && typeof bv === "number") return av - bv;
+  return String(av ?? "").localeCompare(String(bv ?? ""));
+}
+
+// Cross-filter pass (Part B, item 14) - `crossFilter` is optional so this
+// table keeps working unfiltered wherever it's rendered without a
+// Dashboard segment context. When provided, it's applied via the exact
+// same `filterWeeklyStrongByCrossFilter` function DashboardSegmentContent
+// uses for the Weekly Strong WIDGET card, over the SAME underlying
+// `useCollectionWeeklyStrongStocks({code})` query this table already ran
+// - one shared filter function, one shared data source, so the widget and
+// this table's row COUNT can never diverge for a given filter state
+// (item 14's guarantee). The search box then narrows further within
+// whatever the cross-filter already allowed.
+export function WeeklyStrongStockTable({
+  code,
+  crossFilter,
+}: {
+  code: string;
+  crossFilter?: CrossFilterState;
+}) {
   const router = useRouter();
   const setScannerStock = useScannerUiStore((state) => state.setSelectedStock);
   const { formatStockCurrency } = useCurrency();
   const { items, isLoading, isError } = useCollectionWeeklyStrongStocks({ code });
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: "changePct",
+    direction: "desc",
+  });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [preview, setPreview] = useState<{
     symbol: string;
@@ -37,14 +81,31 @@ export function WeeklyStrongStockTable({ code }: { code: string }) {
     rowBottom: number;
   } | null>(null);
 
+  const crossFilteredItems = useMemo(
+    () => (crossFilter ? filterWeeklyStrongByCrossFilter(items, crossFilter) : items),
+    [items, crossFilter]
+  );
+
   const filteredItems = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter(
-      (item) =>
-        item.symbol.toLowerCase().includes(query) || item.name.toLowerCase().includes(query)
+    const base = query
+      ? crossFilteredItems.filter(
+          (item) =>
+            item.symbol.toLowerCase().includes(query) || item.name.toLowerCase().includes(query)
+        )
+      : crossFilteredItems;
+
+    const sorted = [...base].sort((a, b) => compareRows(a, b, sort.key));
+    return sort.direction === "asc" ? sorted : sorted.reverse();
+  }, [crossFilteredItems, q, sort]);
+
+  const handleSort = (key: SortKey) => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: key === "changePct" || key === "close" || key === "volume" ? "desc" : "asc" }
     );
-  }, [items, q]);
+  };
 
   const clearPreviewTimer = () => {
     if (!hoverTimeoutRef.current) return;
@@ -99,17 +160,20 @@ export function WeeklyStrongStockTable({ code }: { code: string }) {
       volume: item.volume,
       hasMarketData: true,
     });
-    router.push(`/scanner?symbol=${encodeURIComponent(item.symbol)}`);
+    // exchange must travel with symbol - Scanner treats a URL missing
+    // either half as "no stock open" and would otherwise clear the
+    // selection this just made (see ScannerPage's URL<->store sync).
+    router.push(
+      `/scanner?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange)}`
+    );
   };
 
   return (
-    <section className="relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+    <section className="relative flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Weekly Strong Stock List</h2>
-          <p className="text-xs text-muted-foreground">
-            Stocks within 15% of their own weekly and daily multi-year highs
-          </p>
+          <h2 className="text-base font-semibold text-foreground">Weekly Strong Stock List</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Qualified stocks for this segment</p>
         </div>
         <div className="relative w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -117,37 +181,46 @@ export function WeeklyStrongStockTable({ code }: { code: string }) {
             value={q}
             onChange={(event) => setQ(event.target.value)}
             placeholder="Search symbol or name"
-            className="h-8 pl-8"
+            className="h-9 pl-8"
           />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-border">
+      <div className="max-h-128 overflow-y-auto rounded-lg border border-border">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="w-12 border-r border-border px-3 text-xs font-semibold">
-                Sr.
-              </TableHead>
-              <TableHead className="w-28 border-r border-border px-3 text-xs font-semibold">
-                Symbol
-              </TableHead>
-              <TableHead className="min-w-48 border-r border-border px-3 text-xs font-semibold">
-                Stock Name
-              </TableHead>
-              <TableHead className="w-24 border-r border-border px-3 text-right text-xs font-semibold">
-                Close
-              </TableHead>
-              <TableHead className="w-24 border-r border-border px-3 text-right text-xs font-semibold">
-                % Change
-              </TableHead>
-              <TableHead className="w-28 px-3 text-right text-xs font-semibold">
-                Volume
-              </TableHead>
+          <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
+            <TableRow className="hover:bg-transparent">
+              {SORTABLE_COLUMNS.map((column) => {
+                const active = sort.key === column.key;
+                const Icon = active ? (sort.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+                return (
+                  <TableHead
+                    key={column.key}
+                    className={cn(
+                      "h-10 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase",
+                      column.align === "right" && "text-right"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.key)}
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-foreground",
+                        column.align === "right" && "flex-row-reverse",
+                        active && "text-foreground"
+                      )}
+                    >
+                      {column.label}
+                      <Icon className={cn("size-3", !active && "opacity-40")} />
+                    </button>
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredItems.map((item, index) => (
+            {filteredItems.map((item) => (
               <TableRow
                 key={item.symbol}
                 onPointerEnter={(event) => handleRowEnter(item, event)}
@@ -162,40 +235,34 @@ export function WeeklyStrongStockTable({ code }: { code: string }) {
                 }}
                 tabIndex={0}
                 role="button"
-                className="cursor-pointer hover:bg-primary/5"
+                className="cursor-pointer border-border/60 hover:bg-primary/5"
               >
-                <TableCell className="border-r border-border px-3 text-muted-foreground">
-                  {index + 1}
-                </TableCell>
-                <TableCell className="border-r border-border px-3 font-medium text-primary">
-                  {item.symbol}
-                </TableCell>
-                <TableCell className="border-r border-border px-3 text-foreground">
-                  {item.name}
-                </TableCell>
-                <TableCell className="border-r border-border px-3 text-right text-foreground">
+                <TableCell className="h-12 px-4 font-semibold text-primary">{item.symbol}</TableCell>
+                <TableCell className="max-w-56 truncate px-4 text-foreground">{item.name}</TableCell>
+                <TableCell className="px-4 text-right text-foreground tabular-nums">
                   {formatStockCurrency(item.close, item.exchange)}
                 </TableCell>
-                <TableCell className="border-r border-border px-3 text-right">
+                <TableCell className="px-4 text-right">
                   <Badge
                     variant="outline"
-                    className={`border-transparent ${
+                    className={cn(
+                      "border-transparent tabular-nums",
                       item.changePct >= 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
-                    }`}
+                    )}
                   >
                     {item.changePct >= 0 ? "+" : ""}
                     {item.changePct.toFixed(2)}%
                   </Badge>
                 </TableCell>
-                <TableCell className="px-3 text-right text-muted-foreground">
+                <TableCell className="px-4 text-right text-muted-foreground tabular-nums">
                   {formatCompactVolume(item.volume)}
                 </TableCell>
               </TableRow>
             ))}
 
             {filteredItems.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={SORTABLE_COLUMNS.length} className="py-10 text-center text-sm text-muted-foreground">
                   {isLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner size="sm" />
@@ -206,7 +273,7 @@ export function WeeklyStrongStockTable({ code }: { code: string }) {
                   ) : q ? (
                     "No matches for your search."
                   ) : (
-                    "No stocks currently pass this screen."
+                    "No stocks matched for the latest completed week."
                   )}
                 </TableCell>
               </TableRow>

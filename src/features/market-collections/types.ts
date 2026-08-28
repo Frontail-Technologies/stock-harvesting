@@ -3,6 +3,7 @@ export type MarketCollection = {
   code: string;
   name: string;
   exchange: string;
+  countryCode: string;
   memberCount: number;
 };
 
@@ -50,6 +51,16 @@ export type CollectionRelativeStrengthMetric = {
   symbol: string;
   name: string;
   exchange: string;
+  // Cross-filter pass (item 13) - the backend's RelativeStrengthMetricRow
+  // already carries both fields (confirmed live against
+  // /api/market-collections/:code/relative-strength) and always has, they
+  // were just never declared on this frontend type before since nothing
+  // consumed them. Widening the type here is the entire "API change" this
+  // feature needed - no backend edit, no new endpoint: see
+  // dashboard-cross-filter.ts, which derives the industry<->sector
+  // relation from this same ungrouped metrics array.
+  sector: string | null;
+  industry: string | null;
   close: number;
   volume: number;
   change55dPct: number;
@@ -78,21 +89,13 @@ export type CollectionWeeklyStrongStock = {
   close: number;
   changePct: number;
   volume: number;
+  sector: string | null;
+  industry: string | null;
 };
 
 export type CollectionWeeklyStrongStocksResponse = {
   collection: { code: string; name: string };
   items: CollectionWeeklyStrongStock[];
-};
-
-export type CollectionWeeklyStrongBacktestPoint = {
-  date: string;
-  passCount: number;
-};
-
-export type CollectionWeeklyStrongBacktestResponse = {
-  collection: { code: string; name: string };
-  points: CollectionWeeklyStrongBacktestPoint[];
 };
 
 export type CollectionImportRow = { symbol: string; instrumentId: string; status?: string };
@@ -120,4 +123,58 @@ export type AdminMarketCollection = MarketCollection & {
   sourceName: string | null;
   sourceDate: string | null;
   lastImportedAt: string | null;
+};
+
+// A confirmed import (never a dry-run) additionally reports the immutable
+// membership version it created, plus any backtest runs the import
+// invalidated as a lifecycle side effect (Phase D.5): the entire
+// current_membership series when the active set actually changed (#2),
+// and any historical_membership weeks that fell inside this version's own
+// now-authoritative window and were resolved against a different,
+// now-superseded version (#1). Neither is auto-regenerated - see
+// AdminWeeklyStrongBacktestStatus's explicit rebuild actions.
+export type CollectionImportResult = CollectionImportReport & {
+  versionId: string;
+  effectiveFrom: string;
+  invalidatedCurrentMembershipRuns: number;
+  invalidatedHistoricalWeeks: string[];
+};
+
+export type CollectionVersionStatus = "current" | "superseded" | "scheduled";
+
+export type CollectionVersionSummary = {
+  id: string;
+  effectiveFrom: string;
+  memberCount: number;
+  sourceName: string | null;
+  sourceDate: string | null;
+  importedAt: string;
+  status: CollectionVersionStatus;
+};
+
+export type CollectionVersionMember = {
+  instrumentId: string;
+  symbol: string;
+  exchange: string;
+  name: string;
+};
+
+export type CollectionVersionMembersResponse = {
+  version: {
+    id: string;
+    effectiveFrom: string;
+    memberCount: number;
+    sourceName: string | null;
+    sourceDate: string | null;
+    importedAt: string;
+  };
+  members: CollectionVersionMember[];
+};
+
+export type CollectionVersionReplaceResult = {
+  versionId: string;
+  memberCount: number;
+  unmatched: string[];
+  invalid: string[];
+  invalidatedWeeks: string[];
 };

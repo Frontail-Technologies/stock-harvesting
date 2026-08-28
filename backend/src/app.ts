@@ -16,6 +16,7 @@ import { pushSubscriptionsRouter } from "./modules/push-subscriptions/push-subsc
 import { scannerRouter } from "./modules/scanner/scanner.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { watchlistsRouter } from "./modules/watchlists/watchlists.routes";
+import { weeklyStrongBacktestRouter } from "./modules/weekly-strong-backtest/weekly-strong-backtest.routes";
 import { API_ROUTES, HTTP_STATUS } from "./shared/constants";
 import { corsOrigins } from "./shared/env";
 import { errorHandler, notFound } from "./shared/errors";
@@ -98,6 +99,7 @@ export function createApp() {
   app.use(API_ROUTES.pushSubscriptions, pushSubscriptionsRouter);
   app.use(API_ROUTES.watchlists, watchlistsRouter);
   app.use(API_ROUTES.monetization, monetizationRouter);
+  app.use(API_ROUTES.weeklyStrongBacktest, weeklyStrongBacktestRouter);
 
   app.use((_req, _res, next) => {
     next(notFound("Route not found"));

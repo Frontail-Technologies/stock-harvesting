@@ -46,10 +46,17 @@ import { getScannerLookbackWeeks } from "../types";
 import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
+import { ScannerWatchlistSidebar } from "./ScannerWatchlistSidebar";
 import { ScannerWatchlistWidget } from "./ScannerWatchlistWidget";
 import { TopToolbar } from "./TopToolbar";
 
 const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
+
+// Small workspace gutters between the toolbar/rail/chart/bottom-bar panels -
+// desktop ~4px, tablet ~3px, mobile ~2px (see globals.css's
+// --scanner-shell-bg, the color that shows through these gaps).
+const SCANNER_GUTTER = "gap-0.5 sm:gap-[3px] lg:gap-1";
+const SCANNER_GUTTER_B = "mb-0.5 sm:mb-[3px] lg:mb-1";
 
 // A placeholder for "the toolbar needs some Stock object to render, but
 // nothing is actually selected" - symbol is deliberately empty, which is
@@ -244,13 +251,14 @@ export function ScannerPage() {
     <AuthGuard
       className={cn(
         getScannerThemeClass(theme),
-        "grid h-dvh w-screen place-items-center bg-background text-foreground"
+        "grid h-dvh w-screen place-items-center bg-(--scanner-shell-bg) text-foreground"
       )}
     >
       <div
         className={cn(
           getScannerThemeClass(theme),
-          "flex h-dvh w-screen flex-col overflow-hidden bg-background text-foreground"
+          "flex h-dvh w-screen flex-col overflow-hidden bg-(--scanner-shell-bg) text-foreground",
+          SCANNER_GUTTER
         )}
       >
         <AdsenseScript placementKeys={["scanner_bottom"]} />
@@ -265,33 +273,43 @@ export function ScannerPage() {
           onLookbackMultiplierChange={setLookbackMultiplier}
         />
 
-        {selectedStock ? (
-          <ScannerDrawingWorkspace
-            key={`${selectedStock.exchange}:${selectedStock.symbol}:${timeframe}`}
-            stock={selectedStock}
-            chartType={chartType}
-            lookbackMultiplier={lookbackMultiplier}
-            rangeFilter={rangeFilter}
-            theme={theme}
-            timeframe={timeframe}
-            captureRequest={captureRequest}
-            autoScale={autoScale}
-            percentageScale={percentageScale}
-            showBacktestStats={showBacktestStats}
-            scannerHighlightsVisible={scannerHighlightsVisible}
-            onChartTypeChange={setChartType}
-            onRangeFilterChange={setRangeFilter}
-            onToggleAutoScale={toggleAutoScale}
-            onTogglePercentageScale={togglePercentageScale}
-            onToggleBacktestStats={toggleBacktestStats}
-            onToggleScannerHighlights={toggleScannerHighlights}
-            watchlistWidgetId={watchlistWidgetId}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
+          {selectedStock ? (
+            <ScannerDrawingWorkspace
+              key={`${selectedStock.exchange}:${selectedStock.symbol}:${timeframe}`}
+              stock={selectedStock}
+              chartType={chartType}
+              lookbackMultiplier={lookbackMultiplier}
+              rangeFilter={rangeFilter}
+              theme={theme}
+              timeframe={timeframe}
+              captureRequest={captureRequest}
+              autoScale={autoScale}
+              percentageScale={percentageScale}
+              showBacktestStats={showBacktestStats}
+              scannerHighlightsVisible={scannerHighlightsVisible}
+              onChartTypeChange={setChartType}
+              onRangeFilterChange={setRangeFilter}
+              onToggleAutoScale={toggleAutoScale}
+              onTogglePercentageScale={togglePercentageScale}
+              onToggleBacktestStats={toggleBacktestStats}
+              onToggleScannerHighlights={toggleScannerHighlights}
+              watchlistWidgetId={watchlistWidgetId}
+              onSelectStock={handleSelectStock}
+              onCloseWatchlistWidget={handleCloseWatchlistWidget}
+            />
+          ) : (
+            <ScannerEmptyState onOpenSearch={() => openSearchModal()} />
+          )}
+          {/* Available even with no stock open yet - browsing a watchlist
+              is itself a way to pick a first stock, not just something you
+              reach for once a chart is already plotted. */}
+          <ScannerWatchlistSidebar
+            selectedSymbol={selectedStock?.symbol ?? ""}
+            selectedExchange={selectedStock?.exchange ?? ""}
             onSelectStock={handleSelectStock}
-            onCloseWatchlistWidget={handleCloseWatchlistWidget}
           />
-        ) : (
-          <ScannerEmptyState onOpenSearch={() => openSearchModal()} />
-        )}
+        </div>
       </div>
     </AuthGuard>
   );
@@ -568,7 +586,7 @@ function ScannerDrawingWorkspace({
   ]);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
+    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden", SCANNER_GUTTER)}>
       <ChartToolsBar
         drawing={drawing}
         stock={stock}
@@ -577,7 +595,7 @@ function ScannerDrawingWorkspace({
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className={cn("relative min-h-0 min-w-0 flex-1 overflow-hidden", SCANNER_GUTTER_B)}>
           <ScannerChart
             stock={stock}
             candles={candles}

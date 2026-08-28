@@ -85,7 +85,18 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
           {currentUser ? (
             <Avatar className="size-8">
               {currentUser.avatarUrl ? (
-                <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name || currentUser.email} />
+                // Most avatarUrl values are Google's own profile picture CDN
+                // (see auth.service.ts's profile.picture) - those requests
+                // silently fail under the browser's default referrer policy
+                // often enough that it reads as "the photo doesn't show
+                // half the time," permanently stuck on the initials
+                // fallback for that mount. no-referrer avoids that failure
+                // mode entirely.
+                <AvatarImage
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name || currentUser.email}
+                  referrerPolicy="no-referrer"
+                />
               ) : null}
               <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                 {avatarInitials}

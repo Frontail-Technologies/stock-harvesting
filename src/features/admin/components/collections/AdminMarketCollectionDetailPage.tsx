@@ -9,6 +9,8 @@ import { useAdminMarketCollection } from "../../hooks/use-admin-market-collectio
 import { AdminCollectionImportDialog } from "./AdminCollectionImportDialog";
 import { AdminCollectionMembersTable } from "./AdminCollectionMembersTable";
 import { AdminCollectionMetadataForm } from "./AdminCollectionMetadataForm";
+import { AdminCollectionVersionHistory } from "./AdminCollectionVersionHistory";
+import { AdminWeeklyStrongBacktestStatus } from "./AdminWeeklyStrongBacktestStatus";
 
 export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
   const collectionQuery = useAdminMarketCollection(id);
@@ -83,7 +85,10 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
         </section>
 
         <AdminCollectionMetadataForm key={collection.id} collection={collection} />
+        <AdminWeeklyStrongBacktestStatus collectionId={collection.id} />
       </div>
+
+      <AdminCollectionVersionHistory collectionId={collection.id} />
 
       <AdminCollectionMembersTable collectionId={collection.id} />
     </div>

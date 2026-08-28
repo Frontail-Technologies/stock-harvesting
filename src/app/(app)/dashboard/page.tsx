@@ -1,37 +1,24 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { RefreshCw } from "lucide-react";
-import { DashboardGrid } from "@/features/dashboard";
+import { DashboardPage } from "@/features/dashboard";
 import { AppPage, AppShell } from "@/features/layout";
-import { Button } from "@/components/ui/button";
 import { IS_PRODUCTION_LOCKDOWN } from "@/utils/production-lockdown";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   if (IS_PRODUCTION_LOCKDOWN) {
     redirect("/scanner");
   }
 
   return (
     <AppShell>
-      <AppPage>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Real-time market analytics and relative strength insights
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              Updated at: 10th Jul, 3:30pm
-            </span>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <RefreshCw className="size-3.5" />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        <DashboardGrid />
+      {/* Matches AppHeader's own edge treatment exactly (px-3/sm:px-4/lg:px-6,
+          no max-width cap) instead of AppPage's default max-w-screen-2xl -
+          on any viewport wider than that cap the Dashboard content used to
+          sit visibly inset from the navbar's logo/nav edges. */}
+      <AppPage className="px-3 py-6 sm:px-4 lg:px-6" contentClassName="max-w-none">
+        <Suspense fallback={null}>
+          <DashboardPage />
+        </Suspense>
       </AppPage>
     </AppShell>
   );

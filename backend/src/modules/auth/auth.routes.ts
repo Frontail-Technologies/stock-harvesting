@@ -4,6 +4,7 @@ import { AUTH_ROUTES } from "../../shared/constants";
 import { env } from "../../shared/env";
 import { unauthorized } from "../../shared/errors";
 import { sendData } from "../../shared/http";
+import { logger } from "../../shared/logger";
 import { asyncHandler, getAuthUserId, requireAuth, validate } from "../../shared/middleware";
 import {
   OAUTH_PORTAL_COOKIE_NAME,
@@ -79,7 +80,17 @@ authRouter.get(
       clearOauthStateCookie(res);
       clearOauthPortalCookie(res);
       return res.redirect(`${destination.origin}${destination.successPath}?auth=success`);
-    } catch {
+    } catch (error) {
+      // Previously swallowed silently - every Google login failure landed
+      // on /login?auth=failed with zero trace of why (code exchange
+      // rejected, profile fetch failed, DB error on user upsert, etc).
+      logger.error(
+        {
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "Google OAuth callback failed"
+      );
       return redirectToLogin("failed");
     }
   })

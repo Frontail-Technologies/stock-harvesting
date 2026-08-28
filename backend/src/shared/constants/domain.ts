@@ -47,6 +47,20 @@ export const SUPPORTED_EXCHANGE_CODES = SUPPORTED_EXCHANGES.map(
   (exchange) => exchange.code
 ) as SupportedExchangeCode[];
 
+// Closed, deliberately small allow-list (Phase D) - every market
+// collection in this codebase is India/BSE today, and section 3 of the
+// Phase D brief is explicit: "Do not invent unsupported countries." Add a
+// new entry here only when there is real backend support (instruments,
+// exchanges, and a collection) for that country - the Dashboard's country
+// selector reads this transitively via /api/market-collections, not a
+// hardcoded frontend list.
+export const SUPPORTED_COUNTRIES = [{ code: "IN", label: "India" }] as const;
+export type SupportedCountryCode = (typeof SUPPORTED_COUNTRIES)[number]["code"];
+export const SUPPORTED_COUNTRY_CODES = SUPPORTED_COUNTRIES.map(
+  (country) => country.code
+) as SupportedCountryCode[];
+export const DEFAULT_COUNTRY_CODE: SupportedCountryCode = "IN";
+
 export const CANDLE_TIMEFRAMES = ["1D", "1W", "1M"] as const;
 export type CandleTimeframe = (typeof CANDLE_TIMEFRAMES)[number];
 export const CANDLE_TIMEFRAME = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getLatestExpectedTradingDay } from "./trading-calendar";
+import { getLatestExpectedTradingDay, isCompletedTradingWeek } from "./trading-calendar";
 
 // NSE/BSE close at 15:30 IST (Asia/Kolkata, UTC+5:30) = 10:00 UTC.
 describe("getLatestExpectedTradingDay - India exchanges (NSE)", () => {
@@ -44,5 +44,49 @@ describe("getLatestExpectedTradingDay - non-India exchanges (US)", () => {
   it("returns the previous weekday while the market is still open", () => {
     const at = new Date("2026-01-06T20:00:00Z");
     expect(getLatestExpectedTradingDay("US", at)).toBe("2026-01-05");
+  });
+});
+
+// The week of Mon 2026-01-05 .. Sun 2026-01-11 - a weekly candle's own
+// `time` is the first trading day of its ISO week (see
+// aggregateWeeklyCandles), so "2026-01-05" stands in for that whole week
+// throughout these cases.
+describe("isCompletedTradingWeek", () => {
+  it("is not complete while still inside the same ISO week (mid-week)", () => {
+    const at = new Date("2026-01-06T10:05:00Z"); // Tuesday, after NSE close
+    expect(isCompletedTradingWeek("2026-01-05", "NSE", at)).toBe(false);
+  });
+
+  it("is not complete on the week's own last trading day, even after close", () => {
+    const at = new Date("2026-01-09T10:05:00Z"); // Friday, after NSE close
+    expect(isCompletedTradingWeek("2026-01-05", "NSE", at)).toBe(false);
+  });
+
+  it("is not complete over the trailing weekend of the same week", () => {
+    // Deliberate design choice (see the Phase C1.5 report): a week only
+    // becomes "complete" once evaluation has moved into the FOLLOWING ISO
+    // week, not merely once its last trading day's close has passed - a
+    // delayed/corrective EOD sync over the weekend could still touch
+    // Friday's candle, so this stays conservative rather than assuming
+    // Friday's close is final the moment it lands.
+    const at = new Date("2026-01-11T03:00:00Z"); // Sunday
+    expect(isCompletedTradingWeek("2026-01-05", "NSE", at)).toBe(false);
+  });
+
+  it("is complete once evaluated from the following week", () => {
+    const at = new Date("2026-01-12T10:05:00Z"); // Monday of the next week
+    expect(isCompletedTradingWeek("2026-01-05", "NSE", at)).toBe(true);
+  });
+
+  it("is complete for any week further in the past", () => {
+    const at = new Date("2026-03-01T10:05:00Z");
+    expect(isCompletedTradingWeek("2026-01-05", "NSE", at)).toBe(true);
+  });
+
+  it("applies the same rule for non-India exchanges, in their own timezone", () => {
+    const midWeek = new Date("2026-01-06T21:05:00Z"); // Tuesday, after US close
+    const nextWeek = new Date("2026-01-12T21:05:00Z"); // Monday of the next week
+    expect(isCompletedTradingWeek("2026-01-05", "US", midWeek)).toBe(false);
+    expect(isCompletedTradingWeek("2026-01-05", "US", nextWeek)).toBe(true);
   });
 });

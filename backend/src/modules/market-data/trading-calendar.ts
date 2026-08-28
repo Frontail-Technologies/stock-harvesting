@@ -6,6 +6,8 @@
 // exchange holidays (no holiday calendar exists in this codebase to draw
 // from) - it only fixes the weekday/timezone gap.
 
+import { getWeekKey } from "./candle-aggregation";
+
 const INDIA_EXCHANGE_PREFIXES = ["NSE", "BSE"];
 
 function isIndiaExchange(exchange: string) {
@@ -88,4 +90,28 @@ export function getLatestExpectedTradingDay(exchange: string, at: Date = new Dat
   }
 
   return candidateDate;
+}
+
+// The one "is this weekly candle's week actually over" rule the whole
+// Weekly Strong pipeline (live list, backtest chart, Scanner overlay)
+// shares - see weekly-strong-evaluator.ts's excludeIncompleteTradingWeek,
+// which is what callers actually use. A weekly candle's own `time` (see
+// aggregateWeeklyCandles) is the FIRST trading day of its ISO week - that
+// week is complete exactly when it's a different (necessarily earlier)
+// ISO week than the one containing the exchange's own latest expected
+// completed trading day. Deliberately not a "is it Friday yet" check -
+// this reuses getLatestExpectedTradingDay itself (same exchange timezone,
+// market-close, weekend handling), just compared at week granularity
+// instead of day granularity, so a week can never look "done" from one
+// day's check but "not done" from the other's.
+export function isCompletedTradingWeek(
+  weekCandleTime: string,
+  exchange: string,
+  at: Date = new Date()
+): boolean {
+  const latestCompletedDay = getLatestExpectedTradingDay(exchange, at);
+  return (
+    getWeekKey(new Date(`${weekCandleTime}T00:00:00.000Z`)) !==
+    getWeekKey(new Date(`${latestCompletedDay}T00:00:00.000Z`))
+  );
 }

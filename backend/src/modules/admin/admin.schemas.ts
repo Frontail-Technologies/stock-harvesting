@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SUPPORTED_AI_MODEL_CODES, USER_PLANS, USER_ROLES } from "../../shared/constants";
+import { SUPPORTED_AI_MODEL_CODES, SUPPORTED_COUNTRY_CODES, USER_PLANS, USER_ROLES } from "../../shared/constants";
 import { GLOBAL_DATAFEEDS_INDEX_EXCHANGE } from "../data-provider/adapters/global-datafeeds/global-datafeeds.constants";
 import { NSE_INDEX_EXCHANGE } from "../data-provider/adapters/zerodha-data-provider.adapter";
 import { exchangeSchema } from "../market-data/market-data.schemas";
@@ -115,6 +115,7 @@ export const createCollectionBodySchema = z
     code: z.string().trim().min(1).max(64),
     name: z.string().trim().min(1).max(160),
     exchange: exchangeSchema,
+    countryCode: z.enum(SUPPORTED_COUNTRY_CODES as [string, ...string[]]).optional(),
     description: z.string().trim().max(500).optional(),
   })
   .strict();
@@ -127,11 +128,34 @@ export const updateCollectionBodySchema = z
   })
   .strict();
 
+// Dry-run preview only diffs symbols against current membership - it never
+// creates a version, so effectiveFrom isn't needed here (Phase D #4: "Do
+// NOT create a version during dry-run").
 export const importCollectionCsvBodySchema = z
   .object({
     csvContent: z.string().min(1).max(2_000_000),
     sourceName: z.string().trim().max(160).optional(),
     sourceDate: z.string().date().optional(),
+  })
+  .strict();
+
+// Confirming an import additionally requires the date this constituent
+// snapshot becomes authoritative for historical membership resolution
+// (Phase D #4/#5) - required here, unlike the dry-run schema above.
+export const confirmCollectionImportBodySchema = importCollectionCsvBodySchema.extend({
+  effectiveFrom: z.string().date(),
+});
+
+export const collectionVersionIdParamsSchema = z
+  .object({
+    id: z.string().uuid(),
+    versionId: z.string().uuid(),
+  })
+  .strict();
+
+export const replaceCollectionVersionBodySchema = z
+  .object({
+    csvContent: z.string().min(1).max(2_000_000),
   })
   .strict();
 

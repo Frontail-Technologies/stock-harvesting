@@ -24,6 +24,10 @@ import {
 } from "../market-data/market-data.service";
 import { syncSectorClassifications } from "../market-data/sector-classification.service";
 import {
+  runWeeklyStrongBacktestBackfill,
+  runWeeklyStrongBacktestHistoricalRebuild,
+} from "../weekly-strong-backtest/weekly-strong-backtest.service";
+import {
   getAllProviderStatuses,
   getProviderConnectUrl,
   getProviderStatus,
@@ -660,6 +664,120 @@ export async function updateBrandingSettings(input: {
   );
   return settings;
 }
+
+// Same queued-if-Redis-else-inline pattern as triggerInstrumentSync above -
+// works identically in an environment without REDIS_URL configured
+// (worker.ts refuses to start there, so runTrackedJob's queue path would
+// never actually execute).
+export async function triggerWeeklyStrongBacktestBackfill(input: {
+  actorUserId: string;
+  collectionId: string;
+  weeks?: number;
+}) {
+  const queue = getMarketDataQueue();
+  const [job] = await db
+    .insert(syncJobs)
+    .values({
+      type: SYNC_JOB_TYPES.weeklyStrongBacktestBackfill,
+      status: queue ? JOB_STATUS.queued : JOB_STATUS.running,
+      payload: { collectionId: input.collectionId, weeks: input.weeks },
+    })
+    .returning();
+
+  if (queue) {
+    await queue.add(JOB_NAMES.weeklyStrongBacktestBackfill, {
+      syncJobId: job.id,
+      collectionId: input.collectionId,
+      weeks: input.weeks,
+    });
+  } else {
+    try {
+      const result = await runWeeklyStrongBacktestBackfill({
+        collectionId: input.collectionId,
+        weeks: input.weeks,
+      });
+      await db
+        .update(syncJobs)
+        .set({ status: JOB_STATUS.completed, payload: result, updatedAt: new Date() })
+        .where(eq(syncJobs.id, job.id));
+    } catch (error) {
+      await db
+        .update(syncJobs)
+        .set({
+          status: JOB_STATUS.failed,
+          errorMessage: error instanceof Error ? error.message : "Backfill failed",
+          updatedAt: new Date(),
+        })
+        .where(eq(syncJobs.id, job.id));
+      throw error;
+    }
+  }
+
+  await audit(input.actorUserId, "weekly_strong_backtest.backfill_triggered", "market_collection", input.collectionId, {
+    weeks: input.weeks,
+  });
+
+  return { syncJobId: job.id, status: job.status };
+}
+
+// Same queued-if-Redis-else-inline pattern as triggerWeeklyStrongBacktestBackfill
+// above. Reuses runWeeklyStrongBacktestHistoricalRebuild (Phase D) - grouped
+// per resolved membership version, never blindly recomputing every
+// collection.
+export async function triggerWeeklyStrongBacktestHistoricalRebuild(input: {
+  actorUserId: string;
+  collectionId: string;
+}) {
+  const queue = getMarketDataQueue();
+  const [job] = await db
+    .insert(syncJobs)
+    .values({
+      type: SYNC_JOB_TYPES.weeklyStrongBacktestHistoricalRebuild,
+      status: queue ? JOB_STATUS.queued : JOB_STATUS.running,
+      payload: { collectionId: input.collectionId },
+    })
+    .returning();
+
+  if (queue) {
+    await queue.add(JOB_NAMES.weeklyStrongBacktestHistoricalRebuild, {
+      syncJobId: job.id,
+      collectionId: input.collectionId,
+    });
+  } else {
+    try {
+      const result = await runWeeklyStrongBacktestHistoricalRebuild({ collectionId: input.collectionId });
+      await db
+        .update(syncJobs)
+        .set({ status: JOB_STATUS.completed, payload: result, updatedAt: new Date() })
+        .where(eq(syncJobs.id, job.id));
+    } catch (error) {
+      await db
+        .update(syncJobs)
+        .set({
+          status: JOB_STATUS.failed,
+          errorMessage: error instanceof Error ? error.message : "Historical rebuild failed",
+          updatedAt: new Date(),
+        })
+        .where(eq(syncJobs.id, job.id));
+      throw error;
+    }
+  }
+
+  await audit(
+    input.actorUserId,
+    "weekly_strong_backtest.historical_rebuild_triggered",
+    "market_collection",
+    input.collectionId,
+    {}
+  );
+
+  return { syncJobId: job.id, status: job.status };
+}
+
+export {
+  getWeeklyStrongBacktestHistoricalStatus,
+  getWeeklyStrongBacktestStatus,
+} from "../weekly-strong-backtest/weekly-strong-backtest.service";
 
 async function audit(
   actorUserId: string | null,

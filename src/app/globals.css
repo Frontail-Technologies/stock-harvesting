@@ -174,7 +174,7 @@
   --landing-text-subtle: rgb(var(--landing-fg-rgb) / 0.42);
   --landing-border-strong: rgb(var(--landing-fg-rgb) / 0.18);
   --landing-border: rgb(var(--landing-fg-rgb) / 0.13);
-  --landing-grid-line: rgb(var(--landing-fg-rgb) / 0.14);
+  --landing-grid-line: rgb(var(--landing-fg-rgb) / 0.08);
   --landing-dot: rgb(var(--landing-fg-rgb) / 0.16);
   --landing-watermark: rgb(var(--landing-fg-rgb) / 0.035);
   /* Diagram/illustration stroke weights - same reasoning as the text tiers
@@ -227,6 +227,10 @@
   --scanner-editor-input: #f4f3ef;
   --scanner-handle-fill: #fafaf8;
   --scanner-handle-stroke: var(--brand-gold);
+  /* Workspace shell, sits behind the toolbar/rail/chart/bottom-bar panels -
+     a shade warmer/darker than those panels' own background so the small
+     gutters between them read as real gaps, not just border lines. */
+  --scanner-shell-bg: #efece4;
 }
 
 .scanner-light {
@@ -298,6 +302,7 @@
   --scanner-editor-input: #151719;
   --scanner-handle-fill: #151719;
   --scanner-handle-stroke: var(--brand-gold);
+  --scanner-shell-bg: #08090a;
 }
 
 .scanner-portal {
@@ -766,6 +771,11 @@ html.lenis body {
     linear-gradient(var(--landing-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
+  /* Every other grid illustration on the page (hero, analysis, workflow)
+     fades toward its edges via this same mask - this one was missing it,
+     so its grid ran edge-to-edge at full strength instead, reading as much
+     harsher than its siblings especially in light mode. */
+  mask-image: radial-gradient(ellipse 88% 80% at 50% 50%, black 0%, transparent 85%);
 }
 .landing-workspace-illustration-primary {
   aspect-ratio: 640 / 300;

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { Stock } from "@/types/market";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useWatchlist } from "@/features/watchlists";
+import { useWatchlist, watchlistItemToStock } from "@/features/watchlists";
 import { cn } from "@/utils/cn";
+import { useIsDesktopViewport } from "../hooks/use-is-desktop-viewport";
 
 type ScannerWatchlistWidgetProps = {
   watchlistId: string;
@@ -18,36 +18,12 @@ type ScannerWatchlistWidgetProps = {
 };
 
 // Auto-opened only via the ?watchlist= URL param set by the Watchlists
-// page's "Open in Scanner" link - there is no scanner-side control that
-// opens this (see the plan/brief: the scanner toolbar deliberately has no
-// watchlist affordance). Desktop gets a floating panel over unused chart
-// space; mobile gets a bottom sheet instead of an overlay, since a small
-// floating panel would be unusable at phone width.
-function useIsDesktopViewport() {
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches
-  );
-
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 640px)");
-    const handleChange = () => setIsDesktop(query.matches);
-    query.addEventListener("change", handleChange);
-    return () => query.removeEventListener("change", handleChange);
-  }, []);
-
-  return isDesktop;
-}
-
-function watchlistItemToStock(item: { symbol: string; exchange: string }): Stock {
-  return {
-    symbol: item.symbol,
-    name: item.symbol,
-    exchange: item.exchange,
-    close: 0,
-    changePct: 0,
-    volume: 0,
-  };
-}
+// page's "Open in Scanner" link - a separate, always-available watchlist
+// sidebar also exists now (see ScannerWatchlistSidebar.tsx, opened from
+// the toolbar icon), but this widget's own URL-driven trigger and floating
+// presentation are unchanged. Desktop gets a floating panel over unused
+// chart space; mobile gets a bottom sheet instead of an overlay, since a
+// small floating panel would be unusable at phone width.
 
 function WatchlistItemsList({
   items,

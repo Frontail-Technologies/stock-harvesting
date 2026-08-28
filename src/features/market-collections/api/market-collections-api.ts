@@ -3,7 +3,6 @@ import type {
   CollectionMembersInput,
   CollectionMembersResponse,
   CollectionRelativeStrengthResponse,
-  CollectionWeeklyStrongBacktestResponse,
   CollectionWeeklyStrongStocksResponse,
   MarketCollection,
 } from "../types";
@@ -56,10 +55,6 @@ export function getCollectionWeeklyStrongStocks(input: { code: string }) {
   );
 }
 
-export function getCollectionWeeklyStrongStocksBacktest(input: { code: string; weeks?: number }) {
-  return apiFetch<CollectionWeeklyStrongBacktestResponse>(
-    withQuery(API_ROUTES.marketCollections.weeklyStrongStocksBacktest(input.code), {
-      weeks: input.weeks,
-    })
-  );
-}
+// Note: the old getCollectionWeeklyStrongStocksBacktest (count-only, live-
+// computed) has been removed - see @/features/weekly-strong-backtest for
+// the persisted replacement (Phase C2).

@@ -310,6 +310,10 @@ export function useIndexRelativeStrength(limit?: number, exchange?: string) {
     retry: false,
     staleTime: 10 * 60_000,
     gcTime: 30 * 60_000,
+    // Keeps the previous exchange's indices visible while a background
+    // refresh (or, now that the caller always knows `exchange` up front,
+    // a genuine first request) is in flight (Phase D.9 #11).
+    placeholderData: (previousData) => previousData,
   });
 
   return { ...query, metrics: query.data ?? [] };

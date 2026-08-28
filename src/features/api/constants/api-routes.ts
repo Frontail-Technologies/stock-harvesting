@@ -26,8 +26,11 @@ export const API_ROUTES = {
       `/api/market-collections/${encodeURIComponent(code)}/relative-strength`,
     weeklyStrongStocks: (code: string) =>
       `/api/market-collections/${encodeURIComponent(code)}/weekly-strong-stocks`,
-    weeklyStrongStocksBacktest: (code: string) =>
-      `/api/market-collections/${encodeURIComponent(code)}/weekly-strong-stocks/backtest`,
+  },
+  weeklyStrongBacktest: {
+    stacked: (code: string) => `/api/weekly-strong-backtest/${encodeURIComponent(code)}`,
+    weekDetail: (code: string, weekEnding: string) =>
+      `/api/weekly-strong-backtest/${encodeURIComponent(code)}/${encodeURIComponent(weekEnding)}`,
   },
   scanner: {
     results: "/api/scanner/results",
@@ -66,6 +69,20 @@ export const API_ROUTES = {
       `/api/admin/market-collections/${encodeURIComponent(id)}/import/dry-run`,
     marketCollectionImport: (id: string) =>
       `/api/admin/market-collections/${encodeURIComponent(id)}/import`,
+    marketCollectionVersions: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/versions`,
+    marketCollectionVersion: (id: string, versionId: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}`,
+    marketCollectionVersionReplace: (id: string, versionId: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/versions/${encodeURIComponent(versionId)}/replace`,
+    marketCollectionWeeklyStrongBacktestStatus: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/status`,
+    marketCollectionWeeklyStrongBacktestHistoricalStatus: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/historical-status`,
+    marketCollectionWeeklyStrongBacktestGenerate: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/generate`,
+    marketCollectionWeeklyStrongBacktestRebuildHistorical: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/rebuild-historical`,
     monetization: "/api/admin/monetization",
     monetizationSettings: "/api/admin/monetization/settings",
     monetizationPlacement: (key: string) =>

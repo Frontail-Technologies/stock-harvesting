@@ -3,9 +3,14 @@ import type { UserPlan, UserRole } from "@/features/auth";
 import type {
   AdminMarketCollection,
   CollectionImportReport,
+  CollectionImportResult,
   CollectionMembersResponse,
+  CollectionVersionMembersResponse,
+  CollectionVersionReplaceResult,
+  CollectionVersionSummary,
   MarketCollection,
 } from "@/features/market-collections";
+import type { WeeklyStrongBacktestStatus } from "@/features/weekly-strong-backtest";
 import type {
   AdminAdPlacementKey,
   AdminAiKeyResponse,
@@ -217,6 +222,7 @@ export function createAdminMarketCollection(input: {
   code: string;
   name: string;
   exchange: string;
+  countryCode?: string;
   description?: string;
 }) {
   return apiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollections, {
@@ -277,13 +283,65 @@ export function importAdminCollectionCsv(input: {
   csvContent: string;
   sourceName?: string;
   sourceDate?: string;
+  effectiveFrom: string;
 }) {
   const { id, ...body } = input;
-  return apiFetch<{ report: CollectionImportReport }>(
+  return apiFetch<{ report: CollectionImportResult }>(
     API_ROUTES.admin.marketCollectionImport(id),
     {
       method: "POST",
       body: JSON.stringify(body),
+    }
+  );
+}
+
+export function getAdminCollectionVersions(id: string) {
+  return apiFetch<{ versions: CollectionVersionSummary[] }>(API_ROUTES.admin.marketCollectionVersions(id));
+}
+
+export function getAdminCollectionVersionMembers(input: { id: string; versionId: string }) {
+  return apiFetch<CollectionVersionMembersResponse>(
+    API_ROUTES.admin.marketCollectionVersion(input.id, input.versionId)
+  );
+}
+
+export function replaceAdminCollectionVersion(input: { id: string; versionId: string; csvContent: string }) {
+  return apiFetch<CollectionVersionReplaceResult>(
+    API_ROUTES.admin.marketCollectionVersionReplace(input.id, input.versionId),
+    {
+      method: "POST",
+      body: JSON.stringify({ csvContent: input.csvContent }),
+    }
+  );
+}
+
+export function getAdminWeeklyStrongBacktestStatus(id: string) {
+  return apiFetch<{ status: WeeklyStrongBacktestStatus }>(
+    API_ROUTES.admin.marketCollectionWeeklyStrongBacktestStatus(id)
+  );
+}
+
+export function getAdminWeeklyStrongBacktestHistoricalStatus(id: string) {
+  return apiFetch<{ status: WeeklyStrongBacktestStatus }>(
+    API_ROUTES.admin.marketCollectionWeeklyStrongBacktestHistoricalStatus(id)
+  );
+}
+
+export function generateAdminWeeklyStrongBacktest(input: { id: string; weeks?: number }) {
+  return apiFetch<{ syncJobId: string; status: string }>(
+    API_ROUTES.admin.marketCollectionWeeklyStrongBacktestGenerate(input.id),
+    {
+      method: "POST",
+      body: JSON.stringify({ weeks: input.weeks }),
+    }
+  );
+}
+
+export function rebuildAdminWeeklyStrongBacktestHistorical(input: { id: string }) {
+  return apiFetch<{ syncJobId: string; status: string }>(
+    API_ROUTES.admin.marketCollectionWeeklyStrongBacktestRebuildHistorical(input.id),
+    {
+      method: "POST",
     }
   );
 }

@@ -254,7 +254,7 @@ export function ScannerChartStage({
           unoptimized
         />
         <span
-          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-sm font-bold leading-none tracking-tight sm:text-lg"
+          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-lg font-bold leading-none tracking-tight sm:text-2xl"
           style={{ color: getScreenshotTextColors(theme).text }}
         >
           <span>Stock</span>
@@ -801,7 +801,12 @@ async function drawBottomRightScreenshotLogo(
     // height so the two stay proportional to each other.
     const colors = getScreenshotTextColors(theme);
     const gap = 10;
-    const fontSize = Math.round(height * 0.42);
+    // 0.75, not a smaller fraction of the mark's height - a glyph's
+    // cap-height is well under its font-size, so matching font-size too
+    // closely to the mark's own height rendered text that read as
+    // noticeably smaller than the mark next to it (same fix as the live
+    // on-chart watermark and BrandLogo).
+    const fontSize = Math.round(height * 0.75);
     context.font = `700 ${fontSize}px Arial, sans-serif`;
     const stockText = "Stock";
     const harvestingText = "Harvesting";

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -62,15 +61,13 @@ export function CreateWatchlistDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
-          <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <DialogTitle className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             New Watchlist
-          </p>
-          <DialogTitle className="sr-only">New watchlist</DialogTitle>
-          <DialogDescription>Create a new collection of stocks.</DialogDescription>
+          </DialogTitle>
         </DialogHeader>
 
         <div>
-          <label htmlFor="new-watchlist-name" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="new-watchlist-name" className="sr-only">
             Watchlist name
           </label>
           <Input
@@ -88,7 +85,6 @@ export function CreateWatchlistDialog({
               }
             }}
             placeholder="My Portfolio"
-            className="mt-1.5"
           />
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </div>

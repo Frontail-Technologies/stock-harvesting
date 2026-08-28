@@ -49,6 +49,19 @@ type ScannerUiState = {
   percentageScale: boolean;
   showBacktestStats: boolean;
   scannerHighlightsVisible: boolean;
+  // The toolbar-triggered watchlist sidebar (see ScannerWatchlistSidebar.tsx)
+  // - separate from selectedSymbol/selectedStock above, and separate from
+  // the URL-driven ?watchlist= floating widget (ScannerWatchlistWidget.tsx),
+  // which keeps its own local open state. width is in px, clamped to the
+  // sidebar's own min/max when applied.
+  isWatchlistPanelOpen: boolean;
+  // Minimized = shrunk to a fixed narrow rail, still visible/anchored to
+  // the right edge - distinct from isWatchlistPanelOpen (which removes it
+  // from the layout entirely). Never mutates watchlistPanelWidth, so
+  // maximizing always restores exactly the width the user had before.
+  isWatchlistPanelMinimized: boolean;
+  watchlistPanelWidth: number;
+  activeWatchlistId: string | null;
   setSelectedSymbol: (symbol: string) => void;
   setSelectedExchange: (exchange: MarketExchangeCode) => void;
   setSelectedStock: (stock: Stock) => void;
@@ -63,7 +76,27 @@ type ScannerUiState = {
   togglePercentageScale: () => void;
   toggleBacktestStats: () => void;
   toggleScannerHighlights: () => void;
+  setWatchlistPanelOpen: (open: boolean) => void;
+  toggleWatchlistPanel: () => void;
+  setWatchlistPanelMinimized: (minimized: boolean) => void;
+  setWatchlistPanelWidth: (width: number) => void;
+  setActiveWatchlistId: (id: string | null) => void;
 };
+
+// Fixed rail width when minimized - not user-resizable, so this is a plain
+// constant rather than clamped/persisted state like watchlistPanelWidth.
+export const SCANNER_WATCHLIST_PANEL_RAIL_WIDTH = 44;
+
+export const SCANNER_WATCHLIST_PANEL_MIN_WIDTH = 240;
+export const SCANNER_WATCHLIST_PANEL_MAX_WIDTH = 480;
+const SCANNER_WATCHLIST_PANEL_DEFAULT_WIDTH = 280;
+
+function clampWatchlistPanelWidth(width: number) {
+  return Math.min(
+    SCANNER_WATCHLIST_PANEL_MAX_WIDTH,
+    Math.max(SCANNER_WATCHLIST_PANEL_MIN_WIDTH, width)
+  );
+}
 
 export const useScannerUiStore = create<ScannerUiState>()(
   persist(
@@ -81,6 +114,10 @@ export const useScannerUiStore = create<ScannerUiState>()(
       percentageScale: false,
       showBacktestStats: true,
       scannerHighlightsVisible: true,
+      isWatchlistPanelOpen: false,
+      isWatchlistPanelMinimized: false,
+      watchlistPanelWidth: SCANNER_WATCHLIST_PANEL_DEFAULT_WIDTH,
+      activeWatchlistId: null,
       setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
       setSelectedExchange: (selectedExchange) => set({ selectedExchange }),
       setSelectedStock: (selectedStock) =>
@@ -112,6 +149,14 @@ export const useScannerUiStore = create<ScannerUiState>()(
         set((state) => ({
           scannerHighlightsVisible: !state.scannerHighlightsVisible,
         })),
+      setWatchlistPanelOpen: (isWatchlistPanelOpen) => set({ isWatchlistPanelOpen }),
+      toggleWatchlistPanel: () =>
+        set((state) => ({ isWatchlistPanelOpen: !state.isWatchlistPanelOpen })),
+      setWatchlistPanelMinimized: (isWatchlistPanelMinimized) =>
+        set({ isWatchlistPanelMinimized }),
+      setWatchlistPanelWidth: (width) =>
+        set({ watchlistPanelWidth: clampWatchlistPanelWidth(width) }),
+      setActiveWatchlistId: (activeWatchlistId) => set({ activeWatchlistId }),
     }),
     {
       name: "stock-harvesting-scanner-ui",
@@ -129,6 +174,10 @@ export const useScannerUiStore = create<ScannerUiState>()(
         percentageScale: state.percentageScale,
         showBacktestStats: state.showBacktestStats,
         scannerHighlightsVisible: state.scannerHighlightsVisible,
+        isWatchlistPanelOpen: state.isWatchlistPanelOpen,
+        isWatchlistPanelMinimized: state.isWatchlistPanelMinimized,
+        watchlistPanelWidth: state.watchlistPanelWidth,
+        activeWatchlistId: state.activeWatchlistId,
       }),
     }
   )

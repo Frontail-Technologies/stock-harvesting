@@ -60,8 +60,6 @@ export const queryKeys = {
     }) => ["market-collections", "relative-strength", input] as const,
     weeklyStrongStocks: (input: { code: string }) =>
       ["market-collections", "weekly-strong-stocks", input] as const,
-    weeklyStrongStocksBacktest: (input: { code: string; weeks?: number }) =>
-      ["market-collections", "weekly-strong-stocks-backtest", input] as const,
     admin: {
       list: ["admin", "market-collections"] as const,
       detail: (id: string) => ["admin", "market-collections", id] as const,
@@ -73,7 +71,19 @@ export const queryKeys = {
         sortBy?: string;
         sortDirection?: string;
       }) => ["admin", "market-collections", input.id, "members", input] as const,
+      weeklyStrongBacktestStatus: (id: string) =>
+        ["admin", "market-collections", id, "weekly-strong-backtest-status"] as const,
+      weeklyStrongBacktestHistoricalStatus: (id: string) =>
+        ["admin", "market-collections", id, "weekly-strong-backtest-historical-status"] as const,
+      versions: (id: string) => ["admin", "market-collections", id, "versions"] as const,
+      versionMembers: (input: { id: string; versionId: string }) =>
+        ["admin", "market-collections", input.id, "versions", input.versionId] as const,
     },
+  },
+  weeklyStrongBacktest: {
+    stacked: (input: { code: string }) => ["weekly-strong-backtest", "stacked", input] as const,
+    weekDetail: (input: { code: string; weekEnding: string }) =>
+      ["weekly-strong-backtest", "week-detail", input] as const,
   },
   scanner: {
     results: (input: {

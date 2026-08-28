@@ -176,6 +176,7 @@ export function AdminSidebar({
                       <AvatarImage
                         src={user.avatarUrl}
                         alt={user.name || user.email}
+                        referrerPolicy="no-referrer"
                       />
                     ) : null}
                     <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
@@ -210,7 +211,11 @@ export function AdminSidebar({
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar className="size-10 shrink-0">
                     {user.avatarUrl ? (
-                      <AvatarImage src={user.avatarUrl} alt={user.name || user.email} />
+                      <AvatarImage
+                        src={user.avatarUrl}
+                        alt={user.name || user.email}
+                        referrerPolicy="no-referrer"
+                      />
                     ) : null}
                     <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                       {avatarInitials}
@@ -244,7 +249,11 @@ export function AdminSidebar({
               >
                 <Avatar className="size-10 shrink-0">
                   {user.avatarUrl ? (
-                    <AvatarImage src={user.avatarUrl} alt={user.name || user.email} />
+                    <AvatarImage
+                      src={user.avatarUrl}
+                      alt={user.name || user.email}
+                      referrerPolicy="no-referrer"
+                    />
                   ) : null}
                   <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                     {avatarInitials}

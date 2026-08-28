@@ -205,7 +205,7 @@ export function ChartToolsBar({
   return (
     <div
       ref={railRef}
-      className="relative z-40 flex h-auto w-11 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-border bg-background px-0 py-2"
+      className="relative z-40 flex h-auto w-11 shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-[3px] border-r border-border/60 bg-background px-0 py-2"
     >
       <div className="flex flex-col items-center gap-1 sm:hidden">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} compact />

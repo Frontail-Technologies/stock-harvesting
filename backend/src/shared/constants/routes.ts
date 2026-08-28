@@ -11,6 +11,7 @@ export const API_ROUTES = {
   pushSubscriptions: "/api/push-subscriptions",
   watchlists: "/api/watchlists",
   monetization: "/api/monetization",
+  weeklyStrongBacktest: "/api/weekly-strong-backtest",
 } as const;
 
 export const AUTH_ROUTES = {

@@ -23,6 +23,7 @@ import {
 import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
+import { ScannerWatchlistToggle } from "./ScannerWatchlistToggle";
 import { ShareMenu } from "./ShareMenu";
 import { TimeframeSelector } from "./TimeframeSelector";
 
@@ -97,9 +98,10 @@ export function TopToolbar({
   // stale or empty data. Search and every other control here stays live.
   const hasStock = Boolean(stock.symbol);
   return (
-    <div className="flex shrink-0 flex-col gap-1 overflow-hidden border-b border-border bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
+    <div className="flex shrink-0 flex-col gap-1 overflow-hidden rounded-[3px] border-b border-border/60 bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
       <div className="flex min-h-10 items-center gap-1 sm:hidden">
         <GlobalSearchMobileSheet />
+        <ScannerWatchlistToggle />
         <ScannerPriceAlertMenu
           key={`${stock.exchange}:${stock.symbol}`}
           stock={stock}
@@ -140,6 +142,7 @@ export function TopToolbar({
         <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex items-center gap-1.5">
+          <ScannerWatchlistToggle />
           <ScannerPriceAlertMenu
             key={`${stock.exchange}:${stock.symbol}`}
             stock={stock}

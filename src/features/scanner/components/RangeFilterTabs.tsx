@@ -100,7 +100,7 @@ export function RangeFilterTabs({
 
   return (
     <>
-      <div className="hidden h-9 shrink-0 border-t border-border bg-background sm:block">
+      <div className="hidden h-9 shrink-0 rounded-t-[3px] border-t border-border/60 bg-background sm:block">
         <div className="flex items-center justify-between gap-3 px-2 py-1.5">
           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
             {showLoadingState ? (
@@ -144,7 +144,7 @@ export function RangeFilterTabs({
         <div className="h-0.5 bg-primary/40" />
       </div>
 
-      <div className="shrink-0 border-t border-border bg-background px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:hidden">
+      <div className="shrink-0 rounded-t-[3px] border-t border-border/60 bg-background px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:hidden">
         <div className="flex items-center justify-between gap-1 overflow-x-auto">
           <MobileBarButton
             icon={Maximize2}

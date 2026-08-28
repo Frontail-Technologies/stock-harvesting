@@ -1,6 +1,8 @@
+export { CreateWatchlistDialog } from "./components/CreateWatchlistDialog";
 export { WatchlistQuickAddButton } from "./components/WatchlistQuickAddButton";
 export { WatchlistStockSearchInput } from "./components/WatchlistStockSearchInput";
 export { WatchlistsPage } from "./components/WatchlistsPage";
+export { watchlistItemToStock } from "./lib/watchlist-item-to-stock";
 export {
   addWatchlistItem,
   createWatchlist,

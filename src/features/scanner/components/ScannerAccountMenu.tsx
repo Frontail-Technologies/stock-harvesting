@@ -48,7 +48,14 @@ export function ScannerAccountMenu() {
         >
           <Avatar className="size-8">
             {currentUser?.avatarUrl ? (
-              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name || currentUser.email} />
+              // See AccountMenu.tsx - Google's profile-picture CDN needs
+              // no-referrer or it silently fails to load under the
+              // browser's default referrer policy, stuck on initials.
+              <AvatarImage
+                src={currentUser.avatarUrl}
+                alt={currentUser.name || currentUser.email}
+                referrerPolicy="no-referrer"
+              />
             ) : null}
             <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
               {avatarInitials}

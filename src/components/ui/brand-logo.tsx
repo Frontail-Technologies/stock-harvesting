@@ -18,21 +18,27 @@ type BrandLogoProps = {
   forceTheme?: "light" | "dark";
 };
 
+// text sizes are deliberately much larger than the mark's own height class
+// (e.g. "sm" pairs a 40px-tall mark with 30px type) - a glyph's cap-height
+// is only ~70% of its font-size, so matching font-size to the mark's pixel
+// height renders text that visibly reads as smaller than the mark next to
+// it. These are picked to bring cap-height close to the mark's height
+// instead of matching the font-size number to it.
 const sizeClasses = {
   sm: {
     root: "h-10",
     image: "h-10",
-    text: "text-xl",
+    text: "text-3xl",
   },
   md: {
     root: "h-12",
     image: "h-12",
-    text: "text-2xl",
+    text: "text-4xl",
   },
   lg: {
     root: "h-16",
     image: "h-16",
-    text: "text-3xl",
+    text: "text-5xl",
   },
 };
 

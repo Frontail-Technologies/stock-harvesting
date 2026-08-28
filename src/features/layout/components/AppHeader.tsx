@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
 import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import { getAdminOrigin } from "@/utils/seo";
 import { AccountMenu } from "./AccountMenu";
@@ -73,7 +77,9 @@ export function AppHeader() {
                   >
                     <X className="size-4" />
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Close navigation</TooltipContent>
+                  <TooltipContent side="bottom">
+                    Close navigation
+                  </TooltipContent>
                 </Tooltip>
               </div>
 
@@ -88,7 +94,7 @@ export function AppHeader() {
                       onClick={() => setMobileOpen(false)}
                       className={cn(
                         "rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                        isActive && "bg-primary/15 text-primary"
+                        isActive && "bg-primary/15 text-primary",
                       )}
                     >
                       {item.label}
@@ -110,7 +116,7 @@ export function AppHeader() {
               </div>
             </aside>
           </div>,
-          document.body
+          document.body,
         )
       : null;
 
@@ -137,12 +143,18 @@ export function AppHeader() {
               <TooltipContent side="bottom">Open navigation</TooltipContent>
             </Tooltip>
             <Link href="/scanner" className="flex items-center gap-2">
-              <BrandLogo size="sm" textClassName="hidden text-sm sm:inline-flex" />
+              {/* No text-size override here anymore - it used to shrink
+                  the wordmark well below the mark's own height for extra
+                  header-room safety, but that just made it read as
+                  mismatched/too-small next to the logo. Only the
+                  responsive display (hidden below sm) still needs
+                  overriding. */}
+              <BrandLogo size="sm" textClassName="hidden sm:inline-flex" />
             </Link>
-            <GlobalSearchNavbarField className="ml-2 hidden xl:flex xl:w-64" />
           </div>
 
           <nav className="hidden items-center justify-center gap-6 lg:flex">
+            <GlobalSearchNavbarField className="ml-2 hidden xl:flex xl:w-64" />
             {navItems.map((item) => {
               const isActive = pathname?.startsWith(item.href);
 
@@ -152,7 +164,7 @@ export function AppHeader() {
                   href={item.href}
                   className={cn(
                     "relative py-5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
-                    isActive && "text-foreground"
+                    isActive && "text-foreground",
                   )}
                 >
                   {item.label}

@@ -28,10 +28,13 @@ import {
   backfillCandlesBodySchema,
   brandingBodySchema,
   collectionIdParamsSchema,
+  collectionVersionIdParamsSchema,
+  confirmCollectionImportBodySchema,
   createCollectionBodySchema,
   dataProviderKeyParamsSchema,
   importCollectionCsvBodySchema,
   indexCandleBackfillBodySchema,
+  replaceCollectionVersionBodySchema,
   providerConnectBodySchema,
   providerSyncBodySchema,
   updateAiSettingsBodySchema,
@@ -51,6 +54,8 @@ import {
   getAdminProviderStatus,
   getAdminProviderStatuses,
   getBrandingSettings,
+  getWeeklyStrongBacktestHistoricalStatus,
+  getWeeklyStrongBacktestStatus,
   listAdminUsers,
   listJobs,
   triggerCandleBackfill,
@@ -58,6 +63,8 @@ import {
   triggerInstrumentSync,
   triggerPriceRefresh,
   triggerSectorClassificationSync,
+  triggerWeeklyStrongBacktestBackfill,
+  triggerWeeklyStrongBacktestHistoricalRebuild,
   updateAdminDataProviderSettings,
   updateBrandingSettings,
   updateUserPlan,
@@ -72,7 +79,15 @@ import {
   previewCollectionImport,
   updateCollection,
 } from "../market-collections/market-collections.service";
-import { collectionMembersQuerySchema } from "../market-collections/market-collections.schemas";
+import {
+  getCollectionVersionMembers,
+  listCollectionVersions,
+  replaceCollectionVersionMembers,
+} from "../market-collections/market-collection-versions.service";
+import {
+  collectionMembersQuerySchema,
+} from "../market-collections/market-collections.schemas";
+import { backfillBodySchema as weeklyStrongBacktestBackfillBodySchema } from "../weekly-strong-backtest/weekly-strong-backtest.schemas";
 import {
   adPlacementKeyParamsSchema,
   updateAdPlacementBodySchema,
@@ -365,6 +380,7 @@ adminRouter.post(
       code: string;
       name: string;
       exchange: string;
+      countryCode?: string;
       description?: string;
     };
     const collection = await createCollection({
@@ -428,15 +444,100 @@ adminRouter.post(
 
 adminRouter.post(
   "/market-collections/:id/import",
-  validate({ params: collectionIdParamsSchema, body: importCollectionCsvBodySchema }),
+  validate({ params: collectionIdParamsSchema, body: confirmCollectionImportBodySchema }),
   asyncHandler(async (req, res) => {
     const params = req.params as { id: string };
-    const body = req.body as { csvContent: string; sourceName?: string; sourceDate?: string };
+    const body = req.body as {
+      csvContent: string;
+      sourceName?: string;
+      sourceDate?: string;
+      effectiveFrom: string;
+    };
     const report = await importCollectionCsv({
       id: params.id,
       actorUserId: getAuthUserId(req),
       ...body,
     });
     sendData(res, { report });
+  })
+);
+
+adminRouter.get(
+  "/market-collections/:id/versions",
+  validate({ params: collectionIdParamsSchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    sendData(res, { versions: await listCollectionVersions(params.id) });
+  })
+);
+
+adminRouter.get(
+  "/market-collections/:id/versions/:versionId",
+  validate({ params: collectionVersionIdParamsSchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string; versionId: string };
+    sendData(res, await getCollectionVersionMembers(params.id, params.versionId));
+  })
+);
+
+adminRouter.post(
+  "/market-collections/:id/versions/:versionId/replace",
+  validate({ params: collectionVersionIdParamsSchema, body: replaceCollectionVersionBodySchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string; versionId: string };
+    const body = req.body as { csvContent: string };
+    const result = await replaceCollectionVersionMembers({
+      collectionId: params.id,
+      versionId: params.versionId,
+      csvContent: body.csvContent,
+      actorUserId: getAuthUserId(req),
+    });
+    sendData(res, result);
+  })
+);
+
+adminRouter.get(
+  "/market-collections/:id/weekly-strong-backtest/status",
+  validate({ params: collectionIdParamsSchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    sendData(res, { status: await getWeeklyStrongBacktestStatus({ collectionId: params.id }) });
+  })
+);
+
+adminRouter.get(
+  "/market-collections/:id/weekly-strong-backtest/historical-status",
+  validate({ params: collectionIdParamsSchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    sendData(res, { status: await getWeeklyStrongBacktestHistoricalStatus({ collectionId: params.id }) });
+  })
+);
+
+adminRouter.post(
+  "/market-collections/:id/weekly-strong-backtest/generate",
+  validate({ params: collectionIdParamsSchema, body: weeklyStrongBacktestBackfillBodySchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    const body = req.body as { weeks?: number };
+    const result = await triggerWeeklyStrongBacktestBackfill({
+      actorUserId: getAuthUserId(req),
+      collectionId: params.id,
+      weeks: body.weeks,
+    });
+    sendAccepted(res, result);
+  })
+);
+
+adminRouter.post(
+  "/market-collections/:id/weekly-strong-backtest/rebuild-historical",
+  validate({ params: collectionIdParamsSchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    const result = await triggerWeeklyStrongBacktestHistoricalRebuild({
+      actorUserId: getAuthUserId(req),
+      collectionId: params.id,
+    });
+    sendAccepted(res, result);
   })
 );

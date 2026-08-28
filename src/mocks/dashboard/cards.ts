@@ -1,24 +1,12 @@
-import type {
-  DashboardCardData,
-  DashboardItem,
-  DashboardItemColor,
-} from "@/types/dashboard";
-
-const COLOR_CYCLE: DashboardItemColor[] = [
-  "blue",
-  "green",
-  "purple",
-  "orange",
-  "teal",
-  "red",
-];
+import type { DashboardCardData, DashboardItem } from "@/types/dashboard";
+import { colorForDashboardLabel } from "@/features/dashboard/lib/dashboard-widget-colors";
 
 function buildItems(labels: string[], values: number[]): DashboardItem[] {
   return labels.map((label, index) => ({
     rank: index + 1,
     label,
     value: values[index],
-    color: COLOR_CYCLE[index % COLOR_CYCLE.length],
+    color: colorForDashboardLabel(label),
   }));
 }
 
