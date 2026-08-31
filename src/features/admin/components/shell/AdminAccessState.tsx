@@ -15,10 +15,13 @@ export function AdminLoadingState() {
 }
 
 export function AdminForbiddenState() {
-  // The admin panel can live on its own host - "back to app" always means
-  // the main site's Scanner, which is a cross-origin destination there, so
-  // this can't be a relative <Link>.
-  const scannerUrl = `${getSiteUrl().origin}/scanner`;
+  // Item 20 - since admin accounts have no USER portal session anymore,
+  // this can't imply a return to an authenticated workspace. It links to
+  // the public main site's root instead (a cross-origin destination on a
+  // split host, so this can't be a relative <Link>) - if that account also
+  // wants to use the main product, it authenticates there separately, on
+  // its own terms.
+  const siteUrl = getSiteUrl().origin;
 
   return (
     <div className="admin-shell flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
@@ -30,8 +33,8 @@ export function AdminForbiddenState() {
         <p className="mt-2 text-sm text-muted-foreground">
           Your account does not have permission to open this workspace.
         </p>
-        <a href={scannerUrl} className={buttonVariants({ className: "mt-5 rounded-md" })}>
-          Back to Stock Harvesting
+        <a href={siteUrl} className={buttonVariants({ className: "mt-5 rounded-md" })}>
+          Visit Stock Harvesting
         </a>
       </div>
     </div>

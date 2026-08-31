@@ -10,8 +10,8 @@ type LandingOpenWorkspaceLinkProps = {
 
 // Shared by HeroSection and FinalCtaSection (both server components) - the
 // one small client "island" each mounts so this primary CTA resolves to
-// /scanner for an already-authenticated visitor instead of always bouncing
-// through /login. The label stays "Open Workspace" in either resolved
+// /charts for an already-authenticated visitor instead of always bouncing
+// through /login. The label stays "Open Charts" in either resolved
 // state, matching what these two sections already showed logged-out
 // visitors; only the destination changes.
 export function LandingOpenWorkspaceLink({ id, className }: LandingOpenWorkspaceLinkProps) {
@@ -23,7 +23,7 @@ export function LandingOpenWorkspaceLink({ id, className }: LandingOpenWorkspace
       id={id}
       className={className ?? "landing-btn-primary landing-btn-lg gap-2 inline-flex items-center"}
     >
-      Open Workspace
+      {cta.label}
       <span aria-hidden="true">-&gt;</span>
     </Link>
   );

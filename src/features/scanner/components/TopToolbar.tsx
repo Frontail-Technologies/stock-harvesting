@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { Stock } from "@/types/market";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useCurrency } from "@/features/currency";
 import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { ScannerPriceAlertMenu } from "@/features/price-alerts";
@@ -23,6 +26,7 @@ import {
 import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
+import { ScannerIconButton } from "./ScannerIconButton";
 import { ScannerWatchlistToggle } from "./ScannerWatchlistToggle";
 import { ShareMenu } from "./ShareMenu";
 import { TimeframeSelector } from "./TimeframeSelector";
@@ -82,6 +86,39 @@ function LookbackDropdown({
   );
 }
 
+// Mobile stock-identity strip (item 8) - a compact, non-floating row ABOVE
+// the plot, not a card and not overlaid on the candles. Two lines, left-
+// aligned, matching the target composition exactly:
+//   TCS · BSE
+//   ₹2,252.00   -0.84%
+// Renders nothing when no stock is open (the empty state already explains
+// itself) or while a stock's identity is still a bare URL placeholder
+// (hasMarketData false, close 0) - a real "0.00 / 0.00%" row would read as
+// a loaded-but-wrong price rather than "not loaded yet".
+function MobileStockStrip({ stock }: { stock: Stock }) {
+  const { formatStockCurrency } = useCurrency();
+  if (!stock.symbol || !stock.hasMarketData) return null;
+
+  const isPositive = (stock.changePct ?? 0) >= 0;
+
+  return (
+    <div className="flex flex-col gap-0.5 px-1.5 py-1 sm:hidden">
+      <span className="text-xs font-semibold text-foreground">
+        {stock.symbol} <span className="font-normal text-muted-foreground">· {stock.exchange}</span>
+      </span>
+      <span className="flex items-center gap-2 text-xs tabular-nums">
+        <span className="font-semibold text-foreground">{formatStockCurrency(stock.close, stock.exchange)}</span>
+        {stock.changePct !== null && (
+          <span className={isPositive ? "text-success" : "text-danger"}>
+            {isPositive ? "+" : ""}
+            {stock.changePct.toFixed(2)}%
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 export function TopToolbar({
   stock,
   chartType,
@@ -97,10 +134,20 @@ export function TopToolbar({
   // to operate on, so they're disabled rather than left clickable against
   // stale or empty data. Search and every other control here stays live.
   const hasStock = Boolean(stock.symbol);
+  const [moreOpen, setMoreOpen] = useState(false);
+
   return (
-    <div className="flex shrink-0 flex-col gap-1 overflow-hidden rounded-[3px] border-b border-border/60 bg-background px-1 py-1 sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
-      <div className="flex min-h-10 items-center gap-1 sm:hidden">
+    <div className="flex shrink-0 flex-col overflow-hidden rounded-[3px] border-b border-border/60 bg-background sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2 sm:py-1">
+      {/* Mobile pass (item 7) - ONE compact ~44px row: search, watchlist,
+          alerts, account. Chart-type/snapshot/share stayed on the
+          collapsed drawing-tools trigger's own sheet (see ChartToolsBar) -
+          they're chart-editing actions, not top-chrome ones, so moving
+          them there (rather than duplicating them into a second "More"
+          here) keeps this row to exactly the 4 high-value controls item 7
+          asks for. */}
+      <div className="flex h-11 items-center gap-1 px-1 sm:hidden">
         <GlobalSearchMobileSheet />
+        <div className="min-w-0 flex-1" aria-hidden />
         <ScannerWatchlistToggle />
         <ScannerPriceAlertMenu
           key={`${stock.exchange}:${stock.symbol}`}
@@ -110,18 +157,48 @@ export function TopToolbar({
         <ScannerAccountMenu />
       </div>
 
-      <div className="flex min-h-9 items-center gap-1 sm:hidden">
+      {/* Item 8 - compact stock identity, its own row, never overlapping
+          the chart. */}
+      <MobileStockStrip stock={stock} />
+
+      {/* Item 9 - 1D/1W/1M stay one tap away; everything else (lookback
+          window, theme) collapses into "More" instead of a second
+          permanently-visible row. */}
+      <div className="flex h-10 items-center gap-1 border-t border-border/40 px-1 sm:hidden">
         <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
-        <LookbackDropdown
-          lookbackMultiplier={lookbackMultiplier}
-          onLookbackMultiplierChange={onLookbackMultiplierChange}
-          className="h-9"
-        />
-        <ThemeToggle
-          className={SCANNER_GHOST_TRIGGER_CLASS}
-          tooltipPortalClassName="scanner-portal"
+        <div className="min-w-0 flex-1" aria-hidden />
+        <ScannerIconButton
+          label="More chart options"
+          icon={MoreHorizontal}
+          active={moreOpen}
+          onClick={() => setMoreOpen(true)}
         />
       </div>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="bottom"
+          className="scanner-portal gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:hidden"
+        >
+          <SheetHeader>
+            <SheetTitle>Chart options</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-foreground">Lookback window</span>
+              <LookbackDropdown
+                lookbackMultiplier={lookbackMultiplier}
+                onLookbackMultiplierChange={onLookbackMultiplierChange}
+                className="h-9 border border-border bg-muted/40"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-foreground">Theme</span>
+              <ThemeToggle tooltipPortalClassName="scanner-portal" />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <div className="hidden items-center gap-1.5 sm:flex">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} />

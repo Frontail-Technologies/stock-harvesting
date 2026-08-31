@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { cn } from "@/utils/cn";
+import { getAdminOrigin } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
 import { useSessionStore } from "../stores/session-store";
 
@@ -200,24 +201,56 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
   );
 }
 
+// Reason codes the backend's Google callback can redirect back here with
+// (see auth.service.ts's evaluatePortalAccess / auth.routes.ts's
+// redirectToLogin). "admin-account-on-user-portal" is the important one
+// (item 3): the backend already rejected the login and created NO user
+// session at all for that account - this is purely a message to show
+// (with a link to the separate Admin Portal login), never something the
+// frontend re-derives from session state or reacts to by redirecting.
+const ADMIN_ACCOUNT_REJECTION_REASON = "admin-account-on-user-portal";
+const REJECTION_MESSAGES: Record<string, string> = {
+  failed: "Google login is not available. Please try again.",
+  "state-mismatch": "Your login attempt expired. Please try again.",
+};
+
 export function LoginScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const googleLogin = useGoogleLogin();
   const status = useSessionStore((state) => state.status);
   const bootstrapResolved = useSessionStore((state) => state.bootstrapResolved);
-  const [error, setError] = useState<string | null>(null);
+  const [handlerError, setHandlerError] = useState<string | null>(null);
+  // Flips true once the user retries (or the ?auth= reason has otherwise
+  // been acted on) - lets the query-derived message below stop showing
+  // without needing to mutate the URL itself.
+  const [dismissedQueryReason, setDismissedQueryReason] = useState(false);
+
+  // Read directly from the URL on every render (via next/navigation's
+  // useSearchParams, not window.location.search) rather than copying it
+  // into state inside an effect - this is what a rejected login (item 3)
+  // looks like: the backend already created no session at all, it just
+  // redirected back here with a reason code to display.
+  const authReason = dismissedQueryReason ? null : searchParams.get("auth");
+  const isAdminAccountRejection = authReason === ADMIN_ACCOUNT_REJECTION_REASON;
+  const queryError =
+    authReason && authReason !== "success" && !isAdminAccountRejection
+      ? (REJECTION_MESSAGES[authReason] ?? "Sign-in was not completed. Please try again.")
+      : null;
+  const error = handlerError ?? queryError;
+
   // With a cached session snapshot, `status` usually resolves to
   // "authenticated" (and the redirect effect below fires) within a frame
   // or two - showing the spinner only once that's taken a moment avoids a
   // flash of "Checking session..." on what's normally an instant bounce
-  // to /scanner.
+  // to /charts.
   const showChecking = useDelayedFlag(status !== "guest");
 
   useEffect(() => {
     // `status === "authenticated"` alone can mean nothing more than "a
     // cached snapshot from a previous visit said so" - if that snapshot's
     // refresh cookie has since expired, redirecting on it alone would send
-    // this boot to /scanner just to get bounced straight back to /login a
+    // this boot to /charts just to get bounced straight back to /login a
     // moment later once the real check catches up. Waiting for
     // `bootstrapResolved` means this only navigates once THIS boot's
     // authoritative refresh has actually confirmed it (or given up and
@@ -227,10 +260,12 @@ export function LoginScreen() {
     // tolerates without flashing a spinner.
     if (status !== "authenticated" || !bootstrapResolved) return;
 
-    // The main site's login never routes by role - every account (admin
-    // included) continues into the normal product. "next" is only honored
-    // for destinations within this same app, never the separate admin
-    // portal, so this can't be used to bounce someone into /admin either.
+    // Strict portal separation (item 19): an admin-role account can never
+    // reach "authenticated" here at all - the backend rejects that login
+    // outright (see evaluatePortalAccess), so every session this effect
+    // ever sees is a genuine USER-portal one. "next" is only honored for
+    // destinations within this same app, never the separate admin portal,
+    // so this can't be used to bounce someone into /admin either.
     const params = new URLSearchParams(window.location.search);
     const nextPath = params.get("next");
     const validNext =
@@ -239,17 +274,18 @@ export function LoginScreen() {
       !nextPath.startsWith("//") &&
       !nextPath.startsWith("/login") &&
       !nextPath.startsWith("/admin");
-    const target = validNext ? nextPath : "/scanner";
+    const target = validNext ? nextPath : "/charts";
 
     router.replace(target);
   }, [bootstrapResolved, router, status]);
 
   async function handleGoogleLogin() {
-    setError(null);
+    setHandlerError(null);
+    setDismissedQueryReason(true);
     try {
       await googleLogin.mutateAsync(undefined);
     } catch {
-      setError(
+      setHandlerError(
         "Google login is not available. Please check backend auth setup.",
       );
     }
@@ -286,31 +322,53 @@ export function LoginScreen() {
         <div className="login-auth-surface">
           <BrandLogo size="md" />
 
-          <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-sm text-landing-text-secondary">
-            Sign in to continue to your Stock Harvesting workspace.
-          </p>
+          {isAdminAccountRejection ? (
+            <>
+              <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
+                This account uses the Admin Portal.
+              </h1>
+              <p className="mt-2 text-sm text-landing-text-secondary">
+                Administrator accounts sign in separately, on their own portal - not here.
+              </p>
 
-          <Button
-            variant="outline"
-            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
-            onClick={handleGoogleLogin}
-            disabled={googleLogin.isPending}
-          >
-            {googleLogin.isPending ? (
-              <Spinner size="sm" />
-            ) : (
-              <GoogleIcon className="size-5" />
-            )}
-            {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
-          </Button>
+              <a
+                href={getAdminOrigin() ? `${getAdminOrigin()}/login` : "/admin/login"}
+                className={cn(
+                  "mt-8 flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm transition hover:border-landing-border-strong hover:bg-landing-fg/10",
+                )}
+              >
+                Open Admin Portal
+              </a>
+            </>
+          ) : (
+            <>
+              <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
+                Welcome back
+              </h1>
+              <p className="mt-2 text-sm text-landing-text-secondary">
+                Sign in to continue to your Stock Harvesting workspace.
+              </p>
 
-          {error && (
-            <p className="mt-4 rounded-lg border border-landing-border bg-landing-fg/5 px-3 py-2 text-center text-sm text-landing-text-body">
-              {error}
-            </p>
+              <Button
+                variant="outline"
+                className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
+                onClick={handleGoogleLogin}
+                disabled={googleLogin.isPending}
+              >
+                {googleLogin.isPending ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <GoogleIcon className="size-5" />
+                )}
+                {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
+              </Button>
+
+              {error && (
+                <p className="mt-4 rounded-lg border border-landing-border bg-landing-fg/5 px-3 py-2 text-center text-sm text-landing-text-body">
+                  {error}
+                </p>
+              )}
+            </>
           )}
 
           <div className="mt-6 border-t border-landing-border pt-4">

@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import { pool } from "./db/client";
 import { adminRouter } from "./modules/admin/admin.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
+import { adminAuthRouter } from "./modules/auth/admin-auth.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { drawingsRouter } from "./modules/drawings/drawings.routes";
 import { marketCollectionsRouter } from "./modules/market-collections/market-collections.routes";
@@ -88,6 +89,7 @@ export function createApp() {
   });
 
   app.use(API_ROUTES.auth, authRouter);
+  app.use(API_ROUTES.adminAuth, adminAuthRouter);
   app.use(API_ROUTES.users, usersRouter);
   app.use(API_ROUTES.marketData, marketDataRouter);
   app.use(API_ROUTES.marketCollections, marketCollectionsRouter);

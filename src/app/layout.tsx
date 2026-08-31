@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthBootstrap } from "@/features/auth";
@@ -74,6 +74,20 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+};
+
+// The ONE site-wide safe-area treatment (Charts mobile pass, item 6) -
+// `viewportFit: "cover"` is what actually turns on `env(safe-area-inset-*)`
+// in the first place; Charts' own bottom toolbar/sheets already reference
+// those variables (RangeFilterTabs, ChartToolsBar, ScannerPriceAlertMenu)
+// but had no effect on iOS without this, since without `viewport-fit=cover`
+// the safe-area env vars resolve to 0 regardless of the device's actual
+// notch/home-indicator. No other layout in this app declares its own
+// `viewport` export - this is the single source of truth for it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 const geist = Geist({

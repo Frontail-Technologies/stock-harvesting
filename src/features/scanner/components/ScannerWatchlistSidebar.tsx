@@ -114,7 +114,7 @@ function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
       <p className="text-sm font-semibold text-foreground">No watchlists yet</p>
       <p className="max-w-[16rem] text-xs text-muted-foreground">
-        Create a watchlist to track stocks and jump straight into Scanner.
+        Create a watchlist to track stocks and jump straight into Charts.
       </p>
       <button
         type="button"

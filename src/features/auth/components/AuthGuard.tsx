@@ -15,6 +15,13 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const status = useSessionStore((state) => state.status);
+  const user = useSessionStore((state) => state.user);
+  // Defense in depth only (item 13) - the backend now rejects an
+  // admin-role account's USER-portal login outright, so a genuine
+  // "authenticated" status here should never carry role "admin" in
+  // practice. Guards against a legacy cached snapshot predating that
+  // enforcement by treating it the same as "not signed in".
+  const isBlockedAdminAccount = status === "authenticated" && user?.role === "admin";
   // With a cached session snapshot (see session-store.ts), `status` starts
   // as "authenticated" immediately on a hard reload instead of "unknown" -
   // this already renders `children` below without waiting on the
@@ -26,7 +33,7 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
   const showSpinner = useDelayedFlag(status !== "authenticated");
 
   useEffect(() => {
-    if (status !== "guest") return;
+    if (status !== "guest" && !isBlockedAdminAccount) return;
 
     const currentPath = `${pathname}${window.location.search}`;
     const params = new URLSearchParams();
@@ -39,9 +46,9 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
     // proxy rewrites it to the admin login), so a plain relative
     // navigation is always correct here.
     router.replace(loginPath);
-  }, [pathname, router, status]);
+  }, [isBlockedAdminAccount, pathname, router, status]);
 
-  if (status !== "authenticated") {
+  if (status !== "authenticated" || isBlockedAdminAccount) {
     return (
       <div
         className={className ?? "grid min-h-dvh place-items-center bg-background"}

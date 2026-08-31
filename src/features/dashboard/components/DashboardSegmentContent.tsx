@@ -3,9 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   useCollectionRelativeStrength,
-  useCollectionWeeklyStrongStocks,
   type CollectionGroupRelativeStrengthRow,
-  type CollectionWeeklyStrongStock,
+  type CollectionRelativeStrengthMetric,
 } from "@/features/market-collections";
 import { useIndexRelativeStrength } from "@/features/market-data";
 import type { DashboardCardData } from "@/types/dashboard";
@@ -50,15 +49,18 @@ const INDEX_EXCHANGE_BY_EQUITY_EXCHANGE: Record<string, string> = {
 // until `rsQuery` had already finished a full live RS computation and come
 // back, even though the exchange is really just a property of the
 // collection the caller already knows (the same MarketCollection the
-// segment selector picked from). It's a prop now, so all 5 of this
-// component's queries (rsQuery/sectorQuery/industryQuery/weeklyStrongQuery
-// /indexQuery) become knowable and start in parallel the moment `code` is
-// chosen - none of them waits on another's response. This also incidentally
-// fixed a real correctness bug: with the old derivation, indexQuery fired
-// ONCE on mount with `exchange=undefined` (before rsQuery resolved), then
-// AGAIN once the real exchange arrived - two requests, and a possible
-// flash of the wrong exchange's indices in between.
+// segment selector picked from). It's a prop now, so all 4 of this
+// component's queries (rsQuery/sectorQuery/industryQuery/indexQuery)
+// become knowable and start in parallel the moment `code` is chosen -
+// none of them waits on another's response. This also incidentally fixed
+// a real correctness bug: with the old derivation, indexQuery fired ONCE
+// on mount with `exchange=undefined` (before rsQuery resolved), then AGAIN
+// once the real exchange arrived - two requests, and a possible flash of
+// the wrong exchange's indices in between.
 export function DashboardSegmentContent({ code, exchange }: { code: string; exchange: string }) {
+  // Also the source for the 4th ("55 Day Stock Strength") card below - the
+  // ungrouped, per-stock 55-day change % every active member of this
+  // segment already carries (limit 200 covers a whole collection).
   const rsQuery = useCollectionRelativeStrength({ code, limit: 200 });
   const sectorQuery = useCollectionRelativeStrength({
     code,
@@ -70,14 +72,6 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
     limit: GROUP_RANKING_LIMIT,
     groupBy: "industry",
   });
-  // Same query WeeklyStrongStockTable below calls with the same {code} -
-  // React Query dedupes identical query keys, so this is one network
-  // request shared between the two, not a duplicate fetch. This is now
-  // the ONLY source for the "Weekly Strong Stock List" card too (see
-  // createWeeklyStrongCard) - the card used to source from
-  // computeRelativeStrengthMetrics instead, a different pass/fail rule
-  // than the table below it despite the identical label (Phase C1.5 fix).
-  const weeklyStrongQuery = useCollectionWeeklyStrongStocks({ code });
   // Not collection-scoped — same index ranking regardless of which
   // collection is open (indices aren't members of any market_collection) —
   // but scoped to the collection's own exchange so a BSE collection shows
@@ -111,16 +105,26 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
   );
   const clearCrossFilters = useCallback(() => setCrossFilter(EMPTY_CROSS_FILTER), []);
 
-  const filteredWeeklyStrongItems = useMemo(
-    () => filterWeeklyStrongByCrossFilter(weeklyStrongQuery.items, crossFilter),
-    [weeklyStrongQuery.items, crossFilter]
+  // Item 7 - the 4th widget re-ranks whatever sector/industry cross-filter
+  // leaves remaining, by 55-day change % - no Weekly Strong evaluation
+  // runs for this. `filterWeeklyStrongByCrossFilter` is generically typed
+  // over any `{sector, industry}` item (see dashboard-cross-filter.ts), so
+  // it applies just as well to these RS metric rows as it does to the
+  // Weekly Strong table's own rows.
+  const filteredStockStrengthMetrics = useMemo(
+    () => filterWeeklyStrongByCrossFilter(rsQuery.metrics, crossFilter),
+    [rsQuery.metrics, crossFilter]
   );
 
   const cards = buildCollectionCards({
     indexMetrics: indexQuery.metrics,
-    weeklyStrongItems: filteredWeeklyStrongItems,
+    indexAsOfDate: indexQuery.asOfDate,
+    stockStrengthMetrics: filteredStockStrengthMetrics,
+    stockStrengthAsOfDate: rsQuery.asOfDate,
     sectorGroups: sectorQuery.data?.groups ?? [],
+    sectorAsOfDate: sectorQuery.asOfDate,
     industryGroups: industryQuery.data?.groups ?? [],
+    industryAsOfDate: industryQuery.asOfDate,
     relation,
     crossFilter,
     onSectorClick: handleSectorClick,
@@ -137,9 +141,9 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
           dependency") and source from entirely independent queries, so
           there's no reason for them to sit behind the RS queries'
           slower live computation. */}
-      {rsQuery.isLoading || sectorQuery.isLoading || industryQuery.isLoading || weeklyStrongQuery.isLoading ? (
+      {rsQuery.isLoading || sectorQuery.isLoading || industryQuery.isLoading ? (
         <DashboardGridSkeleton />
-      ) : rsQuery.isError || !rsQuery.data || weeklyStrongQuery.isError ? (
+      ) : rsQuery.isError || !rsQuery.data ? (
         <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
           Couldn&apos;t load this segment. It may not exist, be inactive, or have no active
           members yet.
@@ -178,44 +182,47 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
   );
 }
 
-// Phase C1 consolidated the "near multi-year high" breakout check itself
-// into one shared evaluator (weekly-strong-evaluator.ts, backend). Phase
-// C1.5 fixed the remaining Dashboard-layer inconsistency this file used to
-// have: the "Weekly Strong Stock List" CARD below used to source from
-// computeRelativeStrengthMetrics (ranked by 55-day change, a WEEKLY-only
-// pre-filter) while WeeklyStrongStockTable sourced from
-// computeWeeklyStrongStocks (the real daily+weekly evaluator) - same
-// label, different stocks. The card now sources from the exact same
-// useCollectionWeeklyStrongStocks result as the table (see
-// createWeeklyStrongCard below), so the two can never disagree on which
-// stocks are shown, only on how they're visualized.
-//
-// Relative Strength Index/Sector/Industry are deliberately untouched -
-// still computeRelativeStrengthMetrics/computeGroupRelativeStrength, a
-// genuinely different ranking (55-day change), not the Weekly Strong
-// screen.
+// The 4 top Dashboard widgets rank/average by exactly ONE metric: 55-day
+// change % (see calculate55DayChange, backend). Index/Sector/Industry/
+// Stock all derive from the same computeAllRelativeStrengthMetrics base -
+// no combinedScore, MACD, monthlyPct, or Weekly Strong evaluator feeds any
+// of these 4 cards. The detailed Weekly Strong table below (and its own
+// Backtest section) is a completely separate, untouched system - it keeps
+// running the real daily+weekly near-high evaluator via its own
+// useCollectionWeeklyStrongStocks call, independent of everything here.
 
-type StockScoreRow = {
+type StockChangeRow = {
   symbol: string;
   exchange: string;
-  combinedScore: number;
+  change55dPct: number;
 };
 
+// "As of <trading day>" - the real day the underlying snapshot was
+// computed as of (item 9), not a client-rendered "now". Each of the 4
+// cards gets its OWN query's asOfDate rather than one shared value, so if
+// two ever genuinely diverge (a rare cross-scope invalidation race) that's
+// visible on the cards instead of silently papered over.
+function formatAsOfDate(asOfDate: string | null): string {
+  if (!asOfDate) return "";
+  const parsed = new Date(`${asOfDate}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return `As of ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(parsed)}`;
+}
+
 function buildCollectionCards(input: {
-  indexMetrics: StockScoreRow[];
-  weeklyStrongItems: CollectionWeeklyStrongStock[];
+  indexMetrics: StockChangeRow[];
+  indexAsOfDate: string | null;
+  stockStrengthMetrics: CollectionRelativeStrengthMetric[];
+  stockStrengthAsOfDate: string | null;
   sectorGroups: CollectionGroupRelativeStrengthRow[];
+  sectorAsOfDate: string | null;
   industryGroups: CollectionGroupRelativeStrengthRow[];
+  industryAsOfDate: string | null;
   relation: SectorIndustryRelation;
   crossFilter: CrossFilterState;
   onSectorClick: (sector: string) => void;
   onIndustryClick: (industry: string) => void;
 }): DashboardCardData[] {
-  const timestamp = new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date());
-
   // Item 8 - the Sector card itself is never narrowed (every sector always
   // stays visible so the user can pivot to a different one; see
   // DashboardWidget's ring/mute treatment for "selected" instead), but the
@@ -230,10 +237,9 @@ function buildCollectionCards(input: {
   // Index ranks actual NSE indices (NIFTY AUTO, BANKNIFTY, ...) against each
   // other — global, not scoped to the selected collection, since indices
   // aren't members of any market_collection. Sector/Industry rank the
-  // categories themselves (mean combinedScore of member stocks) — a
-  // sector-rotation view, not a stock list. Weekly Strong is the same
-  // passing universe as the table below it, visualized by day-over-day
-  // % change (the same metric the table's own "% Change" column shows).
+  // categories themselves (mean 55-day change % of member stocks) — a
+  // sector-rotation view, not a stock list. Stock ranks every remaining
+  // (cross-filtered) stock in the segment the same way.
   //
   // Item 15 - Relative Strength Index gets no `crossFilter` and its
   // `indexMetrics` are never filtered by sector/industry - it stays the
@@ -242,28 +248,28 @@ function buildCollectionCards(input: {
     createStockCard(
       "relative-strength-index",
       "Relative Strength Index",
-      timestamp,
+      formatAsOfDate(input.indexAsOfDate),
       input.indexMetrics
     ),
     createGroupCard(
       "relative-strength-sector",
       "Relative Strength Sector",
-      timestamp,
+      formatAsOfDate(input.sectorAsOfDate),
       input.sectorGroups,
       { selectedLabel: input.crossFilter.selectedSector, onSelectLabel: input.onSectorClick }
     ),
     createGroupCard(
       "relative-strength-industry",
       "Relative Strength Industry",
-      timestamp,
+      formatAsOfDate(input.industryAsOfDate),
       visibleIndustryGroups,
       { selectedLabel: input.crossFilter.selectedIndustry, onSelectLabel: input.onIndustryClick }
     ),
-    createWeeklyStrongCard(
-      "weekly-strong-stock-list",
-      "Weekly Strong Stock List",
-      timestamp,
-      input.weeklyStrongItems
+    createStockCard(
+      "55-day-stock-strength",
+      "55 Day Stock Strength",
+      formatAsOfDate(input.stockStrengthAsOfDate),
+      input.stockStrengthMetrics
     ),
   ];
 }
@@ -272,9 +278,9 @@ function createStockCard(
   id: string,
   title: string,
   timestamp: string,
-  metrics: StockScoreRow[]
+  metrics: StockChangeRow[]
 ): DashboardCardData {
-  const rows = [...metrics].sort((a, b) => b.combinedScore - a.combinedScore);
+  const rows = [...metrics].sort((a, b) => b.change55dPct - a.change55dPct);
 
   return {
     id,
@@ -284,35 +290,10 @@ function createStockCard(
     items: rows.map((row, index) => ({
       rank: index + 1,
       label: row.symbol,
-      value: row.combinedScore,
+      value: row.change55dPct,
       color: colorForDashboardLabel(row.symbol),
       metric: undefined,
       exchange: row.exchange,
-    })),
-  };
-}
-
-// The same passing universe as WeeklyStrongStockTable, just compactly
-// visualized - bar magnitude is changePct (the table's own "% Change"
-// column), already sorted desc by computeWeeklyStrongStocks itself.
-function createWeeklyStrongCard(
-  id: string,
-  title: string,
-  timestamp: string,
-  items: CollectionWeeklyStrongStock[]
-): DashboardCardData {
-  return {
-    id,
-    title,
-    timestamp,
-    variant: "stockList",
-    items: items.map((item, index) => ({
-      rank: index + 1,
-      label: item.symbol,
-      value: item.changePct,
-      color: colorForDashboardLabel(item.symbol),
-      metric: undefined,
-      exchange: item.exchange,
     })),
   };
 }

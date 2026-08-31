@@ -72,7 +72,7 @@ marketDataRouter.get(
   validate({ query: indexRelativeStrengthQuerySchema }),
   asyncHandler(async (req, res) => {
     const query = req.query as unknown as { limit: number; exchange: string };
-    sendData(res, { metrics: await getIndexRelativeStrength(query.limit, query.exchange) });
+    sendData(res, await getIndexRelativeStrength(query.limit, query.exchange));
   })
 );
 

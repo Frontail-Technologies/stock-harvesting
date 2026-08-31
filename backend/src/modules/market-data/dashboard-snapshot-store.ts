@@ -14,7 +14,12 @@ export type DashboardSnapshotMetricType = "relative_strength" | "weekly_strong";
 // than dashboard-snapshots.service.ts, which needs market-data.service.ts)
 // so market-data.service.ts's own getIndexRelativeStrength can use the
 // exact same version tag without creating an import cycle.
-export const RELATIVE_STRENGTH_SNAPSHOT_VERSION = "relative-strength-v1";
+// v2: 55-day-change-only ranking (Dashboard top-widget metric change) -
+// dropped the near-250-week-high pre-filter and the weekly MACD/monthly
+// terms, so a v1 snapshot's row set and values are no longer valid under
+// the current formula and must be treated as a miss (see
+// readDashboardSnapshotWithMeta's version-aware callers).
+export const RELATIVE_STRENGTH_SNAPSHOT_VERSION = "relative-strength-v2";
 
 // Deliberately zero dependency on market-data.service.ts (or anything that
 // imports it) - this is pure schema-level read/write/delete, kept as its
@@ -44,6 +49,46 @@ export async function readDashboardSnapshot<T>(
   return row ? (row.payload as T) : null;
 }
 
+export type DashboardSnapshotRecord<T> = {
+  payload: T;
+  asOfDate: string;
+  evaluatorVersion: string;
+};
+
+// Superset of readDashboardSnapshot above - also surfaces asOfDate (the
+// real trading-day the payload was computed as of) and evaluatorVersion,
+// so a caller can (a) treat a stale-formula row as a miss instead of
+// serving it, and (b) display the genuine as-of date instead of "now".
+// Kept as a separate function rather than changing readDashboardSnapshot's
+// return shape, so the existing weekly_strong callers (which don't need
+// either field and are explicitly out of scope for this change) keep
+// their exact current behavior untouched.
+export async function readDashboardSnapshotWithMeta<T>(
+  scopeType: DashboardSnapshotScopeType,
+  scopeKey: string,
+  metricType: DashboardSnapshotMetricType
+): Promise<DashboardSnapshotRecord<T> | null> {
+  const [row] = await db
+    .select({
+      payload: dashboardMetricSnapshots.payload,
+      asOfDate: dashboardMetricSnapshots.asOfDate,
+      evaluatorVersion: dashboardMetricSnapshots.evaluatorVersion,
+    })
+    .from(dashboardMetricSnapshots)
+    .where(
+      and(
+        eq(dashboardMetricSnapshots.scopeType, scopeType),
+        eq(dashboardMetricSnapshots.scopeKey, scopeKey),
+        eq(dashboardMetricSnapshots.metricType, metricType)
+      )
+    )
+    .limit(1);
+
+  return row
+    ? { payload: row.payload as T, asOfDate: row.asOfDate, evaluatorVersion: row.evaluatorVersion }
+    : null;
+}
+
 export async function writeDashboardSnapshot(input: {
   scopeType: DashboardSnapshotScopeType;
   scopeKey: string;
@@ -51,7 +96,7 @@ export async function writeDashboardSnapshot(input: {
   exchange: string;
   evaluatorVersion: string;
   payload: unknown;
-}): Promise<void> {
+}): Promise<{ asOfDate: string }> {
   const asOfDate = getLatestExpectedTradingDay(input.exchange);
 
   await db
@@ -79,6 +124,8 @@ export async function writeDashboardSnapshot(input: {
         generatedAt: new Date(),
       },
     });
+
+  return { asOfDate };
 }
 
 // Deletes every metric snapshot for one scope (e.g. both

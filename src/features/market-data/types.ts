@@ -67,12 +67,9 @@ export type IndexRelativeStrengthMetric = {
   close: number;
   volume: number;
   change55dPct: number;
-  monthlyPct: number;
-  weeklyMacdPct: number;
-  weeklyMacdHistogramPct: number;
-  combinedScore: number;
 };
 
 export type IndexRelativeStrengthResponse = {
   metrics: IndexRelativeStrengthMetric[];
+  asOfDate: string;
 };

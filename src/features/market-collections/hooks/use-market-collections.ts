@@ -106,7 +106,7 @@ export function useCollectionRelativeStrength(input: {
     placeholderData: (previousData) => previousData,
   });
 
-  return { ...query, metrics: query.data?.metrics ?? [] };
+  return { ...query, metrics: query.data?.metrics ?? [], asOfDate: query.data?.asOfDate ?? null };
 }
 
 export function useCollectionWeeklyStrongStocks(input: { code: string }) {

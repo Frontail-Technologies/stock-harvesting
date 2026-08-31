@@ -4,19 +4,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { ApiError, queryKeys } from "@/features/api";
 import {
+  getCurrentAdminUser,
+  logoutAdmin,
+  refreshAdminSession,
+} from "../api/admin-auth-api";
+import {
   getCurrentAuthUser,
   refreshSession,
   startGoogleLogin,
   logout as logoutRequest,
 } from "../api/auth-api";
+import { useAdminSessionStore } from "../stores/admin-session-store";
 import { useSessionStore } from "../stores/session-store";
 
-// This always runs exactly once per page load, regardless of whether a
-// cached session snapshot already restored `status` to "authenticated" -
-// the snapshot is an optimistic UI hint, never a substitute for the real
-// backend check. What changes with a snapshot present is only that the app
-// doesn't have to wait on this call before rendering.
-export function useAuthBootstrap() {
+// This always runs exactly once per page load (per portal - see
+// AuthBootstrap.tsx's `enabled` gating and useAdminAuthBootstrap below),
+// regardless of whether a cached session snapshot already restored
+// `status` to "authenticated" - the snapshot is an optimistic UI hint,
+// never a substitute for the real backend check. What changes with a
+// snapshot present is only that the app doesn't have to wait on this call
+// before rendering.
+export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
   const queryClient = useQueryClient();
   const setSession = useSessionStore((state) => state.setSession);
   const setGuest = useSessionStore((state) => state.setGuest);
@@ -29,6 +38,10 @@ export function useAuthBootstrap() {
   const startedRef = useRef(false);
 
   useEffect(() => {
+    // Portal-aware (item 12) - the USER portal's bootstrap must never run
+    // on the ADMIN host/route tree. AuthBootstrap.tsx passes `enabled:
+    // false` there instead of this hook trying to detect its own context.
+    if (!enabled) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
@@ -79,7 +92,7 @@ export function useAuthBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
+  }, [enabled, queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
 }
 
 export function useCurrentUser() {
@@ -125,6 +138,91 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: logoutRequest,
+    onSettled: () => {
+      clearSession();
+      queryClient.clear();
+    },
+  });
+}
+
+// ADMIN portal mirrors of the three hooks above - see admin-session-store.ts
+// / admin-api-client.ts for why these are genuinely separate implementations
+// rather than the same hooks with a portal flag.
+
+export function useAdminAuthBootstrap() {
+  const queryClient = useQueryClient();
+  const setSession = useAdminSessionStore((state) => state.setSession);
+  const setGuest = useAdminSessionStore((state) => state.setGuest);
+  const setRevalidating = useAdminSessionStore((state) => state.setRevalidating);
+  const setBootstrapResolved = useAdminSessionStore((state) => state.setBootstrapResolved);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    let cancelled = false;
+    const hadOptimisticSession = useAdminSessionStore.getState().status === "authenticated";
+
+    async function bootstrap() {
+      setRevalidating(true);
+      try {
+        const session = await refreshAdminSession();
+        if (!cancelled) setSession(session);
+      } catch (error) {
+        if (cancelled) return;
+
+        const sessionExplicitlyInvalid = error instanceof ApiError && error.status === 401;
+
+        if (sessionExplicitlyInvalid || !hadOptimisticSession) {
+          setGuest();
+          queryClient.clear();
+        } else {
+          setRevalidating(false);
+        }
+      } finally {
+        if (!cancelled) setBootstrapResolved(true);
+      }
+    }
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
+}
+
+export function useAdminCurrentUser() {
+  const queryClient = useQueryClient();
+  const status = useAdminSessionStore((state) => state.status);
+  const setUser = useAdminSessionStore((state) => state.setUser);
+  const setGuest = useAdminSessionStore((state) => state.setGuest);
+  const query = useQuery({
+    queryKey: queryKeys.auth.adminCurrentUser,
+    queryFn: getCurrentAdminUser,
+    enabled: status === "authenticated",
+  });
+
+  useEffect(() => {
+    if (query.data) setUser(query.data);
+  }, [query.data, setUser]);
+
+  useEffect(() => {
+    if (query.error instanceof ApiError && query.error.status === 401) {
+      setGuest();
+      queryClient.clear();
+    }
+  }, [query.error, queryClient, setGuest]);
+
+  return query;
+}
+
+export function useAdminLogout() {
+  const queryClient = useQueryClient();
+  const clearSession = useAdminSessionStore((state) => state.clearSession);
+
+  return useMutation({
+    mutationFn: logoutAdmin,
     onSettled: () => {
       clearSession();
       queryClient.clear();

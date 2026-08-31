@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { AuthUser } from "@/features/auth";
-import { useLogout } from "@/features/auth";
+import { useAdminLogout } from "@/features/auth";
 import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
@@ -37,7 +37,10 @@ import { ADMIN_NAV_ITEMS } from "../../constants/admin-nav";
 // form so `pathname` (from usePathname(), which always reflects the
 // rewritten internal path) can be compared against it directly for the
 // active-link state; only the rendered href needs the stripped form.
-const SCANNER_URL = `${getSiteUrl().origin}/scanner`;
+//
+// Item 20 - since admin accounts have no USER portal session, this points
+// at the public site root, not an authenticated destination like /charts.
+const SITE_URL = getSiteUrl().origin;
 
 type AdminSidebarProps = {
   pathname: string | null;
@@ -55,11 +58,14 @@ export function AdminSidebar({
   const { collapsed } = useSidebar();
   const avatarInitials = getAvatarInitials(user.name, user.email);
   const router = useRouter();
-  const logout = useLogout();
+  const logout = useAdminLogout();
 
   const handleLogout = async () => {
     await logout.mutateAsync().catch(() => undefined);
-    router.replace("/login");
+    // The internal "/admin/login" route (not the bare "/login", which on
+    // this host would be the main app's own login page - see AdminShell's
+    // same fix).
+    router.replace("/admin/login");
   };
 
   return (
@@ -137,11 +143,11 @@ export function AdminSidebar({
       <SidebarFooter className="border-sidebar-border/80">
         {collapsed ? (
           <>
-            <AdminSidebarTooltip label="Open app">
+            <AdminSidebarTooltip label="Visit Stock Harvesting">
               <a
-                href={SCANNER_URL}
+                href={SITE_URL}
                 onClick={onNavigate}
-                aria-label="Open app"
+                aria-label="Visit Stock Harvesting"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "icon-lg" }),
                   "rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -193,14 +199,15 @@ export function AdminSidebar({
               <SidebarTrigger className="border border-sidebar-border/70 bg-sidebar-accent/25" />
               <div className="flex items-center gap-1.5">
                 <a
-                  href={SCANNER_URL}
+                  href={SITE_URL}
                   onClick={onNavigate}
+                  title="Visit Stock Harvesting"
                   className={cn(
                     buttonVariants({ variant: "outline", size: "sm" }),
                     "h-8 rounded-md border-sidebar-border/70 bg-transparent px-3 text-xs text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   )}
                 >
-                  App
+                  Site
                 </a>
                 <ThemeToggle />
               </div>

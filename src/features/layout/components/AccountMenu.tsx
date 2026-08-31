@@ -134,9 +134,9 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              render={<Link href="/scanner" className="h-9 cursor-pointer px-3" />}
+              render={<Link href="/charts" className="h-9 cursor-pointer px-3" />}
             >
-              Open Workspace
+              Open Charts
             </DropdownMenuItem>
             <DropdownMenuItem
               render={<Link href="/watchlists" className="h-9 cursor-pointer px-3" />}

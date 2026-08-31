@@ -12,7 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: absoluteUrl("/scanner"),
+      url: absoluteUrl("/charts"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,

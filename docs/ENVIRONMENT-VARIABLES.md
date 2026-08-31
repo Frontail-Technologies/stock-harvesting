@@ -46,6 +46,10 @@ max-connections calculation before raising `DB_POOL_MAX`).
 |---|---|---|
 | `ACCESS_TOKEN_SECRET` | **Yes** (min 32 chars) | JWT access token signing |
 | `REFRESH_TOKEN_SECRET` | **Yes** (min 32 chars) | Refresh token signing |
+| `USER_ACCESS_TOKEN_TTL_SECONDS` | No (default `900` = 15m) | USER portal access token lifetime |
+| `USER_REFRESH_TOKEN_TTL_DAYS` | No (default `30`) | USER portal refresh session lifetime |
+| `ADMIN_ACCESS_TOKEN_TTL_SECONDS` | No (default `600` = 10m) | ADMIN portal access token lifetime — kept short deliberately |
+| `ADMIN_REFRESH_TOKEN_TTL_HOURS` | No (default `4`) | ADMIN portal refresh session lifetime — kept short deliberately; an idle admin console re-prompts for login well before an idle user session would |
 | `ENCRYPTION_MASTER_KEY` | **Yes** (min 32 chars) | AES-256-GCM field encryption (provider tokens, AI API keys) |
 | `ENCRYPTION_KEY_VERSION` | No (default `v1`) | Key version tag stored alongside encrypted fields, for future key rotation |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google OAuth login |
@@ -70,6 +74,16 @@ max-connections calculation before raising `DB_POOL_MAX`).
 | `GLOBAL_DATAFEEDS_FUNDAMENTALS_EXCHANGE` | `BSE` | Query param value — the vendor's account emails call this product "BSE-FD", but the API itself only accepts `BSE` |
 | `GEMINI_API_KEY` | — | Fallback/default Gemini key (admin can also set a per-deployment key via the AI settings UI) |
 | `GEMINI_EXTRACTION_MODEL` / `GEMINI_CHAT_MODEL` | — | Override the default model per task type |
+
+### Web Push (price alert notifications)
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `VAPID_PUBLIC_KEY` | No | — | Web Push VAPID public key. Generate a pair with `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | No | — | Web Push VAPID private key |
+| `VAPID_SUBJECT` | No | `mailto:support@stockharvesting.com` | Contact URI sent with push requests |
+
+Without `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, price alerts still work but can't deliver browser push notifications.
 
 ## Backend backup/restore scripts (not validated by `env.ts` — read directly by the shell scripts)
 

@@ -164,7 +164,7 @@ export function WeeklyStrongStockTable({
     // either half as "no stock open" and would otherwise clear the
     // selection this just made (see ScannerPage's URL<->store sync).
     router.push(
-      `/scanner?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange)}`
+      `/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange)}`
     );
   };
 

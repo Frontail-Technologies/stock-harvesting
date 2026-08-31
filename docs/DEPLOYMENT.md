@@ -18,6 +18,73 @@ If the admin panel is split onto its own subdomain
 (`NEXT_PUBLIC_ADMIN_HOST`), that's routing handled by `src/proxy.ts` inside
 the same Next.js deployment — not a separate process.
 
+### Strict portal separation (USER vs ADMIN)
+
+The main site and the admin panel are two independent auth portals with
+their own login flow, session cookies (`sh_user_refresh` /
+`sh_admin_refresh`), refresh endpoints (`/api/auth/refresh` /
+`/api/admin-auth/refresh`), and JWT audience (`stock-harvesting-app` /
+`stock-harvesting-admin`) — see `backend/src/modules/auth/`. There is no
+SSO between them: logging into one never authenticates the other, even for
+the same Google account, even on the same browser. An admin-role account
+is rejected outright at `/login` on the main host (no user session is
+created), and a non-admin account is rejected outright at `/login` on the
+admin host (no admin session is created).
+
+**Local dev setup** — this needs two distinct hostnames so the browser
+actually treats them as separate sites (cookie isolation, `localStorage`
+isolation):
+
+```bash
+# backend/.env
+ADMIN_WEB_APP_URL=http://admin.localhost:3000
+CORS_ORIGIN=http://localhost:3000,http://admin.localhost:3000
+
+# .env.local (frontend)
+NEXT_PUBLIC_ADMIN_HOST=admin.localhost:3000
+```
+
+No `/etc/hosts` (or Windows `hosts` file) edit is required — `*.localhost`
+already resolves to the loopback address in every modern browser and OS
+resolver (RFC 6761), so `http://admin.localhost:3000` just works once the
+env vars above are set and `npm run dev` is restarted. Visit
+`http://localhost:3000` for the user portal and
+`http://admin.localhost:3000` for the admin portal; each keeps its own
+cookies/session independently in the same browser.
+
+## Reverse proxy / process manager
+
+**None of the following are checked into this repo**: no `Dockerfile`, no
+`docker-compose.yml`, no PM2 `ecosystem.config.js`, no Nginx config, no
+`.github/workflows/*` CI. Confirmed by direct audit, not assumed absent.
+Whatever reverse-proxy/TLS-termination/process-supervision setup runs in
+production is managed outside version control — if you're setting one up,
+you need at minimum:
+
+- TLS termination for **two** hostnames (`stockharvesting.com` and
+  `admin.stockharvesting.com`) — the auth cookies are `Secure`, so plain
+  HTTP will silently fail to authenticate in production.
+- A reverse proxy routing both hostnames to the **same** Next.js process
+  (this is one app, one build — hostname routing happens inside Next via
+  `src/proxy.ts`, not via two separate deployments).
+- A reverse proxy (or the Next.js process itself) routing `/api/*` and
+  `/ws/market` to the backend API process (`backend/src/server.ts`).
+- Process supervision (PM2, systemd, or similar) for the two backend
+  processes (API + worker) and the frontend — none is configured in this
+  repo today, so a bare `npm start` has no restart-on-crash behavior.
+
+## DNS / admin subdomain requirement
+
+`admin.stockharvesting.com` needs a real DNS record (CNAME or A, matching
+whatever the main site's record points at, since it's the same
+deployment) pointing at the same target as `stockharvesting.com`. Pair
+with `NEXT_PUBLIC_ADMIN_HOST=admin.stockharvesting.com` (frontend) and
+`ADMIN_WEB_APP_URL=https://admin.stockharvesting.com` +
+`CORS_ORIGIN=https://stockharvesting.com,https://admin.stockharvesting.com`
+(backend). See [AUTH_ARCHITECTURE.md](./AUTH_ARCHITECTURE.md) §12 for
+local dev, and the "Strict portal separation" section above for why both
+origins must be in `CORS_ORIGIN`.
+
 ## Build
 
 ```bash

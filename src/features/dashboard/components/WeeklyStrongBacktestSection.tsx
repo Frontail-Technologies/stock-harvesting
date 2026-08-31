@@ -612,7 +612,7 @@ function WeekResultsView({
 
   const handleRowClick = (member: { symbol: string; exchange: string }) => {
     router.push(
-      `/scanner?symbol=${encodeURIComponent(member.symbol)}&exchange=${encodeURIComponent(member.exchange)}`
+      `/charts?symbol=${encodeURIComponent(member.symbol)}&exchange=${encodeURIComponent(member.exchange)}`
     );
   };
 

@@ -6,6 +6,15 @@ export const API_ROUTES = {
     me: "/api/auth/me",
     logout: "/api/auth/logout",
   },
+  // Strict portal separation - the ADMIN portal's own refresh/me/logout,
+  // deliberately separate endpoints from `auth` above so a request can
+  // never accidentally reuse the USER portal's cookie/token handling. See
+  // admin-api-client.ts.
+  adminAuth: {
+    refresh: "/api/admin-auth/refresh",
+    me: "/api/admin-auth/me",
+    logout: "/api/admin-auth/logout",
+  },
   users: {
     me: "/api/users/me",
   },

@@ -25,9 +25,7 @@ import {
   useScannerResults,
   useScannerWorkspaceDrawings,
 } from "../hooks/use-scanner-data";
-import { buildBacktestStatsFromCandles } from "../lib/build-backtest-stats-from-candles";
 import { mapScanBandsToDisplayTimeframe } from "../lib/map-scan-bands-to-display-timeframe";
-import { buildNear250WeekHighScanBand } from "../lib/near-250-week-high-scan";
 import { getScannerThemeClass } from "../lib/scanner-chart-config";
 import {
   isHistoricalRangeFilterAvailable,
@@ -42,7 +40,6 @@ import type {
   ScannerTheme,
   Timeframe,
 } from "../types";
-import { getScannerLookbackWeeks } from "../types";
 import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
@@ -140,7 +137,7 @@ export function ScannerPage() {
   const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
 
   // The URL is the sole source of truth for "is a stock open right now" -
-  // both symbol AND exchange must be present; a bare /scanner or a partial
+  // both symbol AND exchange must be present; a bare /charts or a partial
   // URL (only one of the two) is treated identically as no stock, never
   // guessed or backfilled from a previous selection.
   const symbolParam = searchParams.get("symbol")?.trim().toUpperCase() ?? "";
@@ -324,9 +321,9 @@ function ScannerEmptyState({ onOpenSearch }: { onOpenSearch: () => void }) {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <div className="flex flex-col items-center gap-1.5">
-          <p className="text-sm font-semibold text-foreground">Search for a stock to start</p>
+          <p className="text-sm font-semibold text-foreground">Search for a stock to open its chart</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Use search to open a stock and review its chart.
+            Find any stock to start reviewing its chart.
           </p>
         </div>
         <Button type="button" variant="outline" size="lg" onClick={onOpenSearch} className="gap-2">
@@ -429,13 +426,6 @@ function ScannerDrawingWorkspace({
     SCANNER_ANALYSIS_TIMEFRAME,
     stock.exchange
   );
-  const analysisCandles = useMemo(
-    () =>
-      timeframe === SCANNER_ANALYSIS_TIMEFRAME
-        ? candles
-        : analysisCandleQuery.data ?? [],
-    [analysisCandleQuery.data, candles, timeframe]
-  );
   const scannerResultsQuery = useScannerResults(
     stock.symbol,
     SCANNER_ANALYSIS_TIMEFRAME,
@@ -445,17 +435,21 @@ function ScannerDrawingWorkspace({
     stock.exchange,
     lookbackMultiplier
   );
-  const fallbackBacktestStats = useMemo(
-    () => buildBacktestStatsFromCandles(analysisCandles, lookbackMultiplier),
-    [analysisCandles, lookbackMultiplier]
-  );
-  const { stats: backendBacktestStats } = useScannerBacktest(
+  // Backtest stats are backend-only (computeSymbolBreakoutBacktest runs the
+  // real two-condition evaluator against daily+weekly history) - there is
+  // no client-side fallback. A prior client-side approximation
+  // (buildBacktestStatsFromCandles) reimplemented the near-high threshold
+  // from raw candles and was already known to produce different numbers
+  // than the real evaluator (see the backend function's own comment) -
+  // removed rather than fixed, since the backend path already covers this
+  // and ScannerBacktestStatsOverlay already renders nothing while `stats`
+  // is null (no UI change needed).
+  const { stats: visibleBacktestStats } = useScannerBacktest(
     stock.symbol,
     true,
     stock.exchange,
     lookbackMultiplier
   );
-  const visibleBacktestStats = backendBacktestStats ?? fallbackBacktestStats;
   const workspaceDrawingsQuery = useScannerWorkspaceDrawings(stock.symbol, timeframe);
   const { mutate: saveDrawings } = useSaveScannerDrawings(stock.symbol, timeframe);
   const { replaceDrawings } = drawing;
@@ -517,21 +511,16 @@ function ScannerDrawingWorkspace({
     },
   });
 
-  const derivedScanBand = useMemo(
-    () =>
-      buildNear250WeekHighScanBand({
-        symbol: stock.symbol,
-        exchange: stock.exchange,
-        timeframe: SCANNER_ANALYSIS_TIMEFRAME,
-        candles: analysisCandles,
-        lookbackWeeks: getScannerLookbackWeeks(lookbackMultiplier),
-      }),
-    [analysisCandles, lookbackMultiplier, stock.exchange, stock.symbol]
-  );
+  // Scan-highlight bands are backend-only (calculateNear250WeekHighScan
+  // runs the real near-high threshold against stored candles) - there is
+  // no client-side derivation. A prior client-side approximation
+  // (buildNear250WeekHighScanBand) reimplemented the same threshold from
+  // raw candles and, worse, was always preferred over the backend result
+  // whenever it produced a value, so the backend path was effectively
+  // dead code. Removed rather than fixed, since useScannerResults already
+  // covers this correctly.
   const weeklyScanBands = useMemo(
     () => {
-      if (derivedScanBand) return [derivedScanBand];
-
       const backendBandsWithHighlights = scannerResultsQuery.scanBands.filter(
         (band) => (band.highlightTimes?.length ?? 0) > 0
       );
@@ -542,11 +531,7 @@ function ScannerDrawingWorkspace({
 
       return scannerResultsQuery.isError ? mockScanBands : [];
     },
-    [
-      derivedScanBand,
-      scannerResultsQuery.isError,
-      scannerResultsQuery.scanBands,
-    ]
+    [scannerResultsQuery.isError, scannerResultsQuery.scanBands]
   );
 
   const baseScanBands = useMemo(
@@ -586,7 +571,12 @@ function ScannerDrawingWorkspace({
   ]);
 
   return (
-    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden", SCANNER_GUTTER)}>
+    // relative: the mobile pass's floating "Drawing tools" trigger
+    // (ChartToolsBar) is absolutely positioned on phone so it takes NO
+    // flex width at all - the chart's own flex-1 sibling gets the full
+    // reclaimed width instead of a slim reserved rail column. Desktop's
+    // rail stays in normal flex flow, unaffected.
+    <div className={cn("relative flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden", SCANNER_GUTTER)}>
       <ChartToolsBar
         drawing={drawing}
         stock={stock}

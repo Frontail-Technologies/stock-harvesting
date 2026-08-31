@@ -21,7 +21,7 @@ export default function NotFound() {
           </p>
 
           <Link
-            href="/scanner"
+            href="/charts"
             className="mt-6 inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-primary px-4 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
           >
             Back to Home

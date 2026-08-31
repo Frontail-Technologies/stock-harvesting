@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useSessionStore } from "@/features/auth";
+import { useAdminSessionStore } from "@/features/auth";
 import {
   createAdminMarketCollection,
   generateAdminWeeklyStrongBacktest,
@@ -26,8 +26,8 @@ import {
 const BACKTEST_STATUS_STALE_TIME_MS = 30_000;
 
 function useIsAdmin() {
-  const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
+  const status = useAdminSessionStore((state) => state.status);
+  const user = useAdminSessionStore((state) => state.user);
   return status === "authenticated" && user?.role === "admin";
 }
 

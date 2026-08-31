@@ -64,10 +64,6 @@ export type CollectionRelativeStrengthMetric = {
   close: number;
   volume: number;
   change55dPct: number;
-  monthlyPct: number;
-  weeklyMacdPct: number;
-  weeklyMacdHistogramPct: number;
-  combinedScore: number;
 };
 
 export type CollectionGroupRelativeStrengthRow = {
@@ -80,6 +76,10 @@ export type CollectionRelativeStrengthResponse = {
   collection: { code: string; name: string; exchange: string };
   metrics?: CollectionRelativeStrengthMetric[];
   groups?: CollectionGroupRelativeStrengthRow[];
+  // The real trading-day this snapshot was computed as of (item 9) - not
+  // "now", the actual as-of date the backend's dashboard snapshot store
+  // stamped when the underlying relative-strength metrics were generated.
+  asOfDate: string;
 };
 
 export type CollectionWeeklyStrongStock = {

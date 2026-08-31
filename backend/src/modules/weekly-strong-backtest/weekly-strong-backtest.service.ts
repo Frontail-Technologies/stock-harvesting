@@ -25,27 +25,26 @@ import {
 } from "../market-data/market-data.service";
 import { WEEKLY_STRONG_EVALUATOR_VERSION } from "../market-data/weekly-strong-evaluator";
 
-// "current_membership": generated against whatever the segment's CURRENT
-// active membership is at generation time. "historical_membership"
-// (Phase D): generated against the collection's point-in-time membership
-// version actually effective for that specific completed week (resolved
-// via getCollectionMembershipAt - the one canonical resolver, never
-// re-derived here). The Dashboard reads (getWeeklyStrongBacktestStacked/
-// WeekDetail below) prefer historical_membership when it exists for a
-// collection and never mix both modes within one chart - see
-// getMembershipNote.
 const CURRENT_MEMBERSHIP = "current_membership" as const;
 const HISTORICAL_MEMBERSHIP = "historical_membership" as const;
-type WeeklyStrongBacktestMembershipMode = typeof CURRENT_MEMBERSHIP | typeof HISTORICAL_MEMBERSHIP;
+type WeeklyStrongBacktestMembershipMode =
+  | typeof CURRENT_MEMBERSHIP
+  | typeof HISTORICAL_MEMBERSHIP;
 const UNCLASSIFIED_SECTOR_LABEL = "Unclassified";
 const DASHBOARD_BACKTEST_WEEKS = 250;
 
 function formatCoverageMonth(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return new Date(`${dateStr}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
 }
 
 // runsChronological must already be sorted oldest-first.
-function getMembershipNote(mode: WeeklyStrongBacktestMembershipMode, runsChronological: { weekEnding: string }[]) {
+function getMembershipNote(
+  mode: WeeklyStrongBacktestMembershipMode,
+  runsChronological: { weekEnding: string }[],
+) {
   if (mode === CURRENT_MEMBERSHIP) {
     return "Backtest uses the segment's present-day constituent universe for every week shown. Import dated membership versions in Admin to unlock historically accurate point-in-time backtesting.";
   }
@@ -53,7 +52,9 @@ function getMembershipNote(mode: WeeklyStrongBacktestMembershipMode, runsChronol
     return "Historical membership backtest has not been generated yet.";
   }
   const earliest = formatCoverageMonth(runsChronological[0].weekEnding);
-  const latest = formatCoverageMonth(runsChronological[runsChronological.length - 1].weekEnding);
+  const latest = formatCoverageMonth(
+    runsChronological[runsChronological.length - 1].weekEnding,
+  );
   return `Historical membership coverage: ${earliest} → ${latest}. Each week uses that week's actual point-in-time segment constituents.`;
 }
 
@@ -84,17 +85,28 @@ export async function runWeeklyStrongBacktestBackfill(input: {
   const weeks = input.weeks ?? WEEKLY_STRONG_BACKTEST_DEFAULT_WEEKS;
 
   const memberRows = await getActiveMemberInstrumentRows(collection.id);
-  const weekPoints = await computeWeeklyStrongBacktestMembers(memberRows, collection.exchange, weeks);
-  const instrumentIdBySymbol = new Map(memberRows.map((row) => [row.symbol, row.instrumentId]));
+  const weekPoints = await computeWeeklyStrongBacktestMembers(
+    memberRows,
+    collection.exchange,
+    weeks,
+  );
+  const instrumentIdBySymbol = new Map(
+    memberRows.map((row) => [row.symbol, row.instrumentId]),
+  );
 
   let weeksGenerated = 0;
   let totalMembersPersisted = 0;
 
   for (const point of weekPoints) {
-    await persistWeeklyStrongBacktestWeek(collection.id, point, instrumentIdBySymbol, {
-      mode: CURRENT_MEMBERSHIP,
-      versionId: null,
-    });
+    await persistWeeklyStrongBacktestWeek(
+      collection.id,
+      point,
+      instrumentIdBySymbol,
+      {
+        mode: CURRENT_MEMBERSHIP,
+        versionId: null,
+      },
+    );
     weeksGenerated++;
     totalMembersPersisted += point.passing.length;
   }
@@ -142,21 +154,27 @@ export async function runWeeklyStrongBacktestHistoricalRebuild(input: {
     .where(
       and(
         eq(weeklyStrongBacktestRuns.collectionId, collection.id),
-        eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP)
-      )
+        eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP),
+      ),
     )
     .orderBy(asc(weeklyStrongBacktestRuns.weekEnding));
 
   if (referenceWeeks.length === 0) {
     throw badRequest(
-      "Run the current-membership backtest at least once before rebuilding the historical-membership backtest."
+      "Run the current-membership backtest at least once before rebuilding the historical-membership backtest.",
     );
   }
 
   const weekDates = referenceWeeks.map((row) => row.weekEnding);
-  const versionByDate = await resolveMembershipVersionsForDates(collection.id, weekDates);
+  const versionByDate = await resolveMembershipVersionsForDates(
+    collection.id,
+    weekDates,
+  );
 
-  const weeksByVersionId = new Map<string, { effectiveFrom: string; weeks: Set<string> }>();
+  const weeksByVersionId = new Map<
+    string,
+    { effectiveFrom: string; weeks: Set<string> }
+  >();
   const uncoveredWeeks: string[] = [];
   for (const date of weekDates) {
     const resolved = versionByDate.get(date);
@@ -176,7 +194,10 @@ export async function runWeeklyStrongBacktestHistoricalRebuild(input: {
   let totalMembersPersisted = 0;
 
   for (const [versionId, group] of weeksByVersionId) {
-    const membership = await getCollectionMembershipAt(collection.id, group.effectiveFrom);
+    const membership = await getCollectionMembershipAt(
+      collection.id,
+      group.effectiveFrom,
+    );
     if (!membership || membership.members.length === 0) continue;
 
     const memberRows = membership.members.map((member) => ({
@@ -186,12 +207,14 @@ export async function runWeeklyStrongBacktestHistoricalRebuild(input: {
       sector: member.sector,
       industry: member.industry,
     }));
-    const instrumentIdBySymbol = new Map(membership.members.map((member) => [member.symbol, member.instrumentId]));
+    const instrumentIdBySymbol = new Map(
+      membership.members.map((member) => [member.symbol, member.instrumentId]),
+    );
 
     const weekPoints = await computeWeeklyStrongBacktestMembers(
       memberRows,
       collection.exchange,
-      WEEKLY_STRONG_BACKTEST_DEFAULT_WEEKS
+      WEEKLY_STRONG_BACKTEST_DEFAULT_WEEKS,
     );
     const producedTimes = new Set(weekPoints.map((point) => point.time));
     for (const weekEnding of group.weeks) {
@@ -200,10 +223,15 @@ export async function runWeeklyStrongBacktestHistoricalRebuild(input: {
 
     for (const point of weekPoints) {
       if (!group.weeks.has(point.time)) continue; // only this version's authoritative weeks
-      await persistWeeklyStrongBacktestWeek(collection.id, point, instrumentIdBySymbol, {
-        mode: HISTORICAL_MEMBERSHIP,
-        versionId,
-      });
+      await persistWeeklyStrongBacktestWeek(
+        collection.id,
+        point,
+        instrumentIdBySymbol,
+        {
+          mode: HISTORICAL_MEMBERSHIP,
+          versionId,
+        },
+      );
       weeksGenerated++;
       totalMembersPersisted += point.passing.length;
     }
@@ -237,7 +265,7 @@ export type WeeklyStrongBacktestIncrementalResult = {
 };
 
 export async function syncWeeklyStrongBacktestIncremental(
-  exchange: string
+  exchange: string,
 ): Promise<WeeklyStrongBacktestIncrementalResult> {
   const backfilledCollections = await db
     .selectDistinct({
@@ -246,8 +274,16 @@ export async function syncWeeklyStrongBacktestIncremental(
       active: marketCollections.active,
     })
     .from(weeklyStrongBacktestRuns)
-    .innerJoin(marketCollections, eq(weeklyStrongBacktestRuns.collectionId, marketCollections.id))
-    .where(and(eq(marketCollections.exchange, exchange), eq(marketCollections.active, true)));
+    .innerJoin(
+      marketCollections,
+      eq(weeklyStrongBacktestRuns.collectionId, marketCollections.id),
+    )
+    .where(
+      and(
+        eq(marketCollections.exchange, exchange),
+        eq(marketCollections.active, true),
+      ),
+    );
 
   let weeksAdded = 0;
 
@@ -258,7 +294,11 @@ export async function syncWeeklyStrongBacktestIncremental(
     // weeks=1: still fetches each member's full history once (the
     // evaluator needs the trailing lookback regardless), but only
     // evaluates/returns the single newest completed week.
-    const [latestPoint] = await computeWeeklyStrongBacktestMembers(memberRows, collection.exchange, 1);
+    const [latestPoint] = await computeWeeklyStrongBacktestMembers(
+      memberRows,
+      collection.exchange,
+      1,
+    );
     if (!latestPoint) continue;
 
     const [existingRun] = await db
@@ -268,21 +308,31 @@ export async function syncWeeklyStrongBacktestIncremental(
         and(
           eq(weeklyStrongBacktestRuns.collectionId, collection.id),
           eq(weeklyStrongBacktestRuns.weekEnding, latestPoint.time),
-          eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP)
-        )
+          eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP),
+        ),
       )
       .limit(1);
 
     if (!existingRun) {
-      const instrumentIdBySymbol = new Map(memberRows.map((row) => [row.symbol, row.instrumentId]));
-      await persistWeeklyStrongBacktestWeek(collection.id, latestPoint, instrumentIdBySymbol, {
-        mode: CURRENT_MEMBERSHIP,
-        versionId: null,
-      });
+      const instrumentIdBySymbol = new Map(
+        memberRows.map((row) => [row.symbol, row.instrumentId]),
+      );
+      await persistWeeklyStrongBacktestWeek(
+        collection.id,
+        latestPoint,
+        instrumentIdBySymbol,
+        {
+          mode: CURRENT_MEMBERSHIP,
+          versionId: null,
+        },
+      );
       weeksAdded++;
     }
 
-    const membership = await getCollectionMembershipAt(collection.id, latestPoint.time);
+    const membership = await getCollectionMembershipAt(
+      collection.id,
+      latestPoint.time,
+    );
     if (!membership || membership.members.length === 0) continue;
 
     const [existingHistoricalRun] = await db
@@ -292,8 +342,8 @@ export async function syncWeeklyStrongBacktestIncremental(
         and(
           eq(weeklyStrongBacktestRuns.collectionId, collection.id),
           eq(weeklyStrongBacktestRuns.weekEnding, latestPoint.time),
-          eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP)
-        )
+          eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP),
+        ),
       )
       .limit(1);
     if (existingHistoricalRun) continue;
@@ -308,17 +358,23 @@ export async function syncWeeklyStrongBacktestIncremental(
     const [versionLatestPoint] = await computeWeeklyStrongBacktestMembers(
       versionMemberRows,
       collection.exchange,
-      1
+      1,
     );
-    if (!versionLatestPoint || versionLatestPoint.time !== latestPoint.time) continue;
+    if (!versionLatestPoint || versionLatestPoint.time !== latestPoint.time)
+      continue;
 
     const versionInstrumentIdBySymbol = new Map(
-      membership.members.map((member) => [member.symbol, member.instrumentId])
+      membership.members.map((member) => [member.symbol, member.instrumentId]),
     );
-    await persistWeeklyStrongBacktestWeek(collection.id, versionLatestPoint, versionInstrumentIdBySymbol, {
-      mode: HISTORICAL_MEMBERSHIP,
-      versionId: membership.versionId,
-    });
+    await persistWeeklyStrongBacktestWeek(
+      collection.id,
+      versionLatestPoint,
+      versionInstrumentIdBySymbol,
+      {
+        mode: HISTORICAL_MEMBERSHIP,
+        versionId: membership.versionId,
+      },
+    );
   }
 
   return { collectionsChecked: backfilledCollections.length, weeksAdded };
@@ -333,7 +389,10 @@ async function persistWeeklyStrongBacktestWeek(
   collectionId: string,
   point: WeeklyStrongBacktestWeekMembers,
   instrumentIdBySymbol: Map<string, string>,
-  membership: { mode: WeeklyStrongBacktestMembershipMode; versionId: string | null }
+  membership: {
+    mode: WeeklyStrongBacktestMembershipMode;
+    versionId: string | null;
+  },
 ) {
   await db.transaction(async (tx) => {
     const [run] = await tx
@@ -366,7 +425,9 @@ async function persistWeeklyStrongBacktestWeek(
     // set is bounded by the collection's own size, so this is cheap, and
     // it guarantees no stale row from a prior generation can survive a
     // rebuild.
-    await tx.delete(weeklyStrongBacktestMembers).where(eq(weeklyStrongBacktestMembers.runId, run.id));
+    await tx
+      .delete(weeklyStrongBacktestMembers)
+      .where(eq(weeklyStrongBacktestMembers.runId, run.id));
 
     const memberValues = point.passing
       .map((member) => {
@@ -416,14 +477,17 @@ async function selectPreferredRuns(collectionId: string) {
     .where(
       and(
         eq(weeklyStrongBacktestRuns.collectionId, collectionId),
-        eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP)
-      )
+        eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP),
+      ),
     )
     .orderBy(desc(weeklyStrongBacktestRuns.weekEnding))
     .limit(DASHBOARD_BACKTEST_WEEKS);
 
   if (historicalRuns.length > 0) {
-    return { mode: HISTORICAL_MEMBERSHIP as WeeklyStrongBacktestMembershipMode, runs: historicalRuns };
+    return {
+      mode: HISTORICAL_MEMBERSHIP as WeeklyStrongBacktestMembershipMode,
+      runs: historicalRuns,
+    };
   }
 
   const currentRuns = await db
@@ -436,13 +500,16 @@ async function selectPreferredRuns(collectionId: string) {
     .where(
       and(
         eq(weeklyStrongBacktestRuns.collectionId, collectionId),
-        eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP)
-      )
+        eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP),
+      ),
     )
     .orderBy(desc(weeklyStrongBacktestRuns.weekEnding))
     .limit(DASHBOARD_BACKTEST_WEEKS);
 
-  return { mode: CURRENT_MEMBERSHIP as WeeklyStrongBacktestMembershipMode, runs: currentRuns };
+  return {
+    mode: CURRENT_MEMBERSHIP as WeeklyStrongBacktestMembershipMode,
+    runs: currentRuns,
+  };
 }
 
 export async function getWeeklyStrongBacktestStacked(input: { code: string }) {
@@ -472,7 +539,10 @@ export async function getWeeklyStrongBacktestStacked(input: { code: string }) {
     })
     .from(weeklyStrongBacktestMembers)
     .where(inArray(weeklyStrongBacktestMembers.runId, runIds))
-    .groupBy(weeklyStrongBacktestMembers.runId, weeklyStrongBacktestMembers.sector);
+    .groupBy(
+      weeklyStrongBacktestMembers.runId,
+      weeklyStrongBacktestMembers.sector,
+    );
 
   const sectorsByRunId = new Map<string, WeeklyStrongBacktestSectorCount[]>();
   for (const row of sectorRows) {
@@ -480,7 +550,10 @@ export async function getWeeklyStrongBacktestStacked(input: { code: string }) {
     // Missing sector metadata still counts toward the week's total - it's
     // grouped honestly as "Unclassified" rather than silently dropped, so
     // sum(sectors[].count) always equals total.
-    list.push({ sector: row.sector ?? UNCLASSIFIED_SECTOR_LABEL, count: row.count });
+    list.push({
+      sector: row.sector ?? UNCLASSIFIED_SECTOR_LABEL,
+      count: row.count,
+    });
     sectorsByRunId.set(row.runId, list);
   }
 
@@ -488,13 +561,20 @@ export async function getWeeklyStrongBacktestStacked(input: { code: string }) {
     .map((run) => ({
       weekEnding: run.weekEnding,
       total: run.totalPassing,
-      sectors: (sectorsByRunId.get(run.id) ?? []).sort((a, b) => b.count - a.count),
+      sectors: (sectorsByRunId.get(run.id) ?? []).sort(
+        (a, b) => b.count - a.count,
+      ),
     }))
     // Runs were fetched newest-first (for the LIMIT to keep the latest
     // 250), reversed here to chronological order for the chart.
     .sort((a, b) => a.weekEnding.localeCompare(b.weekEnding));
 
-  return { ...baseResponse, membershipNote: getMembershipNote(mode, points), generated: true, points };
+  return {
+    ...baseResponse,
+    membershipNote: getMembershipNote(mode, points),
+    generated: true,
+    points,
+  };
 }
 
 export type WeeklyStrongBacktestWeekDetailMember = {
@@ -505,7 +585,10 @@ export type WeeklyStrongBacktestWeekDetailMember = {
   industry: string | null;
 };
 
-export async function getWeeklyStrongBacktestWeekDetail(input: { code: string; weekEnding: string }) {
+export async function getWeeklyStrongBacktestWeekDetail(input: {
+  code: string;
+  weekEnding: string;
+}) {
   const collection = await requireCollectionByCode(input.code);
 
   const runBaseSelect = {
@@ -521,12 +604,14 @@ export async function getWeeklyStrongBacktestWeekDetail(input: { code: string; w
       and(
         eq(weeklyStrongBacktestRuns.collectionId, collection.id),
         eq(weeklyStrongBacktestRuns.weekEnding, input.weekEnding),
-        eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP)
-      )
+        eq(weeklyStrongBacktestRuns.membershipMode, HISTORICAL_MEMBERSHIP),
+      ),
     )
     .limit(1);
 
-  const mode: WeeklyStrongBacktestMembershipMode = historicalRun ? HISTORICAL_MEMBERSHIP : CURRENT_MEMBERSHIP;
+  const mode: WeeklyStrongBacktestMembershipMode = historicalRun
+    ? HISTORICAL_MEMBERSHIP
+    : CURRENT_MEMBERSHIP;
   const run =
     historicalRun ??
     (
@@ -537,8 +622,8 @@ export async function getWeeklyStrongBacktestWeekDetail(input: { code: string; w
           and(
             eq(weeklyStrongBacktestRuns.collectionId, collection.id),
             eq(weeklyStrongBacktestRuns.weekEnding, input.weekEnding),
-            eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP)
-          )
+            eq(weeklyStrongBacktestRuns.membershipMode, CURRENT_MEMBERSHIP),
+          ),
         )
         .limit(1)
     )[0];
@@ -574,7 +659,12 @@ export async function getWeeklyStrongBacktestWeekDetail(input: { code: string; w
 export type WeeklyStrongBacktestStatus =
   | { state: "not_generated" }
   | { state: "generating" }
-  | { state: "ready"; weeksGenerated: number; latestWeek: string; lastGeneratedAt: string }
+  | {
+      state: "ready";
+      weeksGenerated: number;
+      latestWeek: string;
+      lastGeneratedAt: string;
+    }
   | { state: "failed"; errorMessage: string | null };
 
 export async function getWeeklyStrongBacktestStatus(input: {
@@ -583,7 +673,7 @@ export async function getWeeklyStrongBacktestStatus(input: {
   return getWeeklyStrongBacktestStatusForMode(
     input.collectionId,
     SYNC_JOB_TYPES.weeklyStrongBacktestBackfill,
-    CURRENT_MEMBERSHIP
+    CURRENT_MEMBERSHIP,
   );
 }
 
@@ -597,36 +687,53 @@ export async function getWeeklyStrongBacktestHistoricalStatus(input: {
   return getWeeklyStrongBacktestStatusForMode(
     input.collectionId,
     SYNC_JOB_TYPES.weeklyStrongBacktestHistoricalRebuild,
-    HISTORICAL_MEMBERSHIP
+    HISTORICAL_MEMBERSHIP,
   );
 }
 
 async function getWeeklyStrongBacktestStatusForMode(
   collectionId: string,
   jobType: string,
-  mode: WeeklyStrongBacktestMembershipMode
+  mode: WeeklyStrongBacktestMembershipMode,
 ): Promise<WeeklyStrongBacktestStatus> {
   const [latestJob] = await db
     .select({ status: syncJobs.status, errorMessage: syncJobs.errorMessage })
     .from(syncJobs)
-    .where(and(eq(syncJobs.type, jobType), sql`${syncJobs.payload} ->> 'collectionId' = ${collectionId}`))
+    .where(
+      and(
+        eq(syncJobs.type, jobType),
+        sql`${syncJobs.payload} ->> 'collectionId' = ${collectionId}`,
+      ),
+    )
     .orderBy(desc(syncJobs.createdAt))
     .limit(1);
 
   // A running/queued job takes priority over whatever's already persisted
   // - if one's in flight, that's the state to show.
-  if (latestJob && (latestJob.status === "queued" || latestJob.status === "running")) {
+  if (
+    latestJob &&
+    (latestJob.status === "queued" || latestJob.status === "running")
+  ) {
     return { state: "generating" };
   }
 
   const [stats] = await db
     .select({
       weeksGenerated: sql<number>`count(*)::int`,
-      latestWeek: sql<string | null>`max(${weeklyStrongBacktestRuns.weekEnding})`,
-      lastGeneratedAt: sql<string | null>`max(${weeklyStrongBacktestRuns.generatedAt})`,
+      latestWeek: sql<
+        string | null
+      >`max(${weeklyStrongBacktestRuns.weekEnding})`,
+      lastGeneratedAt: sql<
+        string | null
+      >`max(${weeklyStrongBacktestRuns.generatedAt})`,
     })
     .from(weeklyStrongBacktestRuns)
-    .where(and(eq(weeklyStrongBacktestRuns.collectionId, collectionId), eq(weeklyStrongBacktestRuns.membershipMode, mode)));
+    .where(
+      and(
+        eq(weeklyStrongBacktestRuns.collectionId, collectionId),
+        eq(weeklyStrongBacktestRuns.membershipMode, mode),
+      ),
+    );
 
   if (stats && stats.weeksGenerated > 0 && stats.latestWeek) {
     return {

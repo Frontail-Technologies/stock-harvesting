@@ -223,7 +223,7 @@ export async function getCollectionRelativeStrength(input: {
 
   return getOrSetCache(cacheKey, COLLECTION_CACHE_TTL_MS, async () => {
     const memberRows = await getActiveMemberInstrumentRows(collection.id);
-    const baseMetrics = await getOrComputeCollectionRelativeStrengthBase(
+    const { metrics: baseMetrics, asOfDate } = await getOrComputeCollectionRelativeStrengthBase(
       collection.id,
       collection.exchange,
       memberRows
@@ -234,6 +234,7 @@ export async function getCollectionRelativeStrength(input: {
       return {
         collection: { code: collection.code, name: collection.name, exchange: collection.exchange },
         groups,
+        asOfDate,
       };
     }
 
@@ -241,6 +242,7 @@ export async function getCollectionRelativeStrength(input: {
     return {
       collection: { code: collection.code, name: collection.name, exchange: collection.exchange },
       metrics,
+      asOfDate,
     };
   });
 }

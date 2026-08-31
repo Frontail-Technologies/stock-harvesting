@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useSessionStore } from "@/features/auth";
+import { useAdminSessionStore } from "@/features/auth";
 import {
   backfillAdminIndexCandles,
   connectAdminDataProvider,
@@ -15,8 +15,8 @@ import {
 } from "../api/admin-api";
 
 export function useAdminDataProviderStatus() {
-  const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
+  const status = useAdminSessionStore((state) => state.status);
+  const user = useAdminSessionStore((state) => state.user);
 
   return useQuery({
     queryKey: queryKeys.admin.dataProviderStatus,
@@ -26,8 +26,8 @@ export function useAdminDataProviderStatus() {
 }
 
 export function useAdminDataProviderStatuses() {
-  const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
+  const status = useAdminSessionStore((state) => state.status);
+  const user = useAdminSessionStore((state) => state.user);
 
   return useQuery({
     queryKey: queryKeys.admin.dataProviderStatuses,

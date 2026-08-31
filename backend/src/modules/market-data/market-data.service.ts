@@ -36,7 +36,7 @@ import type {
 import { aggregateMonthlyCandles, aggregateWeeklyCandles } from "./candle-aggregation";
 import {
   deleteDashboardSnapshots,
-  readDashboardSnapshot,
+  readDashboardSnapshotWithMeta,
   RELATIVE_STRENGTH_SNAPSHOT_VERSION,
   writeDashboardSnapshot,
 } from "./dashboard-snapshot-store";
@@ -47,7 +47,6 @@ import {
   evaluateWeeklyStrongSeries,
   excludeIncompleteTradingWeek,
   hasSufficientWeeklyStrongHistory,
-  passesNearHigh,
   WEEKLY_STRONG_WEEKLY_LOOKBACK_BARS,
 } from "./weekly-strong-evaluator";
 
@@ -107,14 +106,10 @@ export type RelativeStrengthMetricRow = {
   industry: string | null;
   close: number;
   volume: number;
+  // THE single metric every relative-strength Dashboard widget
+  // (Index/Sector/Industry/Stock) ranks and averages by - see
+  // calculate55DayChange below. No other factor is folded into it.
   change55dPct: number;
-  monthlyPct: number;
-  weeklyMacdPct: number;
-  weeklyMacdHistogramPct: number;
-  // Sum of the 4 metrics above - the Index box and the per-stock ranking
-  // functions rank by this single combined score; the Sector/Industry
-  // group-ranking averages it across each category's member stocks.
-  combinedScore: number;
 };
 
 type MetricCandle = {
@@ -293,18 +288,23 @@ export type RelativeStrengthInstrumentInput = {
   industry?: string | null;
 };
 
-// Computes the same 4 relative-strength metrics (55-day change, 19-day
-// "monthly" change, weekly MACD line %, weekly MACD histogram %, all as %
-// of price) over an arbitrary instrument pool, for every instrument that has
-// enough history - no top-N slicing here, unlike computeRelativeStrengthMetrics
-// below. computeGroupRelativeStrength needs every qualifying row (to average
-// per sector/industry), not just the global top N.
+// Computes the single relative-strength metric (55-day change %, see
+// calculate55DayChange) over an arbitrary instrument pool, for every
+// instrument that has enough daily history - no top-N slicing here, unlike
+// computeRelativeStrengthMetrics below. computeGroupRelativeStrength needs
+// every qualifying row (to average per sector/industry), not just the
+// global top N. Deliberately does not filter the pool by any other
+// condition (e.g. a near-high breakout check) - every active instrument in
+// the pool with enough history gets a row, matching "use the actual
+// complete segment membership" for the 4 top Dashboard widgets. That is a
+// deliberate difference from computeWeeklyStrongStocks below, which is a
+// separate, unrelated breakout screen.
 //
-// This is THE expensive step (years of daily+weekly candles, per member) -
-// exported so dashboard-snapshots.service.ts can call it exactly once per
-// invalidation cycle and persist the result, instead of the Dashboard's
-// read path (getCollectionRelativeStrength/getIndexRelativeStrength) each
-// running it independently on every cache-cold request (Phase D.10).
+// This is THE expensive step (candle I/O per member) - exported so
+// dashboard-snapshots.service.ts can call it exactly once per invalidation
+// cycle and persist the result, instead of the Dashboard's read path
+// (getCollectionRelativeStrength/getIndexRelativeStrength) each running it
+// independently on every cache-cold request (Phase D.10).
 export async function computeAllRelativeStrengthMetrics(
   instrumentRows: RelativeStrengthInstrumentInput[],
   exchange: string
@@ -312,45 +312,32 @@ export async function computeAllRelativeStrengthMetrics(
   const symbols = instrumentRows.map((row) => row.symbol);
   if (symbols.length === 0) return [];
 
-  const { dailyCandles, weeklyCandles } = await readDailyAndWeeklyMetricCandles({
+  // Only daily candles are needed for a 55-session change - no weekly
+  // fetch (weeklyFrom === dailyFrom collapses readDailyAndWeeklyMetricCandles's
+  // internal fetch window to just the last 140 days instead of 5 years).
+  const dailyFrom = getDateDaysAgo(140);
+  const { dailyCandles } = await readDailyAndWeeklyMetricCandles({
     exchange,
     symbols,
-    dailyFrom: getDateDaysAgo(140),
-    weeklyFrom: getDateYearsAgo(5),
+    dailyFrom,
+    weeklyFrom: dailyFrom,
   });
   const dailyCandlesBySymbol = groupMetricCandlesBySymbol(dailyCandles);
-  const weeklyCandlesBySymbol = groupMetricCandlesBySymbol(weeklyCandles);
 
   return instrumentRows
     .map((instrument): RelativeStrengthMetricRow | null => {
       const dailyRows = dailyCandlesBySymbol.get(instrument.symbol) ?? [];
-      const weeklyRows = weeklyCandlesBySymbol.get(instrument.symbol) ?? [];
       const latestDaily = dailyRows[dailyRows.length - 1];
       if (!latestDaily) return null;
 
       // A symbol with only a handful of candles (e.g. just synced
       // today's close, no real history yet) can't produce a genuine
-      // 55-day/monthly/MACD reading - calculateLookbackChangePct and
-      // calculateMacdPercent both fall back to 0 when they don't have
-      // enough bars, which would otherwise look identical to a real
-      // "flat" score instead of "we don't have enough data yet".
-      if (dailyRows.length <= 54 || weeklyRows.length < 35) return null;
+      // 55-day reading - calculate55DayChange falls back to 0 when it
+      // doesn't have enough bars, which would otherwise look identical to
+      // a real "flat" score instead of "we don't have enough data yet".
+      if (dailyRows.length <= 54) return null;
 
-      // Same near-250-week-high condition as the scanner page's
-      // near_250_week_high scan band and computeWeeklyStrongStocks below -
-      // weekly close must be within 15% of its trailing 250-week high.
-      // Deliberately only the WEEKLY leg of the full Weekly Strong
-      // evaluator (no daily check) - this is an intentionally different,
-      // lighter pre-filter stage, so it calls the shared low-level
-      // predicate directly rather than the full two-condition evaluator.
-      const weeklyCloses = weeklyRows.map((row) => row.close);
-      if (!passesNearHigh(weeklyCloses, weeklyCloses.length - 1, WEEKLY_STRONG_WEEKLY_LOOKBACK_BARS)) {
-        return null;
-      }
-
-      const macd = calculateMacdPercent(weeklyRows);
-      const change55dPct = calculateLookbackChangePct(dailyRows, 54);
-      const monthlyPct = calculateLookbackChangePct(dailyRows, 19);
+      const change55dPct = calculate55DayChange(dailyRows);
 
       return {
         symbol: instrument.symbol,
@@ -361,13 +348,6 @@ export async function computeAllRelativeStrengthMetrics(
         close: latestDaily.close,
         volume: latestDaily.volume,
         change55dPct,
-        monthlyPct,
-        weeklyMacdPct: macd.linePct,
-        weeklyMacdHistogramPct: macd.histogramPct,
-        // Only the 55-day change condition is enabled for now - monthlyPct
-        // and the weekly MACD terms are still computed above (and returned)
-        // so they're one-line to add back into the sum later.
-        combinedScore: change55dPct,
       };
     })
     .filter((row): row is RelativeStrengthMetricRow => Boolean(row));
@@ -389,7 +369,7 @@ export type GroupRelativeStrengthRow = {
 };
 
 // "Sector rotation" style ranking: instead of ranking individual stocks, rank
-// the sector/industry categories themselves by the mean combinedScore of
+// the sector/industry categories themselves by the mean 55-day change % of
 // their member stocks within this instrument pool. Requires instrumentRows
 // to carry real sector/industry classification (from the sector-classification
 // sync) - instruments with no classification yet are silently excluded
@@ -397,10 +377,10 @@ export type GroupRelativeStrengthRow = {
 // Pure/cheap (no candle I/O) - extracted (Phase D.10) so
 // dashboard-snapshots.service.ts can group a STORED base metrics array
 // the same way this always grouped a freshly-computed one. Averages the
-// combinedScore of every metric row sharing a sector/industry; a row with
-// no classification for the requested groupBy is silently excluded (never
-// lumped into a misleading "unclassified" group), matching the previous
-// inline behavior exactly.
+// 55-day change % of every metric row sharing a sector/industry; a row
+// with no classification for the requested groupBy is silently excluded
+// (never lumped into a misleading "unclassified" group), matching the
+// previous inline behavior exactly.
 export function groupRelativeStrengthMetrics(
   allMetrics: RelativeStrengthMetricRow[],
   groupBy: "sector" | "industry",
@@ -413,7 +393,7 @@ export function groupRelativeStrengthMetrics(
     if (!key) continue;
 
     const group = groups.get(key) ?? { total: 0, count: 0 };
-    group.total += metric.combinedScore;
+    group.total += metric.change55dPct;
     group.count += 1;
     groups.set(key, group);
   }
@@ -803,8 +783,8 @@ function buildStockFilters(input: {
   return and(...filters);
 }
 
-// All 4 dashboard cards rank by the same combined score now (see
-// RelativeStrengthMetricRow.combinedScore), so this is a single top-N
+// All 4 dashboard cards rank by the same 55-day change % now (see
+// RelativeStrengthMetricRow.change55dPct), so this is a single top-N
 // selection rather than a union across 4 separately-ranked metrics.
 // Exported (Phase D.10) so dashboard-snapshots.service.ts can slice a
 // STORED base metrics array the same way this always sliced a freshly-
@@ -813,7 +793,7 @@ export function pickTopRelativeStrengthRows(
   rows: RelativeStrengthMetricRow[],
   limit: number
 ) {
-  return [...rows].sort((a, b) => b.combinedScore - a.combinedScore).slice(0, limit);
+  return [...rows].sort((a, b) => b.change55dPct - a.change55dPct).slice(0, limit);
 }
 
 async function countStockRows(input: {
@@ -1139,12 +1119,29 @@ function hasLikelySplitDiscontinuity(
   return false;
 }
 
+// Charts performance/freshness audit (item 19) - fixes a confirmed bug
+// found via real DB + live measurement: a normal chart open passes no
+// explicit `from` (see getChartCandles's `input.from`), so `requestedFrom`
+// here was always the internal 30-year default (CHART_HISTORY_YEARS) -
+// and no BSE symbol in this system actually has 30 years of daily history
+// (verified: TCS/RELIANCE/INFY all start 2007-01-02). That made
+// `oldest > requestedFrom` unconditionally TRUE on every default request,
+// triggering the expensive FULL multi-year backfill below on every single
+// chart open regardless of freshness - not just once, forever - which is
+// exactly what the comment on isLatestDailyCandleStale's own call site
+// says should NOT happen ("once a symbol has any daily history, this is
+// the only check that keeps serving it forever"). This check only makes
+// sense at all when the caller explicitly asked for MORE history than is
+// currently stored - it now only runs in that case; a normal, unbounded
+// default request has no "did we backfill far enough back" question to
+// ask in the first place, so it correctly falls through to the cheap
+// isLatestDailyCandleStale incremental check instead.
 function shouldBackfillRequestedHistory(
   rows: Array<{ time: string }>,
   requestedFrom: string,
   explicitFrom?: string
 ) {
-  if (explicitFrom || rows.length === 0) return false;
+  if (!explicitFrom || rows.length === 0) return false;
 
   const oldest = rows[0]?.time;
   if (!oldest) return false;
@@ -1471,57 +1468,20 @@ function groupMetricCandlesBySymbol(rows: MetricCandle[]) {
   return candlesBySymbol;
 }
 
-function calculateLookbackChangePct(rows: MetricCandle[], barsAgo: number) {
-  const latest = rows[rows.length - 1];
-  const previous = rows[rows.length - 1 - barsAgo];
+// THE canonical 55-day change calculation (item 1) - the ONLY formula any
+// of the 4 relative-strength Dashboard widgets (Index/Sector/Industry/
+// Stock) derives its ranking from. 55 daily observations inclusive of the
+// latest close: the close 54 trading sessions before it, using actual
+// daily candle rows (not calendar days), so weekends/holidays never skew
+// the lookback.
+const CHANGE_55D_LOOKBACK_BARS = 54;
 
-  if (!latest || !previous || previous.close === 0) return 0;
-  return ((latest.close - previous.close) * 100) / previous.close;
-}
+function calculate55DayChange(dailyRows: MetricCandle[]): number {
+  const latest = dailyRows[dailyRows.length - 1];
+  const base = dailyRows[dailyRows.length - 1 - CHANGE_55D_LOOKBACK_BARS];
 
-function calculateMacdPercent(rows: MetricCandle[]) {
-  if (rows.length < 35) {
-    return {
-      linePct: 0,
-      histogramPct: 0,
-    };
-  }
-
-  const closes = rows.map((row) => row.close);
-  const ema12 = calculateEma(closes, 12);
-  const ema26 = calculateEma(closes, 26);
-  const macdLine = closes.map((_, index) => ema12[index] - ema26[index]);
-  const signalLine = calculateEma(macdLine, 9);
-  const latestClose = closes[closes.length - 1];
-  const latestMacd = macdLine[macdLine.length - 1] ?? 0;
-  const latestSignal = signalLine[signalLine.length - 1] ?? 0;
-
-  if (!latestClose) {
-    return {
-      linePct: 0,
-      histogramPct: 0,
-    };
-  }
-
-  return {
-    linePct: (latestMacd * 100) / latestClose,
-    histogramPct: ((latestMacd - latestSignal) * 100) / latestClose,
-  };
-}
-
-function calculateEma(values: number[], period: number) {
-  if (values.length === 0) return [];
-
-  const multiplier = 2 / (period + 1);
-  const ema: number[] = [values[0] ?? 0];
-
-  for (let index = 1; index < values.length; index++) {
-    const previous = ema[index - 1] ?? values[index] ?? 0;
-    const current = values[index] ?? previous;
-    ema.push((current - previous) * multiplier + previous);
-  }
-
-  return ema;
+  if (!latest || !base || base.close === 0) return 0;
+  return ((latest.close - base.close) * 100) / base.close;
 }
 
 export async function syncProviderInstruments(exchange: string = DEFAULT_EXCHANGE) {
@@ -1749,13 +1709,15 @@ export async function backfillIndexCandles(exchange: string = NSE_INDEX_EXCHANGE
 export async function getIndexRelativeStrength(
   limit: number,
   exchange: string = NSE_INDEX_EXCHANGE
-) {
-  const cached = await readDashboardSnapshot<RelativeStrengthMetricRow[]>(
+): Promise<{ metrics: RelativeStrengthMetricRow[]; asOfDate: string }> {
+  const cached = await readDashboardSnapshotWithMeta<RelativeStrengthMetricRow[]>(
     "index_exchange",
     exchange,
     "relative_strength"
   );
-  if (cached) return pickTopRelativeStrengthRows(cached, limit);
+  if (cached && cached.evaluatorVersion === RELATIVE_STRENGTH_SNAPSHOT_VERSION) {
+    return { metrics: pickTopRelativeStrengthRows(cached.payload, limit), asOfDate: cached.asOfDate };
+  }
 
   const indexInstruments = await db
     .select({
@@ -1767,7 +1729,7 @@ export async function getIndexRelativeStrength(
     .where(and(eq(instruments.exchange, exchange), eq(instruments.active, true)));
 
   const allMetrics = await computeAllRelativeStrengthMetrics(indexInstruments, exchange);
-  await writeDashboardSnapshot({
+  const { asOfDate } = await writeDashboardSnapshot({
     scopeType: "index_exchange",
     scopeKey: exchange,
     metricType: "relative_strength",
@@ -1775,7 +1737,7 @@ export async function getIndexRelativeStrength(
     evaluatorVersion: RELATIVE_STRENGTH_SNAPSHOT_VERSION,
     payload: allMetrics,
   });
-  return pickTopRelativeStrengthRows(allMetrics, limit);
+  return { metrics: pickTopRelativeStrengthRows(allMetrics, limit), asOfDate };
 }
 
 const SUPPORTED_EXCHANGES_CACHE_TTL_MS = 24 * 60 * 60_000;

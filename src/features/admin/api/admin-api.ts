@@ -1,4 +1,4 @@
-import { apiFetch, API_ROUTES } from "@/features/api";
+import { adminApiFetch, API_ROUTES } from "@/features/api";
 import type { UserPlan, UserRole } from "@/features/auth";
 import type {
   AdminMarketCollection,
@@ -20,7 +20,6 @@ import type {
   AdminDataProviderSettingsResponse,
   AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
-  AdminJobsResponse,
   AdminMonetizationConfig,
   AdminUserFilters,
   AdminUsersResponse,
@@ -39,7 +38,7 @@ function withQuery(path: string, query: Record<string, string | number | undefin
 }
 
 export function getAdminUsers(filters: AdminUserFilters) {
-  return apiFetch<AdminUsersResponse>(
+  return adminApiFetch<AdminUsersResponse>(
     withQuery(API_ROUTES.admin.users, {
       q: filters.q.trim() || undefined,
       role: filters.role || undefined,
@@ -55,7 +54,7 @@ export function getAdminUsers(filters: AdminUserFilters) {
 export function getAdminUsersExportCsv(
   filters: Pick<AdminUserFilters, "q" | "role" | "plan" | "sort" | "direction">
 ) {
-  return apiFetch<string>(
+  return adminApiFetch<string>(
     withQuery(API_ROUTES.admin.usersExport, {
       q: filters.q.trim() || undefined,
       role: filters.role || undefined,
@@ -67,62 +66,62 @@ export function getAdminUsersExportCsv(
 }
 
 export function updateAdminUserRole(input: { id: string; role: UserRole }) {
-  return apiFetch(API_ROUTES.admin.userRole(input.id), {
+  return adminApiFetch(API_ROUTES.admin.userRole(input.id), {
     method: "PATCH",
     body: JSON.stringify({ role: input.role }),
   });
 }
 
 export function updateAdminUserPlan(input: { id: string; plan: UserPlan }) {
-  return apiFetch(API_ROUTES.admin.userPlan(input.id), {
+  return adminApiFetch(API_ROUTES.admin.userPlan(input.id), {
     method: "PATCH",
     body: JSON.stringify({ plan: input.plan }),
   });
 }
 
 export function deleteAdminUser(id: string) {
-  return apiFetch<{ id: string }>(API_ROUTES.admin.userById(id), {
+  return adminApiFetch<{ id: string }>(API_ROUTES.admin.userById(id), {
     method: "DELETE",
   });
 }
 
 export function getAdminAiSettings() {
-  return apiFetch<AdminAiSettingsResponse>(API_ROUTES.admin.aiSettings);
+  return adminApiFetch<AdminAiSettingsResponse>(API_ROUTES.admin.aiSettings);
 }
 
 export function updateAdminAiSettings(input: { model: string }) {
-  return apiFetch<Pick<AdminAiSettingsResponse, "aiSettings">>(API_ROUTES.admin.aiSettings, {
+  return adminApiFetch<Pick<AdminAiSettingsResponse, "aiSettings">>(API_ROUTES.admin.aiSettings, {
     method: "PUT",
     body: JSON.stringify({ model: input.model }),
   });
 }
 
 export function getAdminAiKeyStatus() {
-  return apiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey);
+  return adminApiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey);
 }
 
 export function updateAdminAiKey(input: { apiKey: string }) {
-  return apiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey, {
+  return adminApiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey, {
     method: "PUT",
     body: JSON.stringify({ apiKey: input.apiKey }),
   });
 }
 
 export function deleteAdminAiKey() {
-  return apiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey, {
+  return adminApiFetch<AdminAiKeyResponse>(API_ROUTES.admin.aiSettingsKey, {
     method: "DELETE",
   });
 }
 
 export function getAdminMonetization() {
-  return apiFetch<AdminMonetizationConfig>(API_ROUTES.admin.monetization);
+  return adminApiFetch<AdminMonetizationConfig>(API_ROUTES.admin.monetization);
 }
 
 export function updateAdminMonetizationSettings(input: {
   mode: MonetizationMode;
   publisherId: string | null;
 }) {
-  return apiFetch<{ settings: unknown }>(API_ROUTES.admin.monetizationSettings, {
+  return adminApiFetch<{ settings: unknown }>(API_ROUTES.admin.monetizationSettings, {
     method: "PUT",
     body: JSON.stringify(input),
   });
@@ -133,14 +132,14 @@ export function updateAdminMonetizationPlacement(input: {
   enabled: boolean;
   slotId: string | null;
 }) {
-  return apiFetch<{ placement: unknown }>(API_ROUTES.admin.monetizationPlacement(input.key), {
+  return adminApiFetch<{ placement: unknown }>(API_ROUTES.admin.monetizationPlacement(input.key), {
     method: "PUT",
     body: JSON.stringify({ enabled: input.enabled, slotId: input.slotId }),
   });
 }
 
 export function getAdminDataProviders() {
-  return apiFetch<AdminDataProviderSettingsResponse>(API_ROUTES.admin.dataProviders);
+  return adminApiFetch<AdminDataProviderSettingsResponse>(API_ROUTES.admin.dataProviders);
 }
 
 export function updateAdminDataProviderSettings(input: {
@@ -150,22 +149,22 @@ export function updateAdminDataProviderSettings(input: {
   disabledReason?: string | null;
 }) {
   const { key, ...body } = input;
-  return apiFetch<{ provider: unknown }>(API_ROUTES.admin.dataProviderSettings(key), {
+  return adminApiFetch<{ provider: unknown }>(API_ROUTES.admin.dataProviderSettings(key), {
     method: "PUT",
     body: JSON.stringify(body),
   });
 }
 
 export function getAdminDataProviderStatus() {
-  return apiFetch<AdminDataProviderStatus>(API_ROUTES.admin.dataProviderStatus);
+  return adminApiFetch<AdminDataProviderStatus>(API_ROUTES.admin.dataProviderStatus);
 }
 
 export function getAdminDataProviderStatuses() {
-  return apiFetch<AdminDataProviderStatusesResponse>(API_ROUTES.admin.dataProviderStatuses);
+  return adminApiFetch<AdminDataProviderStatusesResponse>(API_ROUTES.admin.dataProviderStatuses);
 }
 
 export function getAdminDataProviderConnectUrl() {
-  return apiFetch<AdminDataProviderConnectUrlResponse>(
+  return adminApiFetch<AdminDataProviderConnectUrlResponse>(
     API_ROUTES.admin.dataProviderConnectUrl,
     {
       method: "POST",
@@ -174,7 +173,7 @@ export function getAdminDataProviderConnectUrl() {
 }
 
 export function connectAdminDataProvider(input: { requestToken: string }) {
-  return apiFetch<AdminDataProviderConnectResponse>(
+  return adminApiFetch<AdminDataProviderConnectResponse>(
     API_ROUTES.admin.dataProviderConnect,
     {
       method: "POST",
@@ -184,38 +183,34 @@ export function connectAdminDataProvider(input: { requestToken: string }) {
 }
 
 export function syncAdminDataProvider(input: { exchange: string }) {
-  return apiFetch<{ job: unknown }>(API_ROUTES.admin.dataProviderSync, {
+  return adminApiFetch<{ job: unknown }>(API_ROUTES.admin.dataProviderSync, {
     method: "POST",
     body: JSON.stringify({ exchange: input.exchange }),
   });
 }
 
 export function syncAdminMarketDataPrices(input: { exchange: string }) {
-  return apiFetch<{ job: unknown }>(API_ROUTES.admin.marketDataSyncPrices, {
+  return adminApiFetch<{ job: unknown }>(API_ROUTES.admin.marketDataSyncPrices, {
     method: "POST",
     body: JSON.stringify({ exchange: input.exchange }),
   });
 }
 
 export function syncAdminSectorClassification() {
-  return apiFetch<{ job: unknown }>(API_ROUTES.admin.sectorClassificationSync, {
+  return adminApiFetch<{ job: unknown }>(API_ROUTES.admin.sectorClassificationSync, {
     method: "POST",
   });
 }
 
 export function backfillAdminIndexCandles(input: { exchange?: string } = {}) {
-  return apiFetch<{ job: unknown }>(API_ROUTES.admin.indexCandleBackfill, {
+  return adminApiFetch<{ job: unknown }>(API_ROUTES.admin.indexCandleBackfill, {
     method: "POST",
     body: JSON.stringify({ exchange: input.exchange }),
   });
 }
 
-export function getAdminJobs() {
-  return apiFetch<AdminJobsResponse>(API_ROUTES.admin.jobs);
-}
-
 export function getAdminMarketCollections() {
-  return apiFetch<{ collections: MarketCollection[] }>(API_ROUTES.admin.marketCollections);
+  return adminApiFetch<{ collections: MarketCollection[] }>(API_ROUTES.admin.marketCollections);
 }
 
 export function createAdminMarketCollection(input: {
@@ -225,14 +220,14 @@ export function createAdminMarketCollection(input: {
   countryCode?: string;
   description?: string;
 }) {
-  return apiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollections, {
+  return adminApiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollections, {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export function getAdminMarketCollection(id: string) {
-  return apiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollection(id));
+  return adminApiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollection(id));
 }
 
 export function updateAdminMarketCollection(input: {
@@ -242,7 +237,7 @@ export function updateAdminMarketCollection(input: {
   active?: boolean;
 }) {
   const { id, ...body } = input;
-  return apiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollection(id), {
+  return adminApiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollection(id), {
     method: "PATCH",
     body: JSON.stringify(body),
   });
@@ -257,7 +252,7 @@ export function getAdminMarketCollectionMembers(input: {
   sortDirection?: "asc" | "desc";
 }) {
   const { id, ...query } = input;
-  return apiFetch<CollectionMembersResponse>(
+  return adminApiFetch<CollectionMembersResponse>(
     withQuery(API_ROUTES.admin.marketCollectionMembers(id), {
       page: query.page,
       limit: query.limit,
@@ -269,7 +264,7 @@ export function getAdminMarketCollectionMembers(input: {
 }
 
 export function previewAdminCollectionImport(input: { id: string; csvContent: string }) {
-  return apiFetch<{ report: CollectionImportReport }>(
+  return adminApiFetch<{ report: CollectionImportReport }>(
     API_ROUTES.admin.marketCollectionImportDryRun(input.id),
     {
       method: "POST",
@@ -286,7 +281,7 @@ export function importAdminCollectionCsv(input: {
   effectiveFrom: string;
 }) {
   const { id, ...body } = input;
-  return apiFetch<{ report: CollectionImportResult }>(
+  return adminApiFetch<{ report: CollectionImportResult }>(
     API_ROUTES.admin.marketCollectionImport(id),
     {
       method: "POST",
@@ -296,17 +291,17 @@ export function importAdminCollectionCsv(input: {
 }
 
 export function getAdminCollectionVersions(id: string) {
-  return apiFetch<{ versions: CollectionVersionSummary[] }>(API_ROUTES.admin.marketCollectionVersions(id));
+  return adminApiFetch<{ versions: CollectionVersionSummary[] }>(API_ROUTES.admin.marketCollectionVersions(id));
 }
 
 export function getAdminCollectionVersionMembers(input: { id: string; versionId: string }) {
-  return apiFetch<CollectionVersionMembersResponse>(
+  return adminApiFetch<CollectionVersionMembersResponse>(
     API_ROUTES.admin.marketCollectionVersion(input.id, input.versionId)
   );
 }
 
 export function replaceAdminCollectionVersion(input: { id: string; versionId: string; csvContent: string }) {
-  return apiFetch<CollectionVersionReplaceResult>(
+  return adminApiFetch<CollectionVersionReplaceResult>(
     API_ROUTES.admin.marketCollectionVersionReplace(input.id, input.versionId),
     {
       method: "POST",
@@ -316,19 +311,19 @@ export function replaceAdminCollectionVersion(input: { id: string; versionId: st
 }
 
 export function getAdminWeeklyStrongBacktestStatus(id: string) {
-  return apiFetch<{ status: WeeklyStrongBacktestStatus }>(
+  return adminApiFetch<{ status: WeeklyStrongBacktestStatus }>(
     API_ROUTES.admin.marketCollectionWeeklyStrongBacktestStatus(id)
   );
 }
 
 export function getAdminWeeklyStrongBacktestHistoricalStatus(id: string) {
-  return apiFetch<{ status: WeeklyStrongBacktestStatus }>(
+  return adminApiFetch<{ status: WeeklyStrongBacktestStatus }>(
     API_ROUTES.admin.marketCollectionWeeklyStrongBacktestHistoricalStatus(id)
   );
 }
 
 export function generateAdminWeeklyStrongBacktest(input: { id: string; weeks?: number }) {
-  return apiFetch<{ syncJobId: string; status: string }>(
+  return adminApiFetch<{ syncJobId: string; status: string }>(
     API_ROUTES.admin.marketCollectionWeeklyStrongBacktestGenerate(input.id),
     {
       method: "POST",
@@ -338,7 +333,7 @@ export function generateAdminWeeklyStrongBacktest(input: { id: string; weeks?: n
 }
 
 export function rebuildAdminWeeklyStrongBacktestHistorical(input: { id: string }) {
-  return apiFetch<{ syncJobId: string; status: string }>(
+  return adminApiFetch<{ syncJobId: string; status: string }>(
     API_ROUTES.admin.marketCollectionWeeklyStrongBacktestRebuildHistorical(input.id),
     {
       method: "POST",

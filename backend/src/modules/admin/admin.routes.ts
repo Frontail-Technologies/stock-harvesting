@@ -19,7 +19,7 @@ import {
   asyncHandler,
   getAuthUserId,
   requireAdmin,
-  requireAuth,
+  requireAdminAuth,
   validate,
 } from "../../shared/middleware";
 import {
@@ -101,7 +101,7 @@ import {
 
 export const adminRouter = Router();
 
-adminRouter.use(requireAuth, requireAdmin);
+adminRouter.use(requireAdminAuth, requireAdmin);
 
 adminRouter.get(
   "/users",

@@ -4,15 +4,15 @@ import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/features/auth";
 
 // A search result's own {symbol, exchange} is the full stock identity -
-// Scanner's URL always carries both (see the exchange-scoped search
+// Charts' URL always carries both (see the exchange-scoped search
 // refactor), so a selected result never needs to touch any shared/global
 // exchange state to "commit" its choice. Selecting a result is the one
-// moment Search is allowed to affect Scanner, and it does so purely by
-// navigating to an explicit URL, not by mutating a store Scanner also
+// moment Search is allowed to affect Charts, and it does so purely by
+// navigating to an explicit URL, not by mutating a store Charts also
 // reads.
-function buildScannerPath(symbol: string, exchange: string): string {
+function buildChartsPath(symbol: string, exchange: string): string {
   const params = new URLSearchParams({ symbol, exchange });
-  return `/scanner?${params.toString()}`;
+  return `/charts?${params.toString()}`;
 }
 
 export function useStockDestination() {
@@ -20,10 +20,10 @@ export function useStockDestination() {
   const status = useSessionStore((state) => state.status);
 
   return function goToStock(stock: { symbol: string; exchange: string }) {
-    const scannerPath = buildScannerPath(stock.symbol, stock.exchange);
+    const chartsPath = buildChartsPath(stock.symbol, stock.exchange);
 
     if (status === "authenticated") {
-      router.push(scannerPath);
+      router.push(chartsPath);
       return;
     }
 
@@ -33,8 +33,8 @@ export function useStockDestination() {
     // useGlobalStockSearch -> useStockSearch), so this is never reached
     // mid-resolution. Same safe "next" mechanism the rest of auth uses:
     // only ever a same-site app path, never an absolute/external URL - and
-    // since scannerPath already carries both symbol and exchange, they
+    // since chartsPath already carries both symbol and exchange, they
     // survive the /login round-trip intact.
-    router.push(`/login?next=${encodeURIComponent(scannerPath)}`);
+    router.push(`/login?next=${encodeURIComponent(chartsPath)}`);
   };
 }

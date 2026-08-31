@@ -18,13 +18,13 @@ function splitByProvider(symbols: MarketStreamSymbol[]): {
   return {
     nse: symbols.filter((symbol) => symbol.exchange === "NSE"),
     globalDatafeeds: symbols.filter(
-      (symbol) => symbol.exchange === "BSE" || symbol.exchange === "BSE_IDX"
+      (symbol) => symbol.exchange === "BSE" || symbol.exchange === "BSE_IDX",
     ),
     other: symbols.filter(
       (symbol) =>
         symbol.exchange !== "NSE" &&
         symbol.exchange !== "BSE" &&
-        symbol.exchange !== "BSE_IDX"
+        symbol.exchange !== "BSE_IDX",
     ),
   };
 }
@@ -34,7 +34,9 @@ function splitByProvider(symbols: MarketStreamSymbol[]): {
 // reconnect loop is gated on "do I have active subscriptions", so simply
 // not routing new symbols to a disabled provider is sufficient here without
 // touching any of the three hand-rolled reconnect implementations.
-export async function subscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {
+export async function subscribeMarketStreamSymbols(
+  symbols: MarketStreamSymbol[],
+) {
   const { nse, globalDatafeeds, other } = splitByProvider(symbols);
   logger.info(
     {
@@ -44,49 +46,57 @@ export async function subscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]
       other: other.length,
       sample: symbols.slice(0, 5),
     },
-    "Market stream subscribe"
+    "Market stream subscribe",
   );
 
-  const [eodhdEnabled, kiteEnabled, globalDatafeedsEnabled] = await Promise.all([
-    isProviderEnabled(DATA_PROVIDER_KEY.eodhd),
-    isProviderEnabled(DATA_PROVIDER_KEY.zerodha),
-    isProviderEnabled(DATA_PROVIDER_KEY.globalDatafeeds),
-  ]);
+  const [eodhdEnabled, kiteEnabled, globalDatafeedsEnabled] = await Promise.all(
+    [
+      isProviderEnabled(DATA_PROVIDER_KEY.eodhd),
+      isProviderEnabled(DATA_PROVIDER_KEY.zerodha),
+      isProviderEnabled(DATA_PROVIDER_KEY.globalDatafeeds),
+    ],
+  );
 
   if (other.length > 0) {
     if (eodhdEnabled) eodhdProvider.subscribe(other);
-    else logger.debug({ symbolCount: other.length }, "Realtime subscribe skipped: EODHD disabled");
+    else
+      logger.debug(
+        { symbolCount: other.length },
+        "Realtime subscribe skipped: EODHD disabled",
+      );
   }
   if (nse.length > 0) {
     if (kiteEnabled) void kiteProvider.subscribe(nse);
-    else logger.debug({ symbolCount: nse.length }, "Realtime subscribe skipped: Zerodha disabled");
+    else
+      logger.debug(
+        { symbolCount: nse.length },
+        "Realtime subscribe skipped: Zerodha disabled",
+      );
   }
   if (globalDatafeeds.length > 0) {
-    if (globalDatafeedsEnabled) void globalDatafeedsProvider.subscribe(globalDatafeeds);
+    if (globalDatafeedsEnabled)
+      void globalDatafeedsProvider.subscribe(globalDatafeeds);
     else
       logger.debug(
         { symbolCount: globalDatafeeds.length },
-        "Realtime subscribe skipped: Global DataFeeds disabled"
+        "Realtime subscribe skipped: Global DataFeeds disabled",
       );
   }
 }
 
-// Force-closes one provider's realtime connection - called from the admin
-// settings write path (admin.service.ts, not here, to avoid a circular
-// import between this module and data-provider-settings.service.ts) right
-// after a provider transitions enabled -> disabled, so an already-open
-// connection doesn't linger until its next natural close/reconnect cycle.
 export function closeMarketStreamProviderByKey(providerKey: string) {
   if (providerKey === DATA_PROVIDER_KEY.eodhd) eodhdProvider.close();
   else if (providerKey === DATA_PROVIDER_KEY.zerodha) kiteProvider.close();
-  else if (providerKey === DATA_PROVIDER_KEY.globalDatafeeds) globalDatafeedsProvider.close();
+  else if (providerKey === DATA_PROVIDER_KEY.globalDatafeeds)
+    globalDatafeedsProvider.close();
 }
 
 export function unsubscribeMarketStreamSymbols(symbols: MarketStreamSymbol[]) {
   const { nse, globalDatafeeds, other } = splitByProvider(symbols);
   if (other.length > 0) eodhdProvider.unsubscribe(other);
   if (nse.length > 0) kiteProvider.unsubscribe(nse);
-  if (globalDatafeeds.length > 0) globalDatafeedsProvider.unsubscribe(globalDatafeeds);
+  if (globalDatafeeds.length > 0)
+    globalDatafeedsProvider.unsubscribe(globalDatafeeds);
 }
 
 export function closeMarketStreamProviders() {

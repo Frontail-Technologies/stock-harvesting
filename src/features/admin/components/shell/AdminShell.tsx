@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { useSessionStore } from "@/features/auth";
+import { useAdminSessionStore } from "@/features/auth";
 import { adminPath } from "@/utils/seo";
 import { AdminForbiddenState, AdminLoadingState } from "./AdminAccessState";
 import { AdminSidebar } from "./AdminSidebar";
@@ -18,19 +18,26 @@ export function AdminShell({ children }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
+  // The ADMIN portal's own session store (item 19) - never the main app's
+  // useSessionStore. A USER-portal session (even one belonging to an
+  // account with role "admin", which shouldn't exist post-login-
+  // enforcement) has no bearing on this at all.
+  const status = useAdminSessionStore((state) => state.status);
+  const user = useAdminSessionStore((state) => state.user);
   const isAdmin = status === "authenticated" && user?.role === "admin";
 
   useEffect(() => {
     if (status !== "guest") return;
     // pathname is the internal "/admin/..." route - convert back to the
     // clean, user-visible form before handing it to AdminLoginScreen as
-    // the post-login destination.
+    // the post-login destination. Navigates to the internal "/admin/login"
+    // route (not the bare "/login", which on THIS host would be the main
+    // app's own login page internally, not AdminLoginScreen) - see
+    // src/app/(app)/admin/login/page.tsx.
     const next = adminPath(pathname ?? "/admin");
     const params = new URLSearchParams();
     params.set("next", next);
-    router.replace(`/login?${params.toString()}`);
+    router.replace(`/admin/login?${params.toString()}`);
   }, [pathname, router, status]);
 
   if (status === "unknown" || status === "guest") return <AdminLoadingState />;

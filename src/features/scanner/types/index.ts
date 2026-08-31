@@ -4,7 +4,6 @@ export {
 } from "../constants/chart-types";
 export {
   DEFAULT_SCANNER_LOOKBACK,
-  getEffectiveScannerLookbackWeeks,
   getScannerLookbackWeeks,
   SCANNER_LOOKBACK_OPTIONS,
   type ScannerLookbackMultiplier,

@@ -9,6 +9,7 @@ import { WEEKLY_STRONG_EVALUATOR_VERSION } from "./weekly-strong-evaluator";
 import {
   deleteDashboardSnapshots,
   readDashboardSnapshot,
+  readDashboardSnapshotWithMeta,
   RELATIVE_STRENGTH_SNAPSHOT_VERSION,
   writeDashboardSnapshot,
 } from "./dashboard-snapshot-store";
@@ -34,16 +35,18 @@ export async function getOrComputeCollectionRelativeStrengthBase(
   collectionId: string,
   exchange: string,
   memberRows: RelativeStrengthInstrumentInput[]
-): Promise<RelativeStrengthMetricRow[]> {
-  const cached = await readDashboardSnapshot<RelativeStrengthMetricRow[]>(
+): Promise<{ metrics: RelativeStrengthMetricRow[]; asOfDate: string }> {
+  const cached = await readDashboardSnapshotWithMeta<RelativeStrengthMetricRow[]>(
     "collection",
     collectionId,
     "relative_strength"
   );
-  if (cached) return cached;
+  if (cached && cached.evaluatorVersion === RELATIVE_STRENGTH_SNAPSHOT_VERSION) {
+    return { metrics: cached.payload, asOfDate: cached.asOfDate };
+  }
 
   const computed = await computeAllRelativeStrengthMetrics(memberRows, exchange);
-  await writeDashboardSnapshot({
+  const { asOfDate } = await writeDashboardSnapshot({
     scopeType: "collection",
     scopeKey: collectionId,
     metricType: "relative_strength",
@@ -51,7 +54,7 @@ export async function getOrComputeCollectionRelativeStrengthBase(
     evaluatorVersion: RELATIVE_STRENGTH_SNAPSHOT_VERSION,
     payload: computed,
   });
-  return computed;
+  return { metrics: computed, asOfDate };
 }
 
 // Same pattern for the Weekly Strong passing-stocks list (the table and

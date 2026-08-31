@@ -1,14 +1,8 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { DashboardPage } from "@/features/dashboard";
 import { AppPage, AppShell } from "@/features/layout";
-import { IS_PRODUCTION_LOCKDOWN } from "@/utils/production-lockdown";
 
 export default function Dashboard() {
-  if (IS_PRODUCTION_LOCKDOWN) {
-    redirect("/scanner");
-  }
-
   return (
     <AppShell>
       {/* Matches AppHeader's own edge treatment exactly (px-3/sm:px-4/lg:px-6,

@@ -16,7 +16,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
-import { getAdminOrigin } from "@/utils/seo";
 import { AccountMenu } from "./AccountMenu";
 
 type NavItem = {
@@ -25,29 +24,20 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Scanner", href: "/scanner" },
+  { label: "Charts", href: "/charts" },
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Watchlists", href: "/watchlists" },
 ];
-
-// When the admin panel is split onto its own host (src/proxy.ts), link
-// straight there instead of bouncing through the main host's redirect. The
-// admin host's dashboard root is the bare origin - "/admin" is only a
-// path within the main app's own route tree, for the no-host-separation
-// fallback.
-const ADMIN_ORIGIN = getAdminOrigin();
-const ADMIN_HREF = ADMIN_ORIGIN ?? "/admin";
 
 export function AppHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentUser = useCurrentUser().data;
-  // Role is permission, hostname is portal - "Admin" only ever appears as
-  // an extra nav link into the separate admin host above, never an
-  // automatic redirect or a different UI just because role === admin.
-  const navItems =
-    currentUser?.role === "admin"
-      ? [...NAV_ITEMS, { label: "Admin", href: ADMIN_HREF }]
-      : NAV_ITEMS;
+  // Strict portal separation (item 19) - a USER-portal session can never
+  // belong to an admin-role account (the backend rejects that login
+  // outright), so this navbar never has a reason to branch on role or
+  // link into the separate admin host. The main app is the USER portal,
+  // full stop.
 
   const mobileDrawer =
     mobileOpen && typeof document !== "undefined"
@@ -84,7 +74,7 @@ export function AppHeader() {
               </div>
 
               <nav className="mt-6 flex flex-col gap-1">
-                {navItems.map((item) => {
+                {NAV_ITEMS.map((item) => {
                   const isActive = pathname?.startsWith(item.href);
 
                   return (
@@ -142,7 +132,7 @@ export function AppHeader() {
               </TooltipTrigger>
               <TooltipContent side="bottom">Open navigation</TooltipContent>
             </Tooltip>
-            <Link href="/scanner" className="flex items-center gap-2">
+            <Link href="/charts" className="flex items-center gap-2">
               {/* No text-size override here anymore - it used to shrink
                   the wordmark well below the mark's own height for extra
                   header-room safety, but that just made it read as
@@ -155,7 +145,7 @@ export function AppHeader() {
 
           <nav className="hidden items-center justify-center gap-6 lg:flex">
             <GlobalSearchNavbarField className="ml-2 hidden xl:flex xl:w-64" />
-            {navItems.map((item) => {
+            {NAV_ITEMS.map((item) => {
               const isActive = pathname?.startsWith(item.href);
 
               return (

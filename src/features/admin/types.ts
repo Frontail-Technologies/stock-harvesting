@@ -92,22 +92,6 @@ export type AdminDataProviderConnectResponse = {
   connected: boolean;
 };
 
-export type AdminSyncJobStatus = "queued" | "running" | "completed" | "failed";
-
-export type AdminSyncJob = {
-  id: string;
-  type: string;
-  status: AdminSyncJobStatus;
-  payload: Record<string, unknown>;
-  errorMessage: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type AdminJobsResponse = {
-  jobs: AdminSyncJob[];
-};
-
 export type MonetizationMode = "off" | "preview" | "live";
 
 export type AdminAdPlacementKey =

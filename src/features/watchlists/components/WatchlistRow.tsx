@@ -41,14 +41,32 @@ export function WatchlistRow({
   onAddStock,
 }: WatchlistRowProps) {
   return (
-    <div className="py-4">
+    // Item 5 - the whole row is the hover/click surface visually (a plain
+    // div with a mouse-only onClick + hover background, NOT role="button"
+    // - real interactive elements sit inside it below (the Open in Charts
+    // link, the ⋯ menu), and nesting those inside an element with
+    // role="button" would be invalid ARIA). Keyboard/screen-reader users
+    // get the SAME toggle via the real <button> on the name segment
+    // below, unchanged from before - this only adds a mouse convenience
+    // on top of it, never replaces it. The two separate actions stop
+    // propagation so a click on them never also toggles the row.
+    <div
+      onClick={onToggleExpanded}
+      className="group -mx-3 cursor-pointer rounded-md px-3 py-4 transition-colors hover:bg-muted/40"
+    >
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2 sm:flex-nowrap sm:items-center">
         <button
           type="button"
-          onClick={onToggleExpanded}
+          onClick={(event) => {
+            // Stops the outer row's own onClick from ALSO firing (it
+            // would otherwise toggle twice via bubbling - once here, once
+            // on the wrapper - cancelling itself out).
+            event.stopPropagation();
+            onToggleExpanded();
+          }}
           aria-expanded={expanded}
-          aria-label={expanded ? "Collapse watchlist" : "Expand watchlist"}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+          aria-label={expanded ? `Collapse ${watchlist.name}` : `Expand ${watchlist.name}`}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left outline-none"
         >
           <span className="w-6 shrink-0 font-mono text-xs text-muted-foreground/70">
             {String(index + 1).padStart(2, "0")}
@@ -75,11 +93,12 @@ export function WatchlistRow({
           </span>
 
           <Link
-            href={`/scanner?watchlist=${encodeURIComponent(watchlist.id)}`}
-            aria-label="Open in Scanner"
+            href={`/charts?watchlist=${encodeURIComponent(watchlist.id)}`}
+            aria-label="Open in Charts"
+            onClick={(event) => event.stopPropagation()}
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
           >
-            <span className="hidden sm:inline">Open in Scanner</span>
+            <span className="hidden sm:inline">Open in Charts</span>
             <SquareArrowOutUpRight className="size-3.5" />
           </Link>
 
@@ -88,6 +107,7 @@ export function WatchlistRow({
               <TooltipTrigger
                 render={
                   <DropdownMenuTrigger
+                    onClick={(event) => event.stopPropagation()}
                     className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label={`${watchlist.name} options`}
                   />
@@ -97,7 +117,11 @@ export function WatchlistRow({
               </TooltipTrigger>
               <TooltipContent side="bottom">More actions</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent
+              align="end"
+              className="w-40"
+              onClick={(event) => event.stopPropagation()}
+            >
               <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onClick={onDelete}>
                 Delete Watchlist
@@ -108,7 +132,7 @@ export function WatchlistRow({
       </div>
 
       {expanded && (
-        <div className="mt-3 pl-9">
+        <div className="mt-3 pl-9" onClick={(event) => event.stopPropagation()}>
           <WatchlistExpandedItems watchlistId={watchlist.id} onAddStock={onAddStock} />
         </div>
       )}

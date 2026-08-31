@@ -19,12 +19,12 @@ export function useLandingCta(): LandingCta {
   const status = useSessionStore((state) => state.status);
 
   if (status === "authenticated") {
-    return { status: "authenticated", href: "/scanner", label: "Open Workspace" };
+    return { status: "authenticated", href: "/charts", label: "Open Charts" };
   }
 
   if (status === "unknown") {
-    return { status: "loading", href: "/login", label: "Open Workspace" };
+    return { status: "loading", href: "/login", label: "Open Charts" };
   }
 
-  return { status: "unauthenticated", href: "/login", label: "Open Workspace" };
+  return { status: "unauthenticated", href: "/login", label: "Open Charts" };
 }

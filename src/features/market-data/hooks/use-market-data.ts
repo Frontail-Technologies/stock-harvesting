@@ -290,6 +290,14 @@ export function useCandles(input: CandleListInput) {
     retry: false,
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,
+    // Charts performance audit item 23 - was missing entirely, so a
+    // symbol/timeframe switch dropped straight to an empty/loading chart
+    // instead of keeping the previously-displayed candles visible while
+    // the new series loads ("chart -> blank -> spinner -> chart", exactly
+    // what item 23 says not to do). Purely a client-side display
+    // continuity fix - never serves stale data as if it were fresh
+    // (isLoading/isFetching still reflect the real query state).
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -302,10 +310,7 @@ export function useIndexRelativeStrength(limit?: number, exchange?: string) {
 
   const query = useQuery({
     queryKey: queryKeys.marketData.indexRelativeStrength(limit, exchange),
-    queryFn: async () => {
-      const response = await getIndexRelativeStrength(limit, exchange);
-      return response.metrics;
-    },
+    queryFn: () => getIndexRelativeStrength(limit, exchange),
     enabled: authStatus === "authenticated",
     retry: false,
     staleTime: 10 * 60_000,
@@ -316,6 +321,6 @@ export function useIndexRelativeStrength(limit?: number, exchange?: string) {
     placeholderData: (previousData) => previousData,
   });
 
-  return { ...query, metrics: query.data ?? [] };
+  return { ...query, metrics: query.data?.metrics ?? [], asOfDate: query.data?.asOfDate ?? null };
 }
 

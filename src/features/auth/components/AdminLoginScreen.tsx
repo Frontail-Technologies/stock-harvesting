@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { AdminForbiddenState } from "@/features/admin/components/shell/AdminAccessState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { getSiteUrl } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
-import { useSessionStore } from "../stores/session-store";
+import { useAdminSessionStore } from "../stores/admin-session-store";
 
 function GoogleIcon({ className = "size-4" }: { className?: string }) {
   return (
@@ -38,12 +38,37 @@ function GoogleIcon({ className = "size-4" }: { className?: string }) {
 // product landing page. Role authorization is re-verified from the
 // real session after auth completes; nothing here decides admin access on
 // its own.
+// Reason codes the backend's Google callback can redirect back here with
+// (see auth.service.ts's evaluatePortalAccess / auth.routes.ts's
+// redirectToLogin) - "not-admin-on-admin-portal" is the important one
+// (item 5): the backend already rejected the login and created NO admin
+// session at all, so this is purely a message to show, not something the
+// frontend re-derives from session state.
+const REJECTION_MESSAGES: Record<string, string> = {
+  "not-admin-on-admin-portal": "You do not have access to the Admin Portal.",
+  failed: "Google login is not available. Please try again.",
+  "state-mismatch": "Your login attempt expired. Please try again.",
+};
+
 export function AdminLoginScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const googleLogin = useGoogleLogin();
-  const status = useSessionStore((state) => state.status);
-  const user = useSessionStore((state) => state.user);
-  const [error, setError] = useState<string | null>(null);
+  const status = useAdminSessionStore((state) => state.status);
+  const user = useAdminSessionStore((state) => state.user);
+  const [handlerError, setHandlerError] = useState<string | null>(null);
+  const [dismissedQueryReason, setDismissedQueryReason] = useState(false);
+
+  // Read directly from the URL on every render (via next/navigation's
+  // useSearchParams) rather than copying it into state inside an effect -
+  // a rejected login (item 5) means the backend already created no admin
+  // session at all, it just redirected back here with a reason code.
+  const authReason = dismissedQueryReason ? null : searchParams.get("auth");
+  const queryError =
+    authReason && authReason !== "success"
+      ? (REJECTION_MESSAGES[authReason] ?? "Sign-in was not completed. Please try again.")
+      : null;
+  const error = handlerError ?? queryError;
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -61,11 +86,12 @@ export function AdminLoginScreen() {
   }, [router, status, user]);
 
   async function handleGoogleLogin() {
-    setError(null);
+    setHandlerError(null);
+    setDismissedQueryReason(true);
     try {
       await googleLogin.mutateAsync("admin");
     } catch {
-      setError("Google login is not available. Please check backend auth setup.");
+      setHandlerError("Google login is not available. Please check backend auth setup.");
     }
   }
 
@@ -80,9 +106,10 @@ export function AdminLoginScreen() {
     );
   }
 
-  // Authenticated but not an admin - authorization failed. Never send this
-  // account into Scanner from here; it stays denied until they leave for
-  // the main site themselves.
+  // Defense in depth only - the backend now rejects a non-admin login
+  // outright (no admin session is ever created for one), so this branch
+  // shouldn't be reachable in practice. Kept in case a legacy session
+  // predates that enforcement.
   if (status === "authenticated" && user?.role !== "admin") {
     return <AdminForbiddenState />;
   }
