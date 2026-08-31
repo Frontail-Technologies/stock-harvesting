@@ -1,10 +1,5 @@
 import { Reveal } from "./Reveal";
 
-// Illustrations are abstractions of real Stock Harvesting capabilities
-// (candles + analysis highlights, capture/export, sharing a saved review) -
-// not literal screenshots. Coordinates are deterministic (sine-based, not
-// Math.random) so server and client render identical markup.
-
 const CHART_CANDLES = Array.from({ length: 26 }, (_, i) => {
   const x = 16 + i * 24;
   const wave = Math.sin(i * 0.42) * 54 + Math.sin(i * 0.15 + 1.4) * 28;
@@ -28,7 +23,6 @@ const HIGHLIGHT_RANGES = [
   { from: 17, to: 19 },
 ];
 
-// 01 / Chart Review - the dominant visual, unchanged concept.
 function ChartReviewIllustration() {
   return (
     <svg
@@ -98,8 +92,6 @@ function ChartReviewIllustration() {
   );
 }
 
-// A tiny abstract chart snapshot drawn inside a framed rectangle - used by
-// both right-side illustrations so a "saved chart view" reads consistently.
 function MiniChartMarks({ frame }: { frame: { x: number; y: number; width: number; height: number } }) {
   const centerY = frame.y + frame.height / 2;
   return (
@@ -124,7 +116,6 @@ function MiniChartMarks({ frame }: { frame: { x: number; y: number; width: numbe
   );
 }
 
-// 02 / Save & Export - chart view → capture → saved/exported view.
 function SaveExportIllustration() {
   const frame = { x: 20, y: 34, width: 132, height: 82 };
   const out = { x: 288, y: 46, width: 108, height: 58 };
@@ -196,8 +187,6 @@ function SaveExportIllustration() {
   );
 }
 
-// 03 / Share Review - a saved review distributed through thin structural
-// lines to a few neutral reviewer nodes. Technical, not social.
 const REVIEWER_NODES = [
   { x: 326, y: 46 },
   { x: 326, y: 73 },

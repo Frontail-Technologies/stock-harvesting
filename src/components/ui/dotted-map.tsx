@@ -10,7 +10,6 @@ export interface Marker {
   pulse?: boolean
 }
 
-/** addMarkers returns markers with lat/lng removed; only x, y and other props (e.g. size) remain */
 type MapMarker<M extends Marker> = Omit<M, "lat" | "lng"> & {
   x: number
   y: number
@@ -59,7 +58,6 @@ export function DottedMap<M extends Marker = Marker>({
   )
   const processedMarkers = addMarkers(markers)
 
-  // Compute stagger helpers in a single, simple pass
   const { xStep, yToRowIndex } = React.useMemo(() => {
     const sorted = [...points].sort((a, b) => a.y - b.y || a.x - b.x)
     const rowMap = new Map<number, number>()
@@ -69,7 +67,6 @@ export function DottedMap<M extends Marker = Marker>({
 
     for (const p of sorted) {
       if (p.y !== prevY) {
-        // new row
         prevY = p.y
         prevXInRow = Number.NaN
         if (!rowMap.has(p.y)) rowMap.set(p.y, rowMap.size)

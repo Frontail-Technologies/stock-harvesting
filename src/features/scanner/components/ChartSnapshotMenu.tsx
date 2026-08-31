@@ -22,19 +22,12 @@ type ChartSnapshotMenuProps = {
   disabled?: boolean;
 };
 
-// Short cooldown after any action click, not a real completion signal (the
-// actual capture runs asynchronously in a distant component, reached via
-// the store-queued captureRequest - there's no callback wired back here).
-// Just enough to stop a rapid double-click from queuing two captures for
-// what the user experienced as a single click.
 const ACTION_COOLDOWN_MS = 1200;
 
 export function ChartSnapshotMenu({ compact, className, disabled }: ChartSnapshotMenuProps) {
   const requestCapture = useScannerUiStore((state) => state.requestCapture);
   const [busy, setBusy] = useState(false);
-  // navigator.share support is read once on mount (client-only, avoids an
-  // SSR/hydration mismatch) - files support specifically, since a share
-  // target that can't accept an image file isn't useful here.
+
   const [hasNativeShare] = useState(
     () => typeof navigator !== "undefined" && typeof navigator.share === "function"
   );
@@ -62,10 +55,7 @@ export function ChartSnapshotMenu({ compact, className, disabled }: ChartSnapsho
 
   const handleOpenInNewTab = () =>
     withCooldown(() => {
-      // Opened synchronously inside this click handler, before any async
-      // capture work starts - navigating this tab once the image is ready
-      // (instead of calling window.open() after the fact) is what keeps
-      // browsers from treating it as an unsolicited popup.
+
       const newTab = window.open("", "_blank");
       requestCapture("open-tab", newTab);
     });

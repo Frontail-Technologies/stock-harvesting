@@ -8,17 +8,6 @@ import {
 import { getAdminApiAccessToken, setAdminApiAccessToken } from "./admin-token-store";
 import { API_BASE_URL } from "./api-client";
 
-// Strict portal separation - the ADMIN portal's own fetch wrapper, a
-// parallel implementation of api-client.ts's apiFetch rather than a shared
-// one with a "portal" flag. This is deliberate: it means the ADMIN
-// portal's 401-refresh loop can only ever call
-// /api/admin-auth/refresh (never /api/auth/refresh), can only ever read/
-// write the admin-token-store.ts in-memory token (never token-store.ts's),
-// and every admin API wrapper (admin-api.ts, the use-admin-*.ts hooks)
-// imports THIS function, never the user-portal apiFetch - so there is no
-// runtime branch anywhere that could route an admin request through the
-// user portal's session, or vice versa.
-
 function buildUrl(path: string) {
   if (/^https?:\/\//i.test(path)) return path;
   return `${API_BASE_URL}${path}`;
@@ -70,9 +59,6 @@ async function performAdminRefresh(): Promise<RefreshPayload> {
   return payload.data;
 }
 
-// Same single-flight guarding as the user portal's refreshAccessToken -
-// the admin refresh token is single-use too, so concurrent 401s must
-// collapse into one POST /admin-auth/refresh.
 let adminRefreshInFlight: Promise<RefreshPayload> | null = null;
 
 export function refreshAdminAccessToken(): Promise<RefreshPayload> {

@@ -1482,10 +1482,7 @@ export function DrawingOverlay({
   const [renderTick, setRenderTick] = useState(0);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
   const [measurement, setMeasurement] = useState<MeasurementState | null>(null);
-  // Drives the "grab" -> "grabbing" cursor swap while a drawing element is
-  // being repositioned (move or handle drag). Also mirrored onto
-  // document.body during the drag so the closed-hand cursor stays visible
-  // even if a fast drag briefly carries the pointer outside the SVG.
+
   const [isDraggingDrawing, setIsDraggingDrawing] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1558,13 +1555,6 @@ export function DrawingOverlay({
     }
   }, [chart, drawing.activeTool, drawing.crosshairActive]);
 
-  // The native crosshair lines are turned off (see scannerCrosshairOptions)
-  // because they render on the chart's own canvas, which sits below this
-  // overlay's SVG - any drawing on top of the chart would always paint over
-  // them. Tracking the position here instead lets the crosshair below be
-  // drawn as the last elements in the drawing SVG, guaranteeing it's above
-  // every committed drawing (including yellow vertical/horizontal-line
-  // annotations) rather than hidden behind them.
   const [crosshairPoint, setCrosshairPoint] = useState<ScreenPoint | null>(null);
 
   useEffect(() => {
@@ -1832,8 +1822,6 @@ export function DrawingOverlay({
       const drag = dragRef.current;
       if (!drag) return;
 
-      // Reset up front so the grabbing cursor always clears on pointerup,
-      // even if one of the early returns below fires.
       setIsDraggingDrawing(false);
       document.body.style.cursor = "";
 
@@ -1884,9 +1872,7 @@ export function DrawingOverlay({
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
-      // Safety net: if this overlay unmounts mid-drag (e.g. the stock or
-      // timeframe changes while a drawing is being repositioned), don't
-      // leave the whole page stuck with a "grabbing" cursor.
+
       if (dragRef.current) document.body.style.cursor = "";
     };
   });
@@ -2093,7 +2079,6 @@ export function DrawingOverlay({
     return { x, y };
   })();
 
-
   const measurementToolbarPosition = (() => {
     if (!measurement) return null;
 
@@ -2138,7 +2123,6 @@ export function DrawingOverlay({
       },
     }));
   };
-
 
   const updateMeasurementStyle = (style: Partial<DrawingStyle>) => {
     setMeasurement((current) =>
@@ -2186,12 +2170,7 @@ export function DrawingOverlay({
         className="pointer-events-none absolute inset-0"
       >
         {drawingsToRender.map((item) => (
-          // The cursor is set here (not per-shape) and relies on normal SVG
-          // CSS inheritance to reach every pointerEvents="auto" hit-area and
-          // handle circle inside DrawingElementView — "grab" while an
-          // unlocked drawing can be repositioned with the cursor tool
-          // active, "grabbing" while a move/handle drag is in progress (see
-          // isDraggingDrawing state below).
+
           <g
             key={item.id}
             pointerEvents="auto"
@@ -2263,7 +2242,6 @@ export function DrawingOverlay({
         />
       )}
 
-
       {measurement && measurementToolbarPosition && (
         <DrawingStyleToolbar
           key="measurement-toolbar"
@@ -2332,7 +2310,4 @@ export function DrawingOverlay({
     </div>
   );
 }
-
-
-
 

@@ -16,20 +16,9 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
   const pathname = usePathname();
   const status = useSessionStore((state) => state.status);
   const user = useSessionStore((state) => state.user);
-  // Defense in depth only (item 13) - the backend now rejects an
-  // admin-role account's USER-portal login outright, so a genuine
-  // "authenticated" status here should never carry role "admin" in
-  // practice. Guards against a legacy cached snapshot predating that
-  // enforcement by treating it the same as "not signed in".
+
   const isBlockedAdminAccount = status === "authenticated" && user?.role === "admin";
-  // With a cached session snapshot (see session-store.ts), `status` starts
-  // as "authenticated" immediately on a hard reload instead of "unknown" -
-  // this already renders `children` below without waiting on the
-  // background POST /refresh that useAuthBootstrap still runs to confirm
-  // it. The genuinely-unresolved case (no snapshot, first-ever visit, or a
-  // cleared browser) is the only path that reaches this spinner; even then,
-  // resolution is usually well under 200ms, so it's only shown once the
-  // check has genuinely been running for a moment.
+
   const showSpinner = useDelayedFlag(status !== "authenticated");
 
   useEffect(() => {
@@ -40,11 +29,6 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
     params.set("next", currentPath);
     const loginPath = `/login?${params.toString()}`;
 
-    // AuthGuard only ever wraps main-app pages (AppShell) - the admin panel
-    // has its own guard (AdminShell). "/login" is a real route on this
-    // host either way (the main app renders it directly; the admin host's
-    // proxy rewrites it to the admin login), so a plain relative
-    // navigation is always correct here.
     router.replace(loginPath);
   }, [isBlockedAdminAccount, pathname, router, status]);
 

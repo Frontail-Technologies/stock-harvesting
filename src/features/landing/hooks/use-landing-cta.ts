@@ -10,11 +10,6 @@ export type LandingCta = {
   label: string;
 };
 
-// The landing page's primary CTA branches on auth state in multiple places
-// (navbar, hero, closing CTA). Centralised here so the label/destination
-// can't drift apart between them, and so "loading" is a real third state -
-// treating an unresolved session as logged-out is exactly what made the
-// navbar show "Login" to an already-authenticated visitor.
 export function useLandingCta(): LandingCta {
   const status = useSessionStore((state) => state.status);
 

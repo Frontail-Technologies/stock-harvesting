@@ -34,14 +34,6 @@ function GoogleIcon({ className = "size-4" }: { className?: string }) {
   );
 }
 
-// "Signal Harvest" — an original brand illustration for the login screen:
-// a large field of muted market observations gradually narrowing toward a
-// small cluster of selected (gold) points. Deterministic (sine-based, not
-// Math.random) so server and client render identical markup. A field of
-// upright "stalks" sits in the lower-middle of the 900-tall viewBox — near
-// enough to true center that a center-sliced mobile crop still lands on
-// it — carrying the "Harvesting" half of the brand: most stalks stay dim
-// and gray, a handful of "mature" ones are highlighted in harvest yellow.
 const SIGNAL_NOISE = Array.from({ length: 42 }, (_, i) => {
   const col = i % 6;
   const row = Math.floor(i / 6);
@@ -69,16 +61,10 @@ const FIELD_STALKS = Array.from({ length: 30 }, (_, i) => {
 
 const MATURE_STALK_INDEXES = new Set([1, 3, 8, 10, 12]);
 
-// Extremely faint, slightly bowed guide lines behind the stalks — reads as
-// organized field rows rather than random vertical markers, without
-// fighting the rigid CSS backdrop grid.
 const FIELD_ROW_LINES = [458, 530, 602, 674, 746].map(
   (y, i) => `M16 ${y} Q 250 ${y + (i % 2 === 0 ? 7 : -7)} 484 ${y}`,
 );
 
-// A minimal, abstract grain-head sitting atop each stalk: one central node
-// plus 2 (regular) or 3 (mature) short diagonal marks — just enough to
-// read as a crop head without becoming literal wheat illustration.
 function GrainHead({
   x,
   y,
@@ -200,17 +186,6 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
   );
 }
 
-// The backend's Google callback (auth.routes.ts's redirectToLogin) can
-// redirect back here with an "?auth=<reason>" query param for any rejected
-// login - including an admin-only account submitted here, which the
-// backend already rejects outright (evaluatePortalAccess) with no user
-// session created at all. Every one of those reasons - wrong-portal
-// account, an expired OAuth state, or Google itself failing - renders as
-// this exact same generic message. This is deliberate, not a missing
-// feature: this login must never reveal that an account exists, that it's
-// an admin account, or that a separate Admin Portal exists, so the reason
-// value itself is only ever used to decide *whether* to show an error, not
-// what it says.
 const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
 export function LoginScreen() {
@@ -220,47 +195,19 @@ export function LoginScreen() {
   const status = useSessionStore((state) => state.status);
   const bootstrapResolved = useSessionStore((state) => state.bootstrapResolved);
   const [handlerError, setHandlerError] = useState<string | null>(null);
-  // Flips true once the user retries (or the ?auth= reason has otherwise
-  // been acted on) - lets the query-derived message below stop showing
-  // without needing to mutate the URL itself.
+
   const [dismissedQueryReason, setDismissedQueryReason] = useState(false);
 
-  // Read directly from the URL on every render (via next/navigation's
-  // useSearchParams, not window.location.search) rather than copying it
-  // into state inside an effect - this is what a rejected login (item 3)
-  // looks like: the backend already created no session at all, it just
-  // redirected back here with a reason code to display.
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
   const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
 
-  // With a cached session snapshot, `status` usually resolves to
-  // "authenticated" (and the redirect effect below fires) within a frame
-  // or two - showing the spinner only once that's taken a moment avoids a
-  // flash of "Checking session..." on what's normally an instant bounce
-  // to /charts.
   const showChecking = useDelayedFlag(status !== "guest");
 
   useEffect(() => {
-    // `status === "authenticated"` alone can mean nothing more than "a
-    // cached snapshot from a previous visit said so" - if that snapshot's
-    // refresh cookie has since expired, redirecting on it alone would send
-    // this boot to /charts just to get bounced straight back to /login a
-    // moment later once the real check catches up. Waiting for
-    // `bootstrapResolved` means this only navigates once THIS boot's
-    // authoritative refresh has actually confirmed it (or given up and
-    // kept the cached value after a network hiccup - see
-    // useAuthBootstrap) - the wait itself stays invisible in the common
-    // case since it's the same fast check `showChecking` above already
-    // tolerates without flashing a spinner.
+
     if (status !== "authenticated" || !bootstrapResolved) return;
 
-    // Strict portal separation (item 19): an admin-role account can never
-    // reach "authenticated" here at all - the backend rejects that login
-    // outright (see evaluatePortalAccess), so every session this effect
-    // ever sees is a genuine USER-portal one. "next" is only honored for
-    // destinations within this same app, never the separate admin portal,
-    // so this can't be used to bounce someone into /admin either.
     const params = new URLSearchParams(window.location.search);
     const nextPath = params.get("next");
     const validNext =

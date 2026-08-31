@@ -78,13 +78,7 @@ export function buildScannerChartData(
   }
 
   const lastRealCandle = candles[candles.length - 1];
-  // Step size must match the chart's actual timeframe - previously this was
-  // hardcoded to "1W" regardless of what was being displayed, so a 1D chart
-  // got 24 weeks (~5.5 months) of synthetic future bars appended after the
-  // last real candle. That inflated total bar count is what pushed the
-  // visible range (and MAX's "fit everything" range) far past the latest
-  // candle, both stretching the time axis into empty future dates and
-  // squeezing every real candle into a narrower share of the chart width.
+
   const futureWhitespace = generateFutureWhitespaceBars(
     lastRealCandle.time,
     SCANNER_CHART_LAYOUT.futureWhitespaceBars,
@@ -188,12 +182,6 @@ export function buildScannerChartData(
   };
 }
 
-// The right edge should read as "latest candle, then a small breathing
-// gap" - not a proportional runway that grows without bound the more
-// history is on screen. Bounded to a fixed 6-12 bar window regardless of
-// how many real candles are visible (previously this scaled up to the
-// full 24-bar whitespace pool for any range showing 200+ bars, and MAX
-// ignored the cap entirely by fitting the whole whitespace pool).
 const MIN_RIGHT_PADDING_BARS = 6;
 const MAX_RIGHT_PADDING_BARS = 12;
 

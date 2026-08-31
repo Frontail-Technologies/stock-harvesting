@@ -8,13 +8,6 @@ import { GlobalSearchMobileSheet } from "@/features/global-search/components/Glo
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { cn } from "@/utils/cn";
 
-// Landing's own navbar chrome for the search trigger/account menu - both
-// default to the regular app's neutral bg-background/border-input tokens,
-// which would look like a mismatched control sitting on landing's own
-// themed bar. Built from the landing-fg token so it inverts correctly
-// alongside the rest of the navbar in light mode. Kept intentionally
-// small (just these two spots) rather than reskinning the shared
-// components.
 const LANDING_NAV_CONTROL_CLASS =
   "border-landing-border bg-landing-fg/6 text-landing-text-strong backdrop-blur-sm hover:border-landing-border-strong hover:bg-landing-fg/10 hover:text-landing-fg";
 

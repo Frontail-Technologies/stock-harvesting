@@ -6,10 +6,7 @@ export const API_ROUTES = {
     me: "/api/auth/me",
     logout: "/api/auth/logout",
   },
-  // Strict portal separation - the ADMIN portal's own refresh/me/logout,
-  // deliberately separate endpoints from `auth` above so a request can
-  // never accidentally reuse the USER portal's cookie/token handling. See
-  // admin-api-client.ts.
+
   adminAuth: {
     refresh: "/api/admin-auth/refresh",
     me: "/api/admin-auth/me",
@@ -30,14 +27,16 @@ export const API_ROUTES = {
   },
   marketCollections: {
     list: "/api/market-collections",
-    members: (code: string) => `/api/market-collections/${encodeURIComponent(code)}/members`,
+    members: (code: string) =>
+      `/api/market-collections/${encodeURIComponent(code)}/members`,
     relativeStrength: (code: string) =>
       `/api/market-collections/${encodeURIComponent(code)}/relative-strength`,
     weeklyStrongStocks: (code: string) =>
       `/api/market-collections/${encodeURIComponent(code)}/weekly-strong-stocks`,
   },
   weeklyStrongBacktest: {
-    stacked: (code: string) => `/api/weekly-strong-backtest/${encodeURIComponent(code)}`,
+    stacked: (code: string) =>
+      `/api/weekly-strong-backtest/${encodeURIComponent(code)}`,
     weekDetail: (code: string, weekEnding: string) =>
       `/api/weekly-strong-backtest/${encodeURIComponent(code)}/${encodeURIComponent(weekEnding)}`,
   },
@@ -50,7 +49,8 @@ export const API_ROUTES = {
     workspaceDrawings: (symbol: string, timeframe: string) =>
       `/api/scanner/workspaces/${encodeURIComponent(symbol)}/${encodeURIComponent(timeframe)}/drawings`,
     drawing: (id: string) => `/api/scanner/drawings/${encodeURIComponent(id)}`,
-    backtest: (symbol: string) => `/api/scanner/backtest/${encodeURIComponent(symbol)}`,
+    backtest: (symbol: string) =>
+      `/api/scanner/backtest/${encodeURIComponent(symbol)}`,
   },
   admin: {
     users: "/api/admin/users",
@@ -64,14 +64,16 @@ export const API_ROUTES = {
     dataProviderConnectUrl: "/api/admin/data-provider/connect-url",
     dataProviderConnect: "/api/admin/data-provider/connect",
     dataProviderSync: "/api/admin/data-provider/sync",
-    sectorClassificationSync: "/api/admin/data-provider/sector-classification-sync",
+    sectorClassificationSync:
+      "/api/admin/data-provider/sector-classification-sync",
     indexCandleBackfill: "/api/admin/data-provider/index-candle-backfill",
     marketDataSyncPrices: "/api/admin/market-data/sync-prices",
     jobs: "/api/admin/jobs",
     aiSettings: "/api/admin/ai-settings",
     aiSettingsKey: "/api/admin/ai-settings/key",
     marketCollections: "/api/admin/market-collections",
-    marketCollection: (id: string) => `/api/admin/market-collections/${encodeURIComponent(id)}`,
+    marketCollection: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}`,
     marketCollectionMembers: (id: string) =>
       `/api/admin/market-collections/${encodeURIComponent(id)}/members`,
     marketCollectionImportDryRun: (id: string) =>
@@ -101,7 +103,8 @@ export const API_ROUTES = {
       `/api/admin/data-providers/${encodeURIComponent(key)}`,
   },
   ai: {
-    ask: (symbol: string) => `/api/ai/scanner/${encodeURIComponent(symbol)}/ask`,
+    ask: (symbol: string) =>
+      `/api/ai/scanner/${encodeURIComponent(symbol)}/ask`,
   },
   priceAlerts: {
     root: "/api/price-alerts",
@@ -122,4 +125,3 @@ export const API_ROUTES = {
     config: "/api/monetization/config",
   },
 } as const;
-

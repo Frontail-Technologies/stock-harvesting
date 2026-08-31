@@ -9,11 +9,6 @@ type GlobalSearchNavbarFieldProps = {
   className?: string;
 };
 
-// A compact trigger styled like a search field (not an actual input) -
-// clicking it opens the one canonical GlobalStockSearchModal rather than
-// rendering its own inline results dropdown. Desktop-width navbar
-// presentation; narrower viewports use the icon-only trigger instead (see
-// wherever this is conditionally hidden in AppHeader/Navbar).
 export function GlobalSearchNavbarField({ className }: GlobalSearchNavbarFieldProps) {
   const openModal = useSearchModalStore((state) => state.open);
   const triggerRef = useRef<HTMLButtonElement>(null);

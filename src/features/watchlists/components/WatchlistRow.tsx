@@ -41,15 +41,7 @@ export function WatchlistRow({
   onAddStock,
 }: WatchlistRowProps) {
   return (
-    // Item 5 - the whole row is the hover/click surface visually (a plain
-    // div with a mouse-only onClick + hover background, NOT role="button"
-    // - real interactive elements sit inside it below (the Open in Charts
-    // link, the ⋯ menu), and nesting those inside an element with
-    // role="button" would be invalid ARIA). Keyboard/screen-reader users
-    // get the SAME toggle via the real <button> on the name segment
-    // below, unchanged from before - this only adds a mouse convenience
-    // on top of it, never replaces it. The two separate actions stop
-    // propagation so a click on them never also toggles the row.
+
     <div
       onClick={onToggleExpanded}
       className="group -mx-3 cursor-pointer rounded-md px-3 py-4 transition-colors hover:bg-muted/40"
@@ -58,9 +50,7 @@ export function WatchlistRow({
         <button
           type="button"
           onClick={(event) => {
-            // Stops the outer row's own onClick from ALSO firing (it
-            // would otherwise toggle twice via bubbling - once here, once
-            // on the wrapper - cancelling itself out).
+
             event.stopPropagation();
             onToggleExpanded();
           }}

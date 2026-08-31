@@ -15,11 +15,6 @@ type AdPlacementProps = {
   className?: string;
 };
 
-// The one place that decides whether an ad section exists in the DOM at
-// all. Everything here happens BEFORE returning JSX - when the placement
-// can't render, this returns null with no wrapping <section>, no label, no
-// reserved height. Callers (LandingPage, ScannerPage) render this directly
-// inline with nothing wrapped around it, so there is never an empty ad box.
 export function AdPlacement({
   placementKey,
   variant,

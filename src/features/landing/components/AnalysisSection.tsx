@@ -11,9 +11,6 @@ const SUPPORTING_ROWS = [
   },
 ];
 
-// Deterministic, not Math.random() â€” identical output on server and client
-// avoids a hydration mismatch on this SVG. Noise thins out toward the
-// lower-right, where the selected observations sit.
 const NOISE_POINTS = Array.from({ length: 46 }, (_, i) => {
   const col = i % 9;
   const row = Math.floor(i / 9);
@@ -35,10 +32,6 @@ const FOCUS_POINTS = [
   { x: 500, y: 372 },
 ];
 
-// A few labeled top data points act as the "sources" feeding the detected
-// area â€” each carries a mono annotation and a thin line narrowing down into
-// the lower-right focus zone. These are high-level market dimensions only;
-// no methodology, weighting or logic is implied.
 const LABELED_SOURCES = [
   { label: "FII", x: 60, y: 66, anchor: "start" as const, path: "M60 66 C 180 140, 300 250, 402 336" },
   { label: "DII", x: 168, y: 46, anchor: "start" as const, path: "M168 46 C 260 150, 350 260, 430 352" },

@@ -14,7 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { useTheme } from "@/features/theme";
 import { cn } from "@/utils/cn";
@@ -22,20 +26,10 @@ import { getAvatarInitials } from "@/utils/api-client";
 
 type AccountMenuProps = {
   className?: string;
-  // Scanner/watchlists portals need their own theme-token scoping once
-  // portaled outside their DOM subtree (see MarketSelector/ThemeToggle) -
-  // main-site callers (Landing, the app navbar) omit this and get the
-  // regular popover styling.
+
   portalClassName?: string;
 };
 
-// The one account dropdown for the main site's navbars (Landing + the
-// authenticated app's AppHeader) - guest and authenticated states share
-// this component instead of each navbar rendering its own ad-hoc
-// combination of a bare Login link and a separate avatar/logout button
-// (that combination is exactly what produced the earlier duplicate-Login
-// bug). Scanner keeps its own ScannerAccountMenu untouched - this is not a
-// replacement for that, just the shared main-site version.
 export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -55,7 +49,11 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
   const themeRow = (
     <div className="flex items-center justify-between gap-3 px-3 py-2">
       <span className="flex items-center gap-2 text-sm text-foreground">
-        {isDark ? <Moon className="size-3.5 text-muted-foreground" /> : <Sun className="size-3.5 text-muted-foreground" />}
+        {isDark ? (
+          <Moon className="size-3.5 text-muted-foreground" />
+        ) : (
+          <Sun className="size-3.5 text-muted-foreground" />
+        )}
         Theme
       </span>
       <Switch
@@ -77,7 +75,7 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
               aria-label="Account menu"
               className={cn(
                 "inline-flex size-8 items-center justify-center rounded-full outline-none ring-ring transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                className
+                className,
               )}
             />
           }
@@ -85,13 +83,6 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
           {currentUser ? (
             <Avatar className="size-8">
               {currentUser.avatarUrl ? (
-                // Most avatarUrl values are Google's own profile picture CDN
-                // (see auth.service.ts's profile.picture) - those requests
-                // silently fail under the browser's default referrer policy
-                // often enough that it reads as "the photo doesn't show
-                // half the time," permanently stuck on the initials
-                // fallback for that mount. no-referrer avoids that failure
-                // mode entirely.
                 <AvatarImage
                   src={currentUser.avatarUrl}
                   alt={currentUser.name || currentUser.email}
@@ -117,7 +108,7 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
         align="end"
         className={cn(
           "w-64 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl",
-          portalClassName
+          portalClassName,
         )}
       >
         {currentUser ? (
@@ -134,12 +125,16 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              render={<Link href="/charts" className="h-9 cursor-pointer px-3" />}
+              render={
+                <Link href="/charts" className="h-9 cursor-pointer px-3" />
+              }
             >
               Open Charts
             </DropdownMenuItem>
             <DropdownMenuItem
-              render={<Link href="/watchlists" className="h-9 cursor-pointer px-3" />}
+              render={
+                <Link href="/watchlists" className="h-9 cursor-pointer px-3" />
+              }
             >
               Watchlists
             </DropdownMenuItem>
@@ -159,7 +154,9 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
         ) : (
           <>
             <DropdownMenuItem
-              render={<Link href="/login" className="h-9 cursor-pointer px-3" />}
+              render={
+                <Link href="/login" className="h-9 cursor-pointer px-3" />
+              }
             >
               <User className="size-4" />
               Sign in

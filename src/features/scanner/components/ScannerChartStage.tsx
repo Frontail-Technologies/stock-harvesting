@@ -73,25 +73,12 @@ export function ScannerChartStage({
   const hoveredCandle = hoveredCandleTime
     ? (candleByTime.get(hoveredCandleTime) ?? null)
     : null;
-  // Most candle fetches are cache hits (10min+ staleTime) â€” only show the
-  // loading card if it's genuinely still fetching after a beat, so a
-  // symbol/timeframe switch doesn't flash a spinner it doesn't need to.
+
   const showChartLoading = useDelayedFlag(loading && candles.length === 0);
 
-  // Store-backed (not a local ref) because this component remounts on
-  // every timeframe switch (its `key` in ScannerPage includes timeframe) -
-  // a fresh per-mount ref would forget a request was already handled and
-  // re-fire the same download/share the next time the user just changes
-  // timeframe, with no new click on the capture button at all.
   const lastProcessedCaptureId = useScannerUiStore((state) => state.lastProcessedCaptureId);
   const markCaptureProcessed = useScannerUiStore((state) => state.markCaptureProcessed);
 
-  // Warm the brand logo for both themes as soon as the chart mounts, so a
-  // capture never has to await a fresh Image() load (or two â€” watermark and
-  // corner logo previously each loaded it independently). Keeping this gap
-  // small matters: capture runs inside the click handler's async chain, and
-  // browsers can silently block further automatic downloads from a page once
-  // a download fires too far from the triggering user gesture.
   useEffect(() => {
     preloadBrandLogo("dark").catch(() => {});
     preloadBrandLogo("light").catch(() => {});
@@ -99,12 +86,7 @@ export function ScannerChartStage({
 
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
-    // captureRequest is never reset to null once set, and this effect's
-    // other deps (candles, backtestStats, ...) change on their own from
-    // live price ticks and from timeframe/symbol switches (which also
-    // remount this whole component) - without this guard, any of those
-    // would silently re-run the same capture again (an unwanted
-    // "automatic" download/share, not just the actual button click).
+
     if (lastProcessedCaptureId === captureRequest.id) return;
     markCaptureProcessed(captureRequest.id);
 
@@ -139,12 +121,6 @@ export function ScannerChartStage({
     const container = containerRef.current;
     if (!container) return;
 
-    // Hovering the price scale (right strip) or time scale (bottom strip)
-    // shows a resize/"stretch" cursor, since dragging there scales that axis
-    // (lightweight-charts' own axisPressedMouseMove behavior) â€” everywhere
-    // else keeps the active drawing tool's cursor. A MutationObserver keeps
-    // re-applying the current cursor to newly (re)created canvases, since
-    // lightweight-charts recreates its canvas elements on internal updates.
     let activeCursor = chartCursor;
 
     const applyCursor = () => {
@@ -173,7 +149,7 @@ export function ScannerChartStage({
         if (overPriceAxis) return "ns-resize";
         if (overTimeAxis) return "ew-resize";
       } catch {
-        // Chart may be mid-teardown; fall through to the default cursor.
+
       }
 
       return chartCursor;
@@ -414,10 +390,6 @@ async function captureStageImage(
       return;
     }
 
-    // Sharing must never silently fall back to downloading the file â€” a user
-    // picking "Share via device" only expects the native share sheet to open,
-    // not an unprompted download if that sheet fails or isn't actually
-    // supported. Download is its own explicit menu action (mode === "download").
     if (mode === "share") {
       const file = new File([blob], filename, { type: "image/jpeg" });
       const shareData = {
@@ -451,13 +423,7 @@ async function captureStageImage(
       }
 
       try {
-        // The Clipboard API only accepts a small whitelist of image MIME
-        // types for ClipboardItem, and "image/jpeg" isn't one of them in
-        // Chromium/Firefox (write() throws "Type image/jpeg not supported
-        // on write"). PNG is universally accepted, so re-encode the same
-        // composited canvas as PNG just for this action - same pixels as
-        // every other action, only the container format differs, since the
-        // OS clipboard mandates it.
+
         const pngBlob = await new Promise<Blob | null>((resolve) =>
           output.toBlob(resolve, "image/png"),
         );
@@ -476,29 +442,21 @@ async function captureStageImage(
     }
 
     if (mode === "open-tab") {
-      // targetWindow is a blank tab opened synchronously by the menu's click
-      // handler, before this async capture ran - navigating it now (instead
-      // of calling window.open() here, well after the gesture) keeps popup
-      // blockers from treating this as an unsolicited new tab.
+
       const url = URL.createObjectURL(blob);
       if (targetWindow && !targetWindow.closed) {
         targetWindow.location.href = url;
       } else {
         window.open(url, "_blank", "noopener,noreferrer");
       }
-      // Generous delay vs. downloadBlob's 1s - the new tab needs time to
-      // actually fetch and decode the image from this blob URL before it's
-      // safe to revoke, and a full-page image load can take longer than an
-      // <a download> click.
+
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       return;
     }
 
     downloadBlob(blob, filename);
   } catch (error) {
-    // Caller invokes this with `void`, so an uncaught rejection here would
-    // otherwise vanish as a silent no-op click. Logging makes a genuine
-    // failure diagnosable instead of looking identical to "nothing happened".
+
     console.error("[scanner] screenshot capture failed", error);
     toast.error("Unable to capture chart");
   }
@@ -634,8 +592,6 @@ function drawChartInfoScreenshotOverlay(
     context.fillText("Signal", badgeX + 7, y);
   }
 
-  // Price row: the largest, most prominent number in the block â€” mirrors
-  // the on-screen ChartInfoOverlay's symbol/price/metadata hierarchy.
   const priceY = y + 24;
   const priceText = formatStockCurrency(last.close, stock.exchange);
   context.font = "700 17px Arial, sans-serif";
@@ -796,16 +752,9 @@ async function drawBottomRightScreenshotLogo(
     const width = imageWidth * scale;
     const height = imageHeight * scale;
 
-    // "Stock Harvesting" wordmark, same two-tone convention as the live
-    // on-chart watermark (BrandLogo) and sized off the logo mark's own
-    // height so the two stay proportional to each other.
     const colors = getScreenshotTextColors(theme);
     const gap = 10;
-    // 0.75, not a smaller fraction of the mark's height - a glyph's
-    // cap-height is well under its font-size, so matching font-size too
-    // closely to the mark's own height rendered text that read as
-    // noticeably smaller than the mark next to it (same fix as the live
-    // on-chart watermark and BrandLogo).
+
     const fontSize = Math.round(height * 0.75);
     context.font = `700 ${fontSize}px Arial, sans-serif`;
     const stockText = "Stock";
@@ -844,11 +793,6 @@ function loadImage(src: string) {
   });
 }
 
-// The brand logo is drawn twice per capture (centered watermark + bottom-right
-// corner logo) and is identical across captures for a given theme, so it's
-// loaded once per theme and reused rather than re-fetched/re-decoded every
-// click. A failed load is evicted so a later capture can retry instead of
-// being stuck with a permanently-rejected cache entry.
 const brandLogoCache = new Map<ScannerTheme, Promise<HTMLImageElement>>();
 
 function preloadBrandLogo(theme: ScannerTheme) {
@@ -864,7 +808,4 @@ function preloadBrandLogo(theme: ScannerTheme) {
   }
   return cached;
 }
-
-
-
 

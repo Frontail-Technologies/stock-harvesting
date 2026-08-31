@@ -11,12 +11,6 @@ import {
   useRebuildAdminWeeklyStrongBacktestHistorical,
 } from "../../hooks/use-admin-market-collections";
 
-// Admin surface for the persisted Weekly Strong backtest: the
-// current-membership series (Phase C2) plus, once at least one membership
-// version has been imported, the historically-correct point-in-time
-// series (Phase D) - kept as two clearly-labeled sub-sections in one card
-// rather than a second page, since they're the same underlying feature at
-// two levels of correctness.
 export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId: string }) {
   const statusQuery = useAdminWeeklyStrongBacktestStatus(collectionId);
   const generate = useGenerateAdminWeeklyStrongBacktest();

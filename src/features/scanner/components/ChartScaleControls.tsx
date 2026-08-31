@@ -20,12 +20,6 @@ type ChartScaleControlsProps = {
   onToggleScannerHighlights: () => void;
 };
 
-// Text controls (Auto/%/Stats) use a neutral surface + a tiny bottom
-// indicator for "selected" instead of yellow text - a whole label turning
-// brand-yellow read as cheap/decorative rather than an intentional accent.
-// Icon-only controls (the highlight-visibility eye) are the one place a
-// yellow icon is fine, since the color reads as state on the glyph itself,
-// not as body text.
 function controlClass(active: boolean) {
   return cn(
     "relative flex h-6 min-w-6 cursor-pointer items-center justify-center rounded px-1.5 text-[0.6875rem] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",

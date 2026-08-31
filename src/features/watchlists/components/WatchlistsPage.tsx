@@ -13,10 +13,6 @@ import { WatchlistRow } from "./WatchlistRow";
 import { useWatchlists } from "../hooks/use-watchlists";
 import type { WatchlistSummary } from "../types";
 
-// Purely decorative row shapes for the empty-state preview card below -
-// never real watchlist/stock data (item 3: "do not fake real user
-// stocks/data"). Bars stand in for a name, the colored chip for a
-// direction, so nothing here could be mistaken for an actual holding.
 const EMPTY_PREVIEW_ROWS = [
   { width: "68%", trend: "up" as const },
   { width: "44%", trend: "down" as const },
@@ -24,10 +20,6 @@ const EMPTY_PREVIEW_ROWS = [
   { width: "52%", trend: "down" as const },
 ];
 
-// Item 3's "small subtle watchlist/list visual" - a static wireframe of
-// what a real watchlist row looks like, entirely abstract (no ticker-
-// shaped text, no fabricated percentages) so it reads as a UI preview,
-// never as real portfolio data. No shadow/gradient/glass per the brief.
 function WatchlistEmptyPreview() {
   return (
     <div
@@ -74,9 +66,6 @@ export function WatchlistsPage() {
   );
   const [addStockTargetId, setAddStockTargetId] = useState<string | null>(null);
 
-  // Item 1 - exactly one primary "create" action ever on screen. Gated on
-  // `!isLoading` too, so the header button doesn't flash in and then
-  // disappear once a zero-watchlist response actually resolves.
   const hasWatchlists = !isLoading && watchlists.length > 0;
   const totalStocks = watchlists.reduce((sum, list) => sum + list.itemCount, 0);
 
@@ -103,10 +92,6 @@ export function WatchlistsPage() {
         )}
       </div>
 
-      {/* Matches the card treatment every Dashboard section already uses
-          (rounded-xl border border-border bg-card) - the page header above
-          stays outside it, same as Dashboard's own header sits outside
-          its widget cards. */}
       <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -135,7 +120,7 @@ export function WatchlistsPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {/* Item 6 - a real, calculated summary, not a KPI section. */}
+
             <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {watchlists.length}{" "}
               {watchlists.length === 1 ? "Watchlist" : "Watchlists"}

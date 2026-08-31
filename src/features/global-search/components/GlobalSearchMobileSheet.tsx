@@ -10,10 +10,6 @@ type GlobalSearchMobileSheetProps = {
   className?: string;
 };
 
-// Mobile no longer gets its own bottom-sheet search implementation - it
-// just opens the same GlobalStockSearchModal every other trigger does,
-// which is itself full-screen at this viewport width (see the modal's own
-// responsive classes).
 export function GlobalSearchMobileSheet({ className }: GlobalSearchMobileSheetProps) {
   const openModal = useSearchModalStore((state) => state.open);
   const triggerRef = useRef<HTMLButtonElement>(null);

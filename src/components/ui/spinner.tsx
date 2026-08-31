@@ -21,9 +21,6 @@ type SpinnerProps = {
   label?: string;
 };
 
-// Three concentric rings rotating at different speeds (defined as
-// .app-loader in globals.css) — reads as a layered, premium spinner rather
-// than a generic browser-default one, while staying a single lightweight div.
 export function Spinner({ size = "md", className, label }: SpinnerProps) {
   const dimension = SIZE_PX[size];
   const thickness = THICKNESS_PX[size];

@@ -33,20 +33,6 @@ function GoogleIcon({ className = "size-4" }: { className?: string }) {
   );
 }
 
-// A distinct visual identity from the main LoginScreen (no marketing
-// illustration, no onboarding copy) - this is a console entry point, not a
-// product landing page. Role authorization is re-verified from the
-// real session after auth completes; nothing here decides admin access on
-// its own.
-//
-// The backend's Google callback (auth.routes.ts's redirectToLogin) can
-// redirect back here with an "?auth=<reason>" query param for any rejected
-// login - a non-admin account submitted here, an expired OAuth state, or
-// Google itself failing. All of them render the same generic message
-// rather than distinguishing "wrong credentials" from "right credentials,
-// wrong role" - the backend already rejected the login and created NO
-// admin session at all either way, and this screen shouldn't expose
-// account role information unnecessarily.
 const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
 export function AdminLoginScreen() {
@@ -58,10 +44,6 @@ export function AdminLoginScreen() {
   const [handlerError, setHandlerError] = useState<string | null>(null);
   const [dismissedQueryReason, setDismissedQueryReason] = useState(false);
 
-  // Read directly from the URL on every render (via next/navigation's
-  // useSearchParams) rather than copying it into state inside an effect -
-  // a rejected login (item 5) means the backend already created no admin
-  // session at all, it just redirected back here with a reason code.
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
   const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
@@ -74,10 +56,7 @@ export function AdminLoginScreen() {
     const nextPath = params.get("next");
     const validNext =
       nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") && nextPath !== "/login";
-    // No preserved deep link: the clean root on the admin host -
-    // src/proxy.ts rewrites "/" to the internal admin route tree, and the
-    // admin root page renders the dashboard directly (no further
-    // redirect) so the browser URL stays at the bare admin origin.
+
     router.replace(validNext ? nextPath : "/");
   }, [router, status, user]);
 
@@ -102,10 +81,6 @@ export function AdminLoginScreen() {
     );
   }
 
-  // Defense in depth only - the backend now rejects a non-admin login
-  // outright (no admin session is ever created for one), so this branch
-  // shouldn't be reachable in practice. Kept in case a legacy session
-  // predates that enforcement.
   if (status === "authenticated" && user?.role !== "admin") {
     return <AdminForbiddenState />;
   }

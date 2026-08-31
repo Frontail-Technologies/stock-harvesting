@@ -7,7 +7,10 @@ import type {
   MarketCollection,
 } from "../types";
 
-function withQuery(path: string, query: Record<string, string | number | undefined>) {
+function withQuery(
+  path: string,
+  query: Record<string, string | number | undefined>,
+) {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(query)) {
@@ -20,7 +23,7 @@ function withQuery(path: string, query: Record<string, string | number | undefin
 
 export function getMarketCollections(input: { exchange?: string } = {}) {
   return apiFetch<{ collections: MarketCollection[] }>(
-    withQuery(API_ROUTES.marketCollections.list, { exchange: input.exchange })
+    withQuery(API_ROUTES.marketCollections.list, { exchange: input.exchange }),
   );
 }
 
@@ -32,7 +35,7 @@ export function getCollectionMembers(input: CollectionMembersInput) {
       q: input.q,
       sortBy: input.sortBy,
       sortDirection: input.sortDirection,
-    })
+    }),
   );
 }
 
@@ -45,16 +48,12 @@ export function getCollectionRelativeStrength(input: {
     withQuery(API_ROUTES.marketCollections.relativeStrength(input.code), {
       limit: input.limit,
       groupBy: input.groupBy,
-    })
+    }),
   );
 }
 
 export function getCollectionWeeklyStrongStocks(input: { code: string }) {
   return apiFetch<CollectionWeeklyStrongStocksResponse>(
-    API_ROUTES.marketCollections.weeklyStrongStocks(input.code)
+    API_ROUTES.marketCollections.weeklyStrongStocks(input.code),
   );
 }
-
-// Note: the old getCollectionWeeklyStrongStocksBacktest (count-only, live-
-// computed) has been removed - see @/features/weekly-strong-backtest for
-// the persisted replacement (Phase C2).

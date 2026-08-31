@@ -26,11 +26,7 @@ export function ScannerIconButton({
     <Tooltip>
       <TooltipTrigger
         type="button"
-        // aria-disabled (not the native `disabled` attribute) so a disabled
-        // action (e.g. Redo with nothing to redo) still receives pointer
-        // events - a real `disabled` button stops emitting hover events in
-        // most browsers, which would silently hide the tooltip explaining
-        // why it's unavailable.
+
         aria-disabled={disabled || undefined}
         onClick={disabled ? undefined : onClick}
         aria-label={label}

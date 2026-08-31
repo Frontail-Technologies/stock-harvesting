@@ -18,10 +18,6 @@ type AddStockDialogProps = {
   onClose: () => void;
 };
 
-// Reuses WatchlistStockSearchInput as-is (exchange picker + debounced
-// search + dedup + "Added" state) instead of building a second stock
-// search - this dialog is only a compact frame around it, opened
-// on-demand instead of leaving that search UI permanently visible.
 export function AddStockDialog({ watchlistId, onClose }: AddStockDialogProps) {
   const { watchlist, isLoading } = useWatchlist(watchlistId);
 

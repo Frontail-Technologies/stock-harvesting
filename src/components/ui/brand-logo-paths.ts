@@ -1,7 +1,5 @@
 import type { Theme } from "@/features/theme";
 
-// Mark-only artwork (no wordmark baked in) - BrandLogo renders the "Stock
-// Harvesting" text itself now, see brand-logo.tsx.
 export const BRAND_LOGO_PATHS = {
   light: "/images/logo-dark.png",
   dark: "/images/logo-light.png",

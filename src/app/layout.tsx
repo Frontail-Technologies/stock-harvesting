@@ -79,14 +79,6 @@ export const metadata: Metadata = {
   },
 };
 
-// The ONE site-wide safe-area treatment (Charts mobile pass, item 6) -
-// `viewportFit: "cover"` is what actually turns on `env(safe-area-inset-*)`
-// in the first place; Charts' own bottom toolbar/sheets already reference
-// those variables (RangeFilterTabs, ChartToolsBar, ScannerPriceAlertMenu)
-// but had no effect on iOS without this, since without `viewport-fit=cover`
-// the safe-area env vars resolve to 0 regardless of the device's actual
-// notch/home-indicator. No other layout in this app declares its own
-// `viewport` export - this is the single source of truth for it.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -116,12 +108,6 @@ const themeInitScript = `
 (() => {
   try {
     var storageKey = ${JSON.stringify(THEME_STORAGE_KEY)};
-    // One theme preference now applies across the whole main site - Landing,
-    // Login, Scanner, Watchlists alike - restored here, before first paint,
-    // so there's no flash of the opposite theme on any of them. Landing and
-    // Login used to force dark unconditionally regardless of what was
-    // stored; that's what made the account menu's theme toggle feel
-    // Scanner-only, since switching it never visibly affected those routes.
     var stored = window.localStorage.getItem(storageKey);
     var theme = stored === "light" || stored === "dark"
       ? stored
@@ -137,14 +123,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Last-resort backstop for hostname routing (src/proxy.ts normally
-  // handles this): if the request resolves to the admin host but didn't
-  // arrive here having been routed into the "/admin" tree - proxy
-  // misconfigured, a reverse proxy stripping/renaming the forwarded host,
-  // or any other failure mode - fail closed rather than let the admin host
-  // ever render a USER-portal page (Landing included, since this layout is
-  // the one thing every route shares). See src/proxy.ts's
-  // RESOLVED_PATHNAME_HEADER comment for how the header below gets set.
+
   const adminHost = getAdminHost();
   if (adminHost) {
     const headersList = await headers();
@@ -170,23 +149,12 @@ export default async function RootLayout({
       >
         <PwaProvider />
         <QueryProvider>
-          {/* Runs on every route, including the public landing page - not
-              just once a protected (app) route happens to mount - so the
-              session is known (or known to be absent) before any
-              auth-aware UI (landing navbar/CTA, /login) ever has to
-              guess. */}
+
           <AuthBootstrap />
-          {/* Theme and tooltips also need to be live on every route now,
-              not just inside the (app) group - the landing navbar's
-              account menu reads useTheme() and renders Tooltip-wrapped
-              controls, and Login now honors the same shared theme. */}
+
           <ThemeProvider>
             <TooltipProvider>
-              {/* The one canonical global stock search modal - opened by
-                  the landing navbar, the app navbar, Ctrl+K/Cmd+K, and the
-                  mobile search icon alike (see search-modal-store.ts). One
-                  instance, works from the landing page and every app route
-                  alike. */}
+
               <GlobalStockSearchModal />
               {children}
             </TooltipProvider>

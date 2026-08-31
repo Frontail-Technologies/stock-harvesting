@@ -17,19 +17,9 @@ import { DEFAULT_SCANNER_LOOKBACK } from "../types";
 let captureRequestCounter = 0;
 
 type ScannerUiState = {
-  // Empty string means "no stock selected" - Scanner's startup identity
-  // comes solely from the URL (see ScannerPage.tsx); this and
-  // selectedExchange/selectedStock are an in-app cache of the last
-  // explicit in-app selection (search result, watchlist click, Scanner's
-  // own exchange switcher), used only to avoid re-deriving a placeholder
-  // while the URL sync effects catch up - never a startup fallback, and
-  // deliberately NOT persisted (see partialize below), so a stale
-  // previous stock can never reopen on a bare /scanner visit.
+
   selectedSymbol: string;
-  // Scanner's own exchange, not a read of some app-wide "current
-  // exchange" - this is the exchange of the stock Scanner currently has
-  // open (or, before any stock is explicitly chosen, just the toolbar's
-  // exchange selector preference for this session).
+
   selectedExchange: MarketExchangeCode;
   selectedStock: Stock | null;
   timeframe: Timeframe;
@@ -37,28 +27,15 @@ type ScannerUiState = {
   lookbackMultiplier: ScannerLookbackMultiplier;
   rangeFilter: ScannerRangeFilter;
   captureRequest: ChartCaptureRequest | null;
-  // Tracks the last captureRequest.id that was actually acted on. Lives
-  // here (not a ref inside ScannerChartStage) because that component
-  // remounts on every timeframe switch (its `key` includes timeframe) -
-  // a fresh per-mount ref would forget a request was already handled and
-  // silently re-fire the same download/share on the next unrelated
-  // remount. captureRequest itself is never reset to null once set, so
-  // this is what actually makes each request fire exactly once.
+
   lastProcessedCaptureId: number | null;
   autoScale: boolean;
   percentageScale: boolean;
   showBacktestStats: boolean;
   scannerHighlightsVisible: boolean;
-  // The toolbar-triggered watchlist sidebar (see ScannerWatchlistSidebar.tsx)
-  // - separate from selectedSymbol/selectedStock above, and separate from
-  // the URL-driven ?watchlist= floating widget (ScannerWatchlistWidget.tsx),
-  // which keeps its own local open state. width is in px, clamped to the
-  // sidebar's own min/max when applied.
+
   isWatchlistPanelOpen: boolean;
-  // Minimized = shrunk to a fixed narrow rail, still visible/anchored to
-  // the right edge - distinct from isWatchlistPanelOpen (which removes it
-  // from the layout entirely). Never mutates watchlistPanelWidth, so
-  // maximizing always restores exactly the width the user had before.
+
   isWatchlistPanelMinimized: boolean;
   watchlistPanelWidth: number;
   activeWatchlistId: string | null;
@@ -83,8 +60,6 @@ type ScannerUiState = {
   setActiveWatchlistId: (id: string | null) => void;
 };
 
-// Fixed rail width when minimized - not user-resizable, so this is a plain
-// constant rather than clamped/persisted state like watchlistPanelWidth.
 export const SCANNER_WATCHLIST_PANEL_RAIL_WIDTH = 44;
 
 export const SCANNER_WATCHLIST_PANEL_MIN_WIDTH = 240;
@@ -160,11 +135,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
     }),
     {
       name: "stock-harvesting-scanner-ui",
-      // Deliberately excludes selectedSymbol/selectedExchange/
-      // selectedStock - stock identity must come solely from the URL on
-      // every visit (see ScannerPage.tsx), never from a previous session's
-      // persisted selection. Everything below is a harmless UI
-      // preference, not stock-identity data.
+
       partialize: (state) => ({
         timeframe: state.timeframe,
         chartType: state.chartType,

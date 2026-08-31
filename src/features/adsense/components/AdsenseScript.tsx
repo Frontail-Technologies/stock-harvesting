@@ -9,10 +9,6 @@ type AdsenseScriptProps = {
   placementKeys: AdPlacementKey[];
 };
 
-// Loads the real Google AdSense script only when mode is LIVE and at least
-// one of this route's placements can actually render - never speculatively.
-// Next.js's <Script> dedupes by `id` across re-renders/navigations on its
-// own, so this doesn't need its own duplicate-injection guard.
 export function AdsenseScript({ placementKeys }: AdsenseScriptProps) {
   const { config } = useMonetizationConfig();
 

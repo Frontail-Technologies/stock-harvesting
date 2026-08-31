@@ -50,10 +50,6 @@ export function ChartToolsBar({
   onChartTypeChange,
 }: ChartToolsBarProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  // Mobile pass (item 10) - was per-group ("which group's sheet, or 'more'
-  // for all of them"); the entire permanent rail collapsed to ONE trigger
-  // means there's no longer a per-group shortcut to pick between, just
-  // "is the one tools sheet open" - it always shows every group.
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [flyoutTop, setFlyoutTop] = useState(56);
   const railRef = useRef<HTMLDivElement>(null);
@@ -201,24 +197,11 @@ export function ChartToolsBar({
     <div
       ref={railRef}
       className={cn(
-        // Mobile pass (item 10) - `absolute` takes this OUT of the
-        // workspace's flex-row flow entirely, so the chart's own flex-1
-        // sibling reclaims the FULL width the rail used to permanently
-        // reserve (a slim always-there column, even shrunk, still cost
-        // real chart width) - not just a slimmer rail. It floats as one
-        // compact trigger over the chart's own bottom-left corner
-        // instead, clear of the stock strip/timeframe row above and the
-        // bottom toolbar below (see the bottom-offset). Desktop is
-        // completely unaffected: `sm:` restores normal in-flow rail
-        // positioning, width, and border exactly as before.
+
         "absolute bottom-14 left-2 z-40 flex shrink-0 flex-col items-center gap-1 overflow-y-auto rounded-full bg-background shadow-lg",
         "sm:static sm:h-auto sm:w-11 sm:rounded-[3px] sm:border-r sm:border-border/60 sm:bg-background sm:py-2 sm:shadow-none"
       )}
     >
-      {/* One compact trigger opens the exact same tool sheet below, now
-          listing every group (plus chart type/snapshot/share, which used
-          to live here as separate compact icons - see the sheet's header
-          row) rather than only the 3 "primary" ones. */}
       <div className="sm:hidden">
         <ScannerIconButton
           label="Drawing tools"
@@ -294,10 +277,6 @@ export function ChartToolsBar({
           <SheetHeader>
             <SheetTitle>Drawing tools</SheetTitle>
           </SheetHeader>
-          {/* Chart type / snapshot / share used to be 3 separate compact
-              icons permanently pinned to the rail - now reachable here,
-              one tap into the same sheet, instead of adding a duplicate
-              "More" menu elsewhere. */}
           <div className="flex items-center justify-around gap-1 rounded-md border border-border bg-background/35 p-1">
             <ChartTypeSelector value={chartType} onChange={onChartTypeChange} compact />
             <ChartSnapshotMenu stock={stock} compact />

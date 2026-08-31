@@ -14,7 +14,6 @@ export type AdPlacementConfig = {
   slotId: string | null;
 };
 
-// Browser-safe only - the shape served by GET /api/monetization/config.
 export type MonetizationConfig = {
   mode: MonetizationMode;
   publisherId: string | null;

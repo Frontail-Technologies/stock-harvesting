@@ -1,9 +1,7 @@
 export const queryKeys = {
   auth: {
     currentUser: ["auth", "current-user"] as const,
-    // Deliberately a separate query key, not a variant of currentUser
-    // above - the two portals never share a React Query cache entry (see
-    // admin-session-store.ts / admin-api-client.ts).
+
     adminCurrentUser: ["auth", "admin-current-user"] as const,
   },
   profile: {

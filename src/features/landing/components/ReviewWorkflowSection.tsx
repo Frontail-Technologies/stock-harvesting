@@ -258,7 +258,6 @@ function ReviewVisual() {
   );
 }
 
-// A tiny abstract chart snapshot drawn inside a framed rectangle.
 function MiniCandles({
   frame,
 }: {

@@ -95,13 +95,10 @@ export function AdminDataProvidersPage() {
   const syncMutation = useSyncAdminDataProvider();
   const priceRefreshMutation = useSyncAdminMarketDataPrices();
   const sectorClassificationMutation = useSyncAdminSectorClassification();
-  // Separate mutation instance from syncMutation (even though both call the
-  // same generic sync endpoint) so its pending state doesn't get conflated
-  // with the "Sync NSE" button above.
+
   const indexSyncMutation = useSyncAdminDataProvider();
   const indexBackfillMutation = useBackfillAdminIndexCandles();
-  // Separate mutation instances from the NSE ones above so BSE buttons get
-  // their own independent pending/success/error state.
+
   const bseSyncMutation = useSyncAdminDataProvider();
   const bseIndexSyncMutation = useSyncAdminDataProvider();
   const bsePriceRefreshMutation = useSyncAdminMarketDataPrices();

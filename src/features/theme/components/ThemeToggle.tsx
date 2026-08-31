@@ -8,11 +8,7 @@ import { useTheme } from "./ThemeProvider";
 
 type ThemeToggleProps = {
   className?: string;
-  // The tooltip is portaled to document.body, outside any .scanner-shell
-  // ancestor, so it can't inherit scanner theme tokens through the DOM -
-  // only the scanner's own callers pass "scanner-portal" (same pattern as
-  // MarketSelector's portalClassName). AppHeader/AdminSidebar omit it and
-  // get the regular app tooltip styling.
+
   tooltipPortalClassName?: string;
 };
 

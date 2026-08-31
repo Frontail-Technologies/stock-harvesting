@@ -86,15 +86,6 @@ function LookbackDropdown({
   );
 }
 
-// Mobile stock-identity strip (item 8) - a compact, non-floating row ABOVE
-// the plot, not a card and not overlaid on the candles. Two lines, left-
-// aligned, matching the target composition exactly:
-//   TCS · BSE
-//   ₹2,252.00   -0.84%
-// Renders nothing when no stock is open (the empty state already explains
-// itself) or while a stock's identity is still a bare URL placeholder
-// (hasMarketData false, close 0) - a real "0.00 / 0.00%" row would read as
-// a loaded-but-wrong price rather than "not loaded yet".
 function MobileStockStrip({ stock }: { stock: Stock }) {
   const { formatStockCurrency } = useCurrency();
   if (!stock.symbol || !stock.hasMarketData) return null;
@@ -128,23 +119,13 @@ export function TopToolbar({
   onTimeframeChange,
   onLookbackMultiplierChange,
 }: TopToolbarProps) {
-  // Snapshot/share/price-alerts all act on a specific chart/stock - with
-  // none open (stock.symbol is empty, the same placeholder convention
-  // ScannerPage uses for its own no-stock state) there's nothing for them
-  // to operate on, so they're disabled rather than left clickable against
-  // stale or empty data. Search and every other control here stays live.
+
   const hasStock = Boolean(stock.symbol);
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <div className="flex shrink-0 flex-col overflow-hidden rounded-[3px] border-b border-border/60 bg-background sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2 sm:py-1">
-      {/* Mobile pass (item 7) - ONE compact ~44px row: search, watchlist,
-          alerts, account. Chart-type/snapshot/share stayed on the
-          collapsed drawing-tools trigger's own sheet (see ChartToolsBar) -
-          they're chart-editing actions, not top-chrome ones, so moving
-          them there (rather than duplicating them into a second "More"
-          here) keeps this row to exactly the 4 high-value controls item 7
-          asks for. */}
+
       <div className="flex h-11 items-center gap-1 px-1 sm:hidden">
         <GlobalSearchMobileSheet />
         <div className="min-w-0 flex-1" aria-hidden />
@@ -157,13 +138,8 @@ export function TopToolbar({
         <ScannerAccountMenu />
       </div>
 
-      {/* Item 8 - compact stock identity, its own row, never overlapping
-          the chart. */}
       <MobileStockStrip stock={stock} />
 
-      {/* Item 9 - 1D/1W/1M stay one tap away; everything else (lookback
-          window, theme) collapses into "More" instead of a second
-          permanently-visible row. */}
       <div className="flex h-10 items-center gap-1 border-t border-border/40 px-1 sm:hidden">
         <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
         <div className="min-w-0 flex-1" aria-hidden />

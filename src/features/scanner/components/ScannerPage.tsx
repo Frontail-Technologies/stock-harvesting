@@ -49,16 +49,13 @@ import { TopToolbar } from "./TopToolbar";
 
 const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
 
-// Small workspace gutters between the toolbar/rail/chart/bottom-bar panels -
-// desktop ~4px, tablet ~3px, mobile ~2px (see globals.css's
-// --scanner-shell-bg, the color that shows through these gaps).
 const SCANNER_GUTTER = "gap-0.5 sm:gap-[3px] lg:gap-1";
 const SCANNER_GUTTER_B = "mb-0.5 sm:mb-[3px] lg:mb-1";
 
-// A placeholder for "the toolbar needs some Stock object to render, but
-// nothing is actually selected" - symbol is deliberately empty, which is
-// exactly what every stock-specific query/subscription below gates on, so
-// this never itself triggers a market-data call. Never a real default.
+
+
+
+
 function buildEmptyStock(exchange: string): Stock {
   return {
     symbol: "",
@@ -104,13 +101,13 @@ export function ScannerPage() {
   const pathname = usePathname();
   const { theme } = useTheme();
   const openSearchModal = useSearchModalStore((state) => state.open);
-  // Scanner owns this exchange - it's the exchange of the stock Scanner
-  // currently has open, never a read of some shared app-wide "current
-  // exchange". See scanner-ui-store.ts. Neither this nor selectedSymbol is
-  // persisted across visits (see the store's partialize) - both exist only
-  // as an in-app cache of the last explicit in-app selection, kept in sync
-  // with the URL below. The URL is what actually decides whether a stock
-  // is open at all.
+  
+  
+  
+  
+  
+  
+  
   const selectedSymbol = useScannerUiStore((state) => state.selectedSymbol);
   const selectedExchange = useScannerUiStore((state) => state.selectedExchange);
   const selectedStockSnapshot = useScannerUiStore((state) => state.selectedStock);
@@ -136,10 +133,10 @@ export function ScannerPage() {
   const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
   const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
 
-  // The URL is the sole source of truth for "is a stock open right now" -
-  // both symbol AND exchange must be present; a bare /charts or a partial
-  // URL (only one of the two) is treated identically as no stock, never
-  // guessed or backfilled from a previous selection.
+  
+  
+  
+  
   const symbolParam = searchParams.get("symbol")?.trim().toUpperCase() ?? "";
   const exchangeParam = searchParams.get("exchange")?.trim().toUpperCase() ?? "";
   const hasStockInUrl = Boolean(symbolParam) && Boolean(exchangeParam);
@@ -149,10 +146,10 @@ export function ScannerPage() {
     if (isSameMarketStock(selectedStockSnapshot, symbolParam, exchangeParam)) {
       return selectedStockSnapshot;
     }
-    // The URL names a stock the in-app cache doesn't have full metadata
-    // for yet (direct link, external nav, back/forward) - a minimal
-    // placeholder keyed by the URL's own identity; the metadata/candle
-    // queries below fill in name/price once they resolve.
+    
+    
+    
+    
     return { ...buildEmptyStock(exchangeParam), symbol: symbolParam };
   }, [hasStockInUrl, symbolParam, exchangeParam, selectedStockSnapshot]);
   const symbolSyncOriginRef = useRef<"url" | "user" | null>(null);
@@ -162,12 +159,12 @@ export function ScannerPage() {
     setSelectedStock(stock);
   };
 
-  // The scanner toolbar itself has no watchlist affordance - this widget
-  // opens only when navigated to from the Watchlists page's "Open in
-  // Scanner" link (?watchlist=<id>), read once on mount. Read via lazy
-  // useState init (not a synced effect) so it behaves as "auto-open once
-  // from this navigation", not "stay in lockstep with the URL forever" -
-  // closing it must not re-open on the next unrelated param change.
+  
+  
+  
+  
+  
+  
   const [watchlistWidgetId, setWatchlistWidgetId] = useState<string | null>(() =>
     searchParams.get("watchlist")
   );
@@ -181,13 +178,13 @@ export function ScannerPage() {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
-  // URL -> store, both directions: a URL that names a stock takes priority
-  // over whatever Scanner currently has open (this is what makes
-  // /scanner?symbol=TCS&exchange=BSE authoritative on a hard reload rather
-  // than falling back to a persisted preference) - and a URL that names NO
-  // stock (bare /scanner, a partial URL, or navigating back from a stock
-  // URL) clears the in-app cache too, so a stale previous selection can
-  // never leak back into the rendered stock via the store snapshot above.
+  
+  
+  
+  
+  
+  
+  
   useEffect(() => {
     if (symbolSyncOriginRef.current === "user") return;
 
@@ -214,13 +211,13 @@ export function ScannerPage() {
     clearSelectedStock,
   ]);
 
-  // Store -> URL: any in-app stock change (search result, a watchlist
-  // click) ends up here, and this is the one place that actually writes
-  // the URL - always both `symbol` and `exchange` together, so the address
-  // bar is always a complete, shareable, reloadable identity rather than
-  // symbol-only. An empty selection deliberately never writes anything by
-  // itself, so a bare /scanner is never fought back to a stock just
-  // because the store still remembers one.
+  
+  
+  
+  
+  
+  
+  
   useEffect(() => {
     if (symbolSyncOriginRef.current === "url") {
       symbolSyncOriginRef.current = null;
@@ -298,9 +295,7 @@ export function ScannerPage() {
           ) : (
             <ScannerEmptyState onOpenSearch={() => openSearchModal()} />
           )}
-          {/* Available even with no stock open yet - browsing a watchlist
-              is itself a way to pick a first stock, not just something you
-              reach for once a chart is already plotted. */}
+          
           <ScannerWatchlistSidebar
             selectedSymbol={selectedStock?.symbol ?? ""}
             selectedExchange={selectedStock?.exchange ?? ""}
@@ -312,10 +307,10 @@ export function ScannerPage() {
   );
 }
 
-// Deliberately minimal - this sits inside the same chart workspace chrome
-// (scanner tokens, no card/illustration/gradient) rather than reading as a
-// separate onboarding screen. No candle grid, axis, or stat placeholders
-// here - nothing that could be mistaken for a stock actually being open.
+
+
+
+
 function ScannerEmptyState({ onOpenSearch }: { onOpenSearch: () => void }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -435,15 +430,6 @@ function ScannerDrawingWorkspace({
     stock.exchange,
     lookbackMultiplier
   );
-  // Backtest stats are backend-only (computeSymbolBreakoutBacktest runs the
-  // real two-condition evaluator against daily+weekly history) - there is
-  // no client-side fallback. A prior client-side approximation
-  // (buildBacktestStatsFromCandles) reimplemented the near-high threshold
-  // from raw candles and was already known to produce different numbers
-  // than the real evaluator (see the backend function's own comment) -
-  // removed rather than fixed, since the backend path already covers this
-  // and ScannerBacktestStatsOverlay already renders nothing while `stats`
-  // is null (no UI change needed).
   const { stats: visibleBacktestStats } = useScannerBacktest(
     stock.symbol,
     true,
@@ -511,14 +497,6 @@ function ScannerDrawingWorkspace({
     },
   });
 
-  // Scan-highlight bands are backend-only (calculateNear250WeekHighScan
-  // runs the real near-high threshold against stored candles) - there is
-  // no client-side derivation. A prior client-side approximation
-  // (buildNear250WeekHighScanBand) reimplemented the same threshold from
-  // raw candles and, worse, was always preferred over the backend result
-  // whenever it produced a value, so the backend path was effectively
-  // dead code. Removed rather than fixed, since useScannerResults already
-  // covers this correctly.
   const weeklyScanBands = useMemo(
     () => {
       const backendBandsWithHighlights = scannerResultsQuery.scanBands.filter(
@@ -571,11 +549,11 @@ function ScannerDrawingWorkspace({
   ]);
 
   return (
-    // relative: the mobile pass's floating "Drawing tools" trigger
-    // (ChartToolsBar) is absolutely positioned on phone so it takes NO
-    // flex width at all - the chart's own flex-1 sibling gets the full
-    // reclaimed width instead of a slim reserved rail column. Desktop's
-    // rail stays in normal flex flow, unaffected.
+    
+    
+    
+    
+    
     <div className={cn("relative flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden", SCANNER_GUTTER)}>
       <ChartToolsBar
         drawing={drawing}

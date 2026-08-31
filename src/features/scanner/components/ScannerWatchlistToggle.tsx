@@ -9,9 +9,6 @@ type ScannerWatchlistToggleProps = {
   className?: string;
 };
 
-// Self-contained, like ThemeToggle/ScannerAccountMenu - reads and writes
-// scanner-ui-store directly rather than threading open state through
-// TopToolbar's props.
 export function ScannerWatchlistToggle({ className }: ScannerWatchlistToggleProps) {
   const isOpen = useScannerUiStore((state) => state.isWatchlistPanelOpen);
   const toggle = useScannerUiStore((state) => state.toggleWatchlistPanel);

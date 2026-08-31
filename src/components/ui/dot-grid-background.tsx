@@ -9,7 +9,7 @@ type DotGridBackgroundProps = {
   dotSize?: number;
   gap?: number;
   glowRadius?: number;
-  /** Base dot color; override for dark surfaces. */
+
   dotColor?: string;
 };
 
@@ -61,10 +61,7 @@ export function DotGridBackground({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 opacity-60"
         style={{
-          // Explicit color rather than the theme-aware --border token; the
-          // callers of this component are permanently light or permanently
-          // dark (never following the app-wide dark-mode toggle), so the
-          // dot color is passed in rather than derived from theme state.
+
           backgroundImage: `radial-gradient(${dotColor} var(--dot-size), transparent var(--dot-size))`,
           backgroundSize: "var(--dot-gap) var(--dot-gap)",
         }}

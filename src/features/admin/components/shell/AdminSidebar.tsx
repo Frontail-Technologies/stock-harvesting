@@ -30,15 +30,6 @@ import { getAvatarInitials } from "@/utils/api-client";
 import { adminPath, getSiteUrl } from "@/utils/seo";
 import { ADMIN_NAV_ITEMS } from "../../constants/admin-nav";
 
-// The admin panel can live on its own host, where "/admin" must never be
-// visible in the URL bar (src/proxy.ts rewrites clean paths into the
-// internal "/admin/*" tree) - ADMIN_NAV_ITEMS still stores the internal
-// form so `pathname` (from usePathname(), which always reflects the
-// rewritten internal path) can be compared against it directly for the
-// active-link state; only the rendered href needs the stripped form.
-//
-// Item 20 - since admin accounts have no USER portal session, this points
-// at the public site root, not an authenticated destination like /charts.
 const SITE_URL = getSiteUrl().origin;
 
 type AdminSidebarProps = {
@@ -61,9 +52,7 @@ export function AdminSidebar({
 
   const handleLogout = async () => {
     await logout.mutateAsync().catch(() => undefined);
-    // The internal "/admin/login" route (not the bare "/login", which on
-    // this host would be the main app's own login page - see AdminShell's
-    // same fix).
+
     router.replace("/admin/login");
   };
 

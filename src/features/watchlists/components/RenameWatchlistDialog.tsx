@@ -29,9 +29,7 @@ export function RenameWatchlistDialog({ watchlist, onClose }: RenameWatchlistDia
       }}
     >
       <DialogContent className="sm:max-w-[420px]">
-        {/* Keyed by id so a fresh target (dialog reopened on a different
-            row) starts with clean useState initializers instead of
-            needing an effect to reset stale name/error state. */}
+
         {watchlist && (
           <RenameWatchlistForm key={watchlist.id} watchlist={watchlist} onClose={onClose} />
         )}

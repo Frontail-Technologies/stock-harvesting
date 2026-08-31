@@ -8,12 +8,6 @@ type LandingOpenWorkspaceLinkProps = {
   className?: string;
 };
 
-// Shared by HeroSection and FinalCtaSection (both server components) - the
-// one small client "island" each mounts so this primary CTA resolves to
-// /charts for an already-authenticated visitor instead of always bouncing
-// through /login. The label stays "Open Charts" in either resolved
-// state, matching what these two sections already showed logged-out
-// visitors; only the destination changes.
 export function LandingOpenWorkspaceLink({ id, className }: LandingOpenWorkspaceLinkProps) {
   const cta = useLandingCta();
 

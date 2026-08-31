@@ -61,11 +61,6 @@ async function performRefresh(): Promise<RefreshPayload> {
   return payload.data;
 }
 
-// Concurrent 401s (or a Strict-Mode double-invoked auth bootstrap) must
-// never fire more than one POST /refresh at a time — the backend's refresh
-// token is single-use, and a second concurrent request presenting the same
-// token gets treated as reuse/theft and revokes the whole session family.
-// Every caller in-flight shares this one promise instead of racing.
 let refreshInFlight: Promise<RefreshPayload> | null = null;
 
 export function refreshAccessToken(): Promise<RefreshPayload> {

@@ -4,16 +4,6 @@ import { useEffect, useState } from "react";
 import { API_BASE_URL } from "@/features/api";
 import type { MonetizationConfig } from "../types";
 
-// Plain fetch, not React Query - the landing page ("/") renders outside the
-// (app) route group and has no QueryClientProvider, but the scanner does.
-// Using one small shared hook for both (instead of two implementations)
-// keeps the "don't duplicate rendering logic per page" rule intact without
-// adding a second QueryClientProvider just for this.
-//
-// Module-level promise so every <AdPlacement>/<AdsenseScript> instance on a
-// page shares exactly one network request, and a failed fetch fails closed
-// (config stays null -> canRenderAd() returns false everywhere) rather than
-// throwing or retrying loudly - ads are optional content.
 let inFlightConfig: Promise<MonetizationConfig | null> | null = null;
 
 function fetchPublicMonetizationConfig(): Promise<MonetizationConfig | null> {

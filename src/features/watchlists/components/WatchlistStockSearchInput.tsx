@@ -16,12 +16,6 @@ type WatchlistStockSearchInputProps = {
   className?: string;
 };
 
-// Same search-as-you-type pattern as the scanner's StockSearchCombobox
-// (debounced query, portal-positioned results dropdown so it isn't clipped
-// by this panel's own overflow-y-auto), but unscoped to a single exchange -
-// a watchlist can hold stocks from any exchange, unlike the scanner chart
-// which only ever shows one at a time - and clicking a result adds it to
-// this watchlist instead of selecting a chart symbol.
 export function WatchlistStockSearchInput({
   watchlistId,
   existingItems,
@@ -37,12 +31,6 @@ export function WatchlistStockSearchInput({
   const menuRef = useRef<HTMLDivElement>(null);
   const addItem = useAddWatchlistItem();
 
-  // Stock search is always scoped to one exchange on the backend (it
-  // defaults to DEFAULT_EXCHANGE = "US" server-side if omitted, which is
-  // why an earlier version of this input silently returned nothing for
-  // non-US symbols) - default to whatever exchange the app is currently on,
-  // but keep it local so changing it here doesn't affect the scanner's
-  // global exchange selection.
   const currentExchange = useMarketStore((state) => state.selectedExchange);
   const { exchanges } = useMarketExchanges();
   const [exchange, setExchange] = useState(currentExchange);

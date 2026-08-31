@@ -94,9 +94,9 @@ void main() {
         vec2 mouseUv = (mousePosition * 2.0 - 1.0);
         mouseUv.x *= iResolution.x / iResolution.y;
         float mouseDist = length(uv - mouseUv);
-        
+
         float influence = mouseInfluence * exp(-mouseDist * mouseDist / (mouseInteractionRadius * mouseInteractionRadius));
-        
+
         float mouseWave = sin(pi * (iTime * 2.0 - mouseDist * 3.0)) * influence;
         rippleUv += normalize(uv - mouseUv) * mouseWave * rippleIntensity * 0.3;
     }
@@ -122,12 +122,12 @@ void main() {
     }
 
     float ddd = exp(-2.0 * clamp(pow(dist, fadeDistance), 0.0, 1.0));
-    
+
     vec2 vignetteCoords = vUv - 0.5;
     float vignetteDistance = length(vignetteCoords);
     float vignette = 1.0 - pow(vignetteDistance * 2.0, vignetteStrength);
     vignette = clamp(vignette, 0.0, 1.0);
-    
+
     vec3 t;
     if (enableRainbow) {
         t = vec3(
@@ -179,7 +179,7 @@ void main() {
       if (!mouseInteraction || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
-      const y = 1.0 - (e.clientY - rect.top) / rect.height; // Flip Y coordinate
+      const y = 1.0 - (e.clientY - rect.top) / rect.height;
       targetMouseRef.current = { x, y };
     };
 

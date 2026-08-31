@@ -23,12 +23,6 @@ type ToastState = {
 let toastCounter = 0;
 const TOAST_DURATION_MS = 3200;
 
-// A small, self-contained toast store rather than a full notification
-// system - this codebase has no toast primitive anywhere else, and the
-// only current callers (chart snapshot copy/link actions) just need a
-// brief, dismissible confirmation or error. `toast.success`/`toast.error`
-// are plain functions (not hooks) so they can be called from inside async
-// click handlers, not just component bodies.
 const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   push: (message, variant) =>
@@ -75,10 +69,6 @@ function ToastRow({ item }: { item: ToastItem }) {
 export function Toaster() {
   const toasts = useToastStore((state) => state.toasts);
 
-  // No toast is ever pushed before hydration (nothing calls toast.* until a
-  // user interacts with the page), so this never mismatches SSR output -
-  // the `typeof document` check just guards createPortal from running
-  // during server rendering, the same way AppHeader's mobile drawer does.
   if (typeof document === "undefined" || toasts.length === 0) return null;
 
   return createPortal(

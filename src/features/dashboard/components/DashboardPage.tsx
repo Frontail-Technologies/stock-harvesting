@@ -17,15 +17,6 @@ import { getCountryDisplay } from "../constants/dashboard-countries";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
 import { DashboardSegmentContent } from "./DashboardSegmentContent";
 
-// Dashboard's own country/segment selection - deliberately local to this
-// page (URL + this component's own reads), never written to
-// useMarketStore/scanner-ui-store/search. Changing it here must not move
-// Scanner, Global Search, or Watchlists off whatever exchange they're each
-// already on. The country list itself is derived live from the real
-// countryCode on every collection returned by /api/market-collections
-// (Phase D) - never a hardcoded frontend list, so a new backend-supported
-// country appears here automatically once real collections exist for it.
-// dashboard-countries.ts only supplies presentation (label/flag).
 export function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -34,9 +25,6 @@ export function DashboardPage() {
   const countryParam = searchParams.get("country");
   const segmentParam = searchParams.get("segment");
 
-  // Unfiltered - the full set of active collections across every country,
-  // fetched once and sliced client-side below. Cheap (a handful of rows
-  // today) and avoids a second round-trip on every country switch.
   const collectionsQuery = useMarketCollections({});
   const allCollections = collectionsQuery.collections;
 
@@ -53,9 +41,6 @@ export function DashboardPage() {
   const requestedSegment = segmentParam
     ? collections.find((collection) => collection.code === segmentParam)
     : undefined;
-  // Falls back to this country's own default (first by name, matching
-  // listCollections' ordering) - never another country's segment, and
-  // never requires clicking a card first.
   const effectiveSegment = requestedSegment ?? collections[0] ?? null;
 
   const updateParams = (next: { country: string; segment?: string }) => {
@@ -69,11 +54,6 @@ export function DashboardPage() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // Keeps the URL truthful once the real segment list resolves - covers
-  // first load (no params yet), an invalid/stale segment code, and a
-  // segment that belonged to a different country. A hard refresh always
-  // restores the same effective selection because of this sync, not just
-  // whatever happened to be in the URL.
   useEffect(() => {
     if (collectionsQuery.isLoading || !countryCode) return;
     if (countryParam === countryCode && segmentParam === (effectiveSegment?.code ?? null)) {
@@ -84,9 +64,6 @@ export function DashboardPage() {
   }, [collectionsQuery.isLoading, countryCode, effectiveSegment?.code, countryParam, segmentParam]);
 
   const handleCountryChange = (nextCode: string) => {
-    // Clears the segment param so the new country's own default gets
-    // picked, rather than momentarily trying to reuse the old country's
-    // segment code under the new country.
     updateParams({ country: nextCode });
   };
 
@@ -175,13 +152,7 @@ export function DashboardPage() {
           No segments available for this market.
         </div>
       ) : effectiveSegment ? (
-        // key={effectiveSegment.code} - forces a clean remount on every
-        // Country/Segment change, which resets DashboardSegmentContent's
-        // own selectedSector/selectedIndustry cross-filter state back to
-        // "no filter" for free (item 16) - the same remount-per-segment
-        // pattern WeeklyStrongBacktestSection already relies on for its
-        // own state. React Query's cache (keyed by code) means this never
-        // re-fetches anything already loaded, so the remount is instant.
+
         <DashboardSegmentContent
           key={effectiveSegment.code}
           code={effectiveSegment.code}

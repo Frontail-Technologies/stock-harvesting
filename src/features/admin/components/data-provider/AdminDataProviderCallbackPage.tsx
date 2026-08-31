@@ -18,13 +18,7 @@ export function AdminDataProviderCallbackPage() {
   const submittedRef = useRef(false);
   const requestToken = searchParams.get("request_token");
   const status = searchParams.get("status");
-  // Dev-mode React Strict Mode mounts this component twice (mount, cleanup,
-  // mount again) before anything async resolves. A component ref reset on
-  // that remount, so both mounts fired the exchange — Kite's request_token
-  // is single-use, so the first exchange succeeded and the second (the one
-  // actually left on screen) came back rejected, showing a stuck/failed
-  // state despite the connection having actually gone through. A
-  // sessionStorage flag keyed by the token survives the remount.
+
   const [alreadyConsumed] = useState(() => {
     if (!requestToken || typeof window === "undefined") return false;
     return window.sessionStorage.getItem(CONSUMED_TOKEN_STORAGE_PREFIX + requestToken) === "done";

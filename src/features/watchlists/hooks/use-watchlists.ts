@@ -43,14 +43,6 @@ export function useWatchlist(id: string | null) {
 
   const watchlist = query.data?.watchlist ?? null;
 
-  // The detail response's own `items` array is the one place a genuinely
-  // complete, up-to-date item count exists - once it's loaded, it's the
-  // single source of truth for this watchlist's count, and this syncs it
-  // into the list query's cached summary row too so `itemCount` there
-  // can't visibly disagree (stale list fetch, a missed invalidation,
-  // anything) with what the detail view itself is showing. One-directional
-  // (detail -> list) and a no-op once the two already agree, so it never
-  // fights the list query's own refetches.
   useEffect(() => {
     if (!watchlist) return;
     queryClient.setQueryData<{ watchlists: WatchlistSummary[] } | undefined>(

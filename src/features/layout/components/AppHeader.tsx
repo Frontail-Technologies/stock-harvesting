@@ -33,11 +33,6 @@ export function AppHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentUser = useCurrentUser().data;
-  // Strict portal separation (item 19) - a USER-portal session can never
-  // belong to an admin-role account (the backend rejects that login
-  // outright), so this navbar never has a reason to branch on role or
-  // link into the separate admin host. The main app is the USER portal,
-  // full stop.
 
   const mobileDrawer =
     mobileOpen && typeof document !== "undefined"
@@ -133,12 +128,6 @@ export function AppHeader() {
               <TooltipContent side="bottom">Open navigation</TooltipContent>
             </Tooltip>
             <Link href="/charts" className="flex items-center gap-2">
-              {/* No text-size override here anymore - it used to shrink
-                  the wordmark well below the mark's own height for extra
-                  header-room safety, but that just made it read as
-                  mismatched/too-small next to the logo. Only the
-                  responsive display (hidden below sm) still needs
-                  overriding. */}
               <BrandLogo size="sm" textClassName="hidden sm:inline-flex" />
             </Link>
           </div>

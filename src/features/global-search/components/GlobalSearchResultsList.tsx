@@ -13,16 +13,10 @@ type GlobalSearchResultsListProps = {
   onSelect: (stock: Stock) => void;
   listId?: string;
   className?: string;
-  // Shown before the user has typed anything - a restrained hint rather
-  // than leaving the results area looking blank/broken. Omit to render
-  // nothing before a query exists (the original behavior).
+
   emptyBeforeQuery?: string;
 };
 
-// First letters of the company name (falling back to the symbol when a
-// name isn't available) - same "first letter of first two words, else
-// first two characters" convention as getAvatarInitials, just sourced
-// from stock data instead of a person's name/email.
 function getStockBadgeText(stock: Stock): string {
   const source = (stock.name || stock.symbol).trim();
   const words = source.split(/\s+/).filter(Boolean);
@@ -32,10 +26,6 @@ function getStockBadgeText(stock: Stock): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-// Shared by every search presentation - one place that decides how a
-// result row (symbol / company name / exchange), the loading state, the
-// empty state, and the error state look, so they can't drift apart
-// between the navbar, landing hero, and command dialog.
 export function GlobalSearchResultsList({
   results,
   isLoading,

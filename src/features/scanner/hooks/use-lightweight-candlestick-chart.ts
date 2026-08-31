@@ -52,11 +52,7 @@ type UseLightweightCandlestickChartArgs = {
   theme: ScannerTheme;
   autoScale: boolean;
   percentageScale: boolean;
-  // Identifies "this is logically a different chart" (symbol/timeframe/range
-  // filter changed) as opposed to "the same chart's data was patched" (a
-  // live tick updating/appending a candle). Only the former should snap the
-  // visible range back to the default — otherwise every live price update
-  // yanks the user back to the latest bar mid-scroll.
+
   viewResetKey: string;
 };
 
@@ -152,10 +148,7 @@ export function useLightweightCandlestickChart({
     });
 
     volumeSeries.setData(initialData.volumeRenderData);
-    // setVisibleRange pins a manual range, which fights the autoScale option
-    // at the engine level regardless of what that option is set to — only
-    // call it when auto-fitting is actually off; otherwise let the library
-    // compute the range itself so autoScale:true works from first render.
+
     if (!initialAutoScale) {
       chart.priceScale("right").setVisibleRange(initialData.priceRange);
     }
@@ -258,10 +251,6 @@ export function useLightweightCandlestickChart({
       setPriceSeriesData(priceSeries, data, chartType);
       volumeSeries.setData(data.volumeRenderData);
 
-      // Only snap the viewport back to the default range when this is
-      // actually a new chart (symbol/timeframe/range-filter changed) — a
-      // live-tick data patch should update in place without moving the
-      // user's current scroll/zoom position.
       if (appliedViewResetKeyRef.current !== viewResetKey) {
         if (!latestAutoScaleRef.current) {
           chart.priceScale("right").setVisibleRange(data.priceRange);

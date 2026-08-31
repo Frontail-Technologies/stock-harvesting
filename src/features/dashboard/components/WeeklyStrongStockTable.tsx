@@ -25,10 +25,6 @@ import { cn } from "@/utils/cn";
 import { formatCompactVolume } from "@/utils/formatters";
 import { filterWeeklyStrongByCrossFilter, type CrossFilterState } from "../lib/dashboard-cross-filter";
 
-// Sector/Industry are presentation-only removed from this table (Phase
-// D.9 #1) - the API still returns them (CollectionWeeklyStrongStock keeps
-// both fields) since the Backtest chart's stacking/legend/tooltip still
-// need them; this table just no longer renders those two columns.
 type SortKey = "symbol" | "name" | "close" | "changePct" | "volume";
 type SortDirection = "asc" | "desc";
 
@@ -47,16 +43,6 @@ function compareRows(a: CollectionWeeklyStrongStock, b: CollectionWeeklyStrongSt
   return String(av ?? "").localeCompare(String(bv ?? ""));
 }
 
-// Cross-filter pass (Part B, item 14) - `crossFilter` is optional so this
-// table keeps working unfiltered wherever it's rendered without a
-// Dashboard segment context. When provided, it's applied via the exact
-// same `filterWeeklyStrongByCrossFilter` function DashboardSegmentContent
-// uses for the Weekly Strong WIDGET card, over the SAME underlying
-// `useCollectionWeeklyStrongStocks({code})` query this table already ran
-// - one shared filter function, one shared data source, so the widget and
-// this table's row COUNT can never diverge for a given filter state
-// (item 14's guarantee). The search box then narrows further within
-// whatever the cross-filter already allowed.
 export function WeeklyStrongStockTable({
   code,
   crossFilter,
@@ -160,9 +146,7 @@ export function WeeklyStrongStockTable({
       volume: item.volume,
       hasMarketData: true,
     });
-    // exchange must travel with symbol - Scanner treats a URL missing
-    // either half as "no stock open" and would otherwise clear the
-    // selection this just made (see ScannerPage's URL<->store sync).
+
     router.push(
       `/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange)}`
     );

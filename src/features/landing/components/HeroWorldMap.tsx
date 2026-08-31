@@ -24,10 +24,6 @@ const COUNTRY_MARKERS: CountryMarker[] = [
   { code: "EU", lat: 50, lng: 9, size: 0, label: "Europe", tier: "expanding", labelSide: "left" },
 ];
 
-// Desktop/tablet only (sm:+) - mobile renders HeroWorldMapMobile instead,
-// with its own hand-placed marker grid, rather than this geography-accurate
-// layout scaled down (which is what caused most labels to get hidden below
-// sm in the first place).
 export function HeroWorldMap() {
   return (
     <div className="landing-hero-map hidden sm:block">
@@ -90,5 +86,4 @@ export function HeroWorldMap() {
     </div>
   );
 }
-
 

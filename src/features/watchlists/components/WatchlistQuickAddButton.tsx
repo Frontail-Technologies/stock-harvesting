@@ -13,10 +13,6 @@ type WatchlistQuickAddButtonProps = {
   className?: string;
 };
 
-// The scanner toolbar itself deliberately has no watchlist affordance (see
-// the plan/brief) - this is the "search result action" placement instead,
-// mounted per-row inside StockSearchCombobox's dropdown. It's reachable only
-// once a user has already opened search, not a persistent chrome element.
 export function WatchlistQuickAddButton({
   exchange,
   symbol,

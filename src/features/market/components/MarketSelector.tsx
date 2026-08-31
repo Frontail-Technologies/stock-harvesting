@@ -13,33 +13,17 @@ import { useMarketExchanges } from "../hooks/use-market-exchanges";
 import { exchangeCountryFlagUri, formatExchangeCountryLabel } from "../lib/exchange-country-flag";
 
 type MarketSelectorProps = {
-  // Fully controlled - this component owns no exchange state of its own
-  // (it used to read/write a single app-wide useMarketStore directly,
-  // which is exactly the "one global selected exchange" this component
-  // must not be, per the feature-scoped exchange refactor). Every caller
-  // supplies its own value/onValueChange, backed by whatever state is
-  // actually right for that feature - Scanner's URL+scanner-ui-store,
-  // Search's local component state, etc.
+
   value: MarketExchangeCode;
   onValueChange: (exchange: MarketExchangeCode) => void;
   compact?: boolean;
   className?: string;
-  // Overrides the trigger button's own chrome (border/background) without
-  // touching the shared default - callers that don't pass it render
-  // exactly as before.
+
   triggerClassName?: string;
   portalClassName?: string;
-  // Opt-in, off by default so every existing caller (Scanner's toolbar,
-  // the app navbar's search surfaces) renders exactly as before. Landing's
-  // hero search turns this on to show a flag + "Country (CODE)" label
-  // instead of a bare exchange code, which needs noticeably more width
-  // than the compact code-only trigger - callers pass their own
-  // className/triggerClassName to size it.
+
   showCountryLabel?: boolean;
-  // Opt-in, off by default (see the self-correction effect below) - only
-  // landing's hero search enables this. Scanner and the app's search
-  // surfaces keep depending on their own explicit value (URL, local
-  // state) without this component silently steering it elsewhere.
+
   autoCorrectUnavailable?: boolean;
 };
 
@@ -86,21 +70,12 @@ export function MarketSelector({
 
   useEffect(() => {
     if (!autoCorrectUnavailable) {
-      // Original, narrow behavior, unchanged for every caller that
-      // doesn't opt in (Scanner's own switcher, the app navbar's search
-      // surfaces) - only self-corrects the one explicitly-hidden case
-      // (BSE_IDX), regardless of what's actually enabled right now.
+
       if (isEnabledMarketExchange(value)) return;
       onValueChange(DEFAULT_MARKET_EXCHANGE);
       return;
     }
 
-    // Opted in (landing's hero search): DEFAULT_MARKET_EXCHANGE is a
-    // fixed constant that isn't guaranteed to be one of the exchanges
-    // actually enabled right now (e.g. only GlobalDataFeeds/BSE is on,
-    // with no "US"/NASDAQ available at all) - waiting for the real list
-    // and falling back to whatever's first in it avoids showing a
-    // dangling code with no name or flag to match.
     if (isLoading) return;
     if (visibleExchanges.length === 0) return;
     if (visibleExchanges.some((exchange) => exchange.code === value)) return;

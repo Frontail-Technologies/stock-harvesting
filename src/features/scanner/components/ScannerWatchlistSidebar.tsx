@@ -36,17 +36,7 @@ import {
   useScannerUiStore,
 } from "../stores/scanner-ui-store";
 
-// Dragging the handle past this point (well short of the minimum usable
-// width) reads as "the user is trying to close the panel", not "resize it
-// very small" - releasing there closes it instead of snapping open back to
-// the minimum width.
 const COLLAPSE_ON_DRAG_THRESHOLD = SCANNER_WATCHLIST_PANEL_MIN_WIDTH / 2;
-
-// The toolbar-triggered watchlist sidebar - separate from the URL-driven
-// floating ScannerWatchlistWidget (?watchlist=<id> from the Watchlists
-// page's "Open in Scanner" link, which keeps its own local open state and
-// is untouched here). This one lives entirely in scanner-ui-store so it
-// survives navigation between stocks and remembers its width.
 
 function getInitials(symbol: string) {
   return symbol.slice(0, 2).toUpperCase();
@@ -134,10 +124,6 @@ function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-// The minimized state's entire visible content - a fixed-width rail, just
-// enough to get back out of it. Deliberately not "redesigned" beyond that:
-// no mini stock list, no icons per item, matching the brief's "don't
-// redesign the Watchlist UI" instruction.
 function WatchlistRail({ onMaximize }: { onMaximize: () => void }) {
   return (
     <div className="flex h-full flex-col items-center pt-2">
@@ -177,9 +163,6 @@ function ScannerWatchlistPanelBody({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
 
-  // Keep the remembered selection valid - fall back to the first watchlist
-  // once the list loads, or clear it if the watchlist it pointed to was
-  // deleted elsewhere (e.g. from the full Watchlists page).
   useEffect(() => {
     if (isListLoading) return;
     if (watchlists.length === 0) {
@@ -341,15 +324,9 @@ export function ScannerWatchlistSidebar({
   const setWatchlistPanelWidth = useScannerUiStore((state) => state.setWatchlistPanelWidth);
   const isDesktop = useIsDesktopViewport();
   const [dragWidth, setDragWidth] = useState<number | null>(null);
-  // Expanded width only - dragging is disabled while minimized (see the
-  // handle's onPointerDown below), so dragWidth never applies there.
+
   const expandedWidth = dragWidth ?? storedWidth;
-  // The single number that actually drives the box's rendered width -
-  // closed is 0, minimized is the fixed rail, otherwise the (possibly
-  // mid-drag) expanded width. Nothing else about the box's geometry
-  // depends on isOpen/isMinimized - this is the only value that changes,
-  // and it's the only thing given a CSS transition, so minimizing/
-  // maximizing can only ever animate width, never a position/margin jump.
+
   const targetWidth = !isOpen ? 0 : isMinimized ? SCANNER_WATCHLIST_PANEL_RAIL_WIDTH : expandedWidth;
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -384,10 +361,6 @@ export function ScannerWatchlistSidebar({
     window.addEventListener("pointerup", handleUp);
   };
 
-  // Desktop-only: the header's own control shrinks to the rail rather than
-  // removing the panel from layout entirely (that's what the toolbar icon
-  // does). Memoized so a drag's per-frame width updates in the parent
-  // don't re-render the whole watchlist list/dropdown on every pointermove.
   const desktopBody = useMemo(
     () => (
       <ScannerWatchlistPanelBody
@@ -424,11 +397,7 @@ export function ScannerWatchlistSidebar({
 
   return (
     <div
-      // margin-left only ever changes when isOpen itself changes (open/
-      // close), never during a minimize/maximize toggle - isMinimized
-      // doesn't touch it, so animating it here doesn't violate "transition
-      // only width" for the minimize/maximize interaction; it just keeps
-      // the separate open/close animation smooth too.
+
       className="relative flex h-full shrink-0 flex-col overflow-hidden rounded-[3px] border border-border/60 bg-background transition-[width,margin-left] duration-200 ease-out"
       style={{ width: targetWidth, marginLeft: isOpen ? 4 : 0 }}
     >

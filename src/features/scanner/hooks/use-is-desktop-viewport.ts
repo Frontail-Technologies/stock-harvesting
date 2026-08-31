@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// Shared by every scanner surface that swaps a desktop-only layout for a
-// mobile sheet (the watchlist widget, the watchlist sidebar) - one
-// definition of "desktop" so they can't drift to different breakpoints.
 export function useIsDesktopViewport(minWidthPx = 640) {
   const query = `(min-width: ${minWidthPx}px)`;
   const [isDesktop, setIsDesktop] = useState(

@@ -15,11 +15,6 @@ type ScanBandOverlayProps = {
   hoveredTime?: string | null;
 };
 
-// Renders nothing itself — highlighted candles are painted by ScanBandPrimitive
-// directly onto the chart's own canvas (see that file for why: this used to be
-// a <div>-per-candle DOM overlay, which was laggy on drag and shimmered as it
-// panned). This component's only job is resolving which candle times are
-// highlighted and handing that + the current theme colors to the primitive.
 export function ScanBandOverlay({
   series,
   bands,

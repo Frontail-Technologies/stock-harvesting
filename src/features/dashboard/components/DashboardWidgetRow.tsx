@@ -11,12 +11,8 @@ import {
 } from "../stores/dashboard-ui-store";
 import { DashboardWidget, type DashboardWidgetPanelMode } from "./DashboardWidget";
 
-const ROW_GAP_PX = 16; // matches the previous `gap-4` grid exactly
+const ROW_GAP_PX = 16;
 
-// Below this measured row width, 4 panels can't sit at their MINIMUM width
-// side by side without overflowing - switch cleanly to the existing
-// responsive stacked grid instead (item 6) rather than letting the row
-// overflow horizontally or squeeze panels under their usable minimum.
 function minimumRowWidthFor(panelCount: number) {
   return panelCount * DASHBOARD_PANEL_MIN_WIDTH + (panelCount - 1) * ROW_GAP_PX;
 }
@@ -27,11 +23,6 @@ type PanelLayout = {
   mode: DashboardWidgetPanelMode;
 };
 
-// Resolves each panel's actual rendered width from the persisted
-// preferences plus the current maximize state. Maximizing one panel gives
-// it "substantially more available row width" (item 5) by shrinking every
-// OTHER panel to its minimum and handing the maximized panel whatever's
-// left of the measured row width - never hiding/removing the others.
 function computePanelLayout(
   cards: DashboardCardData[],
   panelWidths: Record<string, number>,
@@ -62,13 +53,6 @@ function computePanelLayout(
   });
 }
 
-// One panel's own resize handle drag - mirrors the established
-// scanner-ui-store.ts / ScannerWatchlistSidebar drag pattern (window-level
-// pointermove/pointerup listeners, so the drag keeps tracking even if the
-// pointer leaves the thin handle strip). Local `dragWidth` drives the
-// rendered width during the drag itself; only the pointerup commits to the
-// persisted store, so a drag that never mouses-up (e.g. cancelled) never
-// writes anything.
 function usePanelDrag(width: number, onCommit: (width: number) => void) {
   const [dragWidth, setDragWidth] = useState<number | null>(null);
 
@@ -79,7 +63,7 @@ function usePanelDrag(width: number, onCommit: (width: number) => void) {
       const startWidth = width;
 
       const handleMove = (moveEvent: PointerEvent) => {
-        const delta = moveEvent.clientX - startX; // handle is on the RIGHT edge - dragging right grows the panel
+        const delta = moveEvent.clientX - startX;
         setDragWidth(clampDashboardPanelWidth(startWidth + delta));
       };
       const handleUp = () => {
@@ -109,11 +93,7 @@ function ResizablePanel({ card, width, mode }: PanelLayout) {
   const handleCommitWidth = useCallback((next: number) => setPanelWidth(card.id, next), [card.id, setPanelWidth]);
   const { dragWidth, handlePointerDown } = usePanelDrag(width, handleCommitWidth);
   const renderedWidth = dragWidth ?? width;
-  // Free dragging only makes sense in "normal" mode - a minimized panel is
-  // pinned to the minimum, and a maximized panel's width is computed from
-  // the OTHER panels' minimums (see computePanelLayout), so dragging
-  // either would fight that computation. The handle stays in the DOM (so
-  // layout/spacing doesn't jump) but does nothing while disabled.
+
   const dragDisabled = mode !== "normal";
 
   return (
@@ -127,11 +107,7 @@ function ResizablePanel({ card, width, mode }: PanelLayout) {
         onToggleMinimize={() => togglePanelMinimized(card.id)}
         onToggleMaximize={() => toggleMaximizedPanel(card.id)}
       />
-      {/* Subtle resize handle (item 3) - a narrow hit strip straddling the
-          panel's right edge, not the whole border. Double-click resets
-          this panel's width (item 9's "reset on double-click of resize
-          handle" option) - kept as the only reset affordance so the
-          header doesn't need a 4th icon just for this. */}
+
       <div
         role="separator"
         aria-orientation="vertical"
@@ -149,13 +125,6 @@ function ResizablePanel({ card, width, mode }: PanelLayout) {
   );
 }
 
-// The top 4 relative-strength/weekly-strong panels, resizable per item 2.
-// Falls back to the ORIGINAL simple CSS-grid stacked layout (unchanged
-// from before this pass) whenever the measured row can't fit all 4 panels
-// at their minimum width - covers both "not measured yet" (containerWidth
-// === 0, avoids a flash of the wrong layout) and genuinely narrow/mobile
-// viewports (item 6). Only switches to the resizable flex row once there's
-// real room for it.
 export function DashboardWidgetRow({ cards }: { cards: DashboardCardData[] }) {
   const panelWidths = useDashboardUiStore((state) => state.panelWidths);
   const minimizedPanels = useDashboardUiStore((state) => state.minimizedPanels);
@@ -190,13 +159,7 @@ export function DashboardWidgetRow({ cards }: { cards: DashboardCardData[] }) {
   const layout = computePanelLayout(cards, panelWidths, minimizedPanels, maximizedPanelId, rowWidth);
 
   return (
-    // items-stretch (flexbox's own default, stated explicitly here) so
-    // panels sharing a row equal-height the same way the original CSS
-    // grid did (grid items stretch by default too) - DashboardWidget's
-    // own `h-full` is what lets it actually fill that stretched height.
-    // flex-wrap recomputes this per line, so a maximize-induced second
-    // row still equal-heights independently, matching a grid's own
-    // per-row behavior.
+
     <div ref={rowRef} className="flex flex-wrap items-stretch" style={{ gap: ROW_GAP_PX }}>
       {layout.map((panel) => (
         <ResizablePanel key={panel.card.id} card={panel.card} width={panel.width} mode={panel.mode} />

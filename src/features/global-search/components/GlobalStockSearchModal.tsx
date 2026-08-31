@@ -26,12 +26,6 @@ const LIST_ID = "global-search-modal-results";
 const FILTER_TRIGGER_CLASS =
   "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium text-foreground outline-none transition-colors hover:border-muted-foreground hover:bg-muted aria-expanded:bg-muted focus-visible:ring-2 focus-visible:ring-primary/60";
 
-// The one canonical search surface - opened by the landing navbar, the app
-// navbar, Ctrl/Cmd+K, and the mobile search icon alike (see
-// search-modal-store.ts). Mounted once at the root layout, so there is
-// exactly one search hook instance, one exchange selection, one keyboard
-// listener, and one result list implementation - not a separate
-// modal/dropdown per trigger.
 export function GlobalStockSearchModal() {
   const isOpen = useSearchModalStore((state) => state.isOpen);
   const triggerElement = useSearchModalStore((state) => state.triggerElement);
@@ -62,20 +56,12 @@ export function GlobalStockSearchModal() {
     handleClose
   );
 
-  // Base UI focuses the popup's own first focusable descendant on open by
-  // default (usually the close button) - refocus the actual search field
-  // once the modal has finished mounting/animating in.
   useEffect(() => {
     if (!isOpen) return;
     const id = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
   }, [isOpen]);
 
-  // India-only exchanges, exactly what's actually enabled right now - no
-  // hardcoded "BSE"/"NSE" that could render a non-functional button if a
-  // provider happens to be off. BSE_IDX is a virtual index-only exchange
-  // (see HIDDEN_MARKET_EXCHANGES) - never a real user-facing choice here,
-  // same as everywhere else it's filtered out.
   const indiaExchanges = useMemo(
     () =>
       exchanges.filter(
@@ -85,17 +71,6 @@ export function GlobalStockSearchModal() {
   );
   const indiaFlag = exchangeCountryFlagUri("India");
 
-  // There's no visible exchange picker in this modal - India implies a
-  // single current search exchange, chosen automatically here (the first
-  // enabled Indian exchange, i.e. BSE today) rather than surfaced as its
-  // own UI section. search.exchange seeds from Scanner's persisted
-  // exchange (see use-global-stock-search.ts), which can be a non-Indian
-  // code (e.g. its own "US" default) that never appears among
-  // indiaExchanges, so this also corrects that once the real list has
-  // loaded. Still entirely local to Search's own state, never Scanner's -
-  // if a second Indian exchange becomes real later, this is the one place
-  // that would need a small inline picker, not a reintroduced global
-  // exchange store.
   useEffect(() => {
     if (indiaExchanges.length === 0) return;
     if (indiaExchanges.some((exchange) => exchange.code === search.exchange)) return;
@@ -118,16 +93,9 @@ export function GlobalStockSearchModal() {
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 outline-none duration-100",
             "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            // Desktop: centered, compact dialog - sized to its content at
-            // rest, capped so a long result list scrolls internally
-            // instead of growing the dialog past a comfortable height.
-            // `bottom`/`right` must stay unset here (not just `top`/`left`
-            // overridden) - a fixed-position box with all four inset sides
-            // set stretches to fill them regardless of `h-auto`, which is
-            // exactly what an unscoped `inset-0` below would do.
+
             "sm:top-[12%] sm:left-1/2 sm:h-auto sm:max-h-[620px] sm:w-full sm:max-w-[820px] sm:-translate-x-1/2 sm:rounded-xl sm:border sm:border-border",
-            // Mobile: full-screen sheet - scoped to below `sm` only, so
-            // none of `inset-0`'s four sides leak into the desktop layout.
+
             "max-sm:inset-0 max-sm:h-full max-sm:w-full max-sm:rounded-none"
           )}
         >
@@ -158,10 +126,7 @@ export function GlobalStockSearchModal() {
 
           <div className="flex shrink-0 flex-col gap-2.5 border-b border-border px-4 py-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* India is the only real market today - a working dropdown
-                  with its one real entry (not a fake multi-country list),
-                  so the control is honest about what's actually selectable
-                  and just gains options later without a UI rebuild. */}
+
               <DropdownMenu>
                 <DropdownMenuTrigger className={FILTER_TRIGGER_CLASS}>
                   {indiaFlag && (
@@ -192,10 +157,6 @@ export function GlobalStockSearchModal() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* No sector metadata in the search response today (see
-                  readStockRows) - disabled rather than backed by invented
-                  sector labels, per the same rule the exchange list already
-                  follows for unsupported/hidden codes. */}
               <button
                 type="button"
                 disabled
@@ -218,11 +179,7 @@ export function GlobalStockSearchModal() {
             onHighlight={setHighlightedIndex}
             onSelect={handleSelect}
             emptyBeforeQuery={`Start typing to search ${search.exchange} stocks`}
-            // Mobile sheet fills the remaining full-screen height. Desktop
-            // instead rests at a compact, mostly-empty-state height
-            // (~520-560px total with the header/filter rows above) and
-            // only grows - capped, then scrolling - once a query actually
-            // returns enough rows to need it.
+
             className="min-h-0 max-sm:flex-1 overflow-y-auto sm:min-h-[350px] sm:max-h-[420px]"
           />
         </DialogPrimitive.Popup>

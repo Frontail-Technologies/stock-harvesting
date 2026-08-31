@@ -22,16 +22,6 @@ type ScanBandColors = {
   edgeSelected: string;
 };
 
-// Draws one filled rectangle per highlighted candle directly on the chart's
-// own canvas (via drawBackground, so it renders behind the candles) instead
-// of one positioned <div> per candle. The chart's native render loop calls
-// updateAllViews()/draw() on every pan/zoom/resize frame on its own — no
-// React state, no RAF loop, no per-candle DOM nodes to reposition. This is
-// what makes per-candle highlighting affordable again: the previous
-// per-candle DOM version repositioned N elements through React on every
-// drag frame (laggy), and CSS-tiled each one's background independently
-// (which drifted out of phase into a shimmering seam as the chart panned).
-// A canvas fillRect per candle has neither cost.
 class ScanBandPaneRenderer implements IPrimitivePaneRenderer {
   constructor(
     private readonly rects: readonly HighlightRect[],
@@ -52,9 +42,6 @@ class ScanBandPaneRenderer implements IPrimitivePaneRenderer {
 
       const edgeWidth = Math.max(1, Math.round(EDGE_WIDTH_PX * horizontalPixelRatio));
 
-      // Normal zones first, then the hovered/selected zone (if any) drawn
-      // last so its slightly stronger tint isn't undercut by a neighbouring
-      // normal rect's edge lines.
       for (const rect of this.rects) {
         if (rect.selected) continue;
         this.paintRect(context, rect, this.colors.fill, this.colors.edge, edgeWidth, horizontalPixelRatio, bitmapSize.height);
@@ -134,10 +121,6 @@ export class ScanBandPrimitive implements ISeriesPrimitive<Time> {
     this.requestUpdateFn?.();
   }
 
-  // Marks whichever highlighted band the crosshair currently sits over so
-  // it paints with the stronger "selected" tint — separate from setData so
-  // hover changes (which happen far more often than the detected-band list
-  // itself) don't need to re-resolve highlightedTimes/colors each time.
   setHoveredTime(time: string | null) {
     const next = (time as Time | null) ?? null;
     if (this.hoveredTime === next) return;

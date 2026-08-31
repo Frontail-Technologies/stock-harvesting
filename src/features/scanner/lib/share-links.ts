@@ -2,10 +2,7 @@ import type { Stock } from "@/types/market";
 
 export function getScannerShareUrl(stock: Stock) {
   if (typeof window === "undefined") return "";
-  // Stock identity is {symbol, exchange}, not symbol alone - a shared link
-  // missing exchange would rely on whatever the recipient's Charts
-  // happens to already be showing (or the default) to guess it, which can
-  // silently open the wrong market's stock under the same symbol.
+
   const params = new URLSearchParams({ symbol: stock.symbol, exchange: stock.exchange });
   return `${window.location.origin}/charts?${params.toString()}`;
 }

@@ -17,14 +17,6 @@ type ScannerWatchlistWidgetProps = {
   onClose: () => void;
 };
 
-// Auto-opened only via the ?watchlist= URL param set by the Watchlists
-// page's "Open in Scanner" link - a separate, always-available watchlist
-// sidebar also exists now (see ScannerWatchlistSidebar.tsx, opened from
-// the toolbar icon), but this widget's own URL-driven trigger and floating
-// presentation are unchanged. Desktop gets a floating panel over unused
-// chart space; mobile gets a bottom sheet instead of an overlay, since a
-// small floating panel would be unusable at phone width.
-
 function WatchlistItemsList({
   items,
   selectedSymbol,

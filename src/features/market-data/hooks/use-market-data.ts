@@ -26,14 +26,7 @@ const STOCK_SEARCH_STALE_TIME_MS = 10 * 60_000;
 const STOCK_LIST_STALE_TIME_MS = 5 * 60_000;
 const CANDLE_STALE_TIME_MS = 30 * 60_000;
 const SCANNER_SEARCH_DEBOUNCE_MS = 450;
-// `query.data ?? []` would otherwise construct a brand-new array on every
-// render while the query has no data yet (disabled, or still in flight) -
-// consumers that key an effect/memo off this array's identity (e.g.
-// resetting a highlighted index whenever "the results changed") would see
-// a "new" array every render even though nothing changed, which can
-// cascade into a render loop. Reusing one stable empty array for that
-// case fixes it at the source instead of asking every consumer to work
-// around it.
+
 const EMPTY_STOCK_ROWS: Stock[] = [];
 
 function dedupeStocksByMarketKey(rows: Stock[]) {
@@ -290,21 +283,11 @@ export function useCandles(input: CandleListInput) {
     retry: false,
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,
-    // Charts performance audit item 23 - was missing entirely, so a
-    // symbol/timeframe switch dropped straight to an empty/loading chart
-    // instead of keeping the previously-displayed candles visible while
-    // the new series loads ("chart -> blank -> spinner -> chart", exactly
-    // what item 23 says not to do). Purely a client-side display
-    // continuity fix - never serves stale data as if it were fresh
-    // (isLoading/isFetching still reflect the real query state).
+
     placeholderData: (previousData) => previousData,
   });
 }
 
-// Not collection-scoped — same index ranking regardless of which dashboard
-// collection is open, so the query key deliberately has no `code`/filter
-// dependency (only `exchange`, so NSE/BSE index views cache independently)
-// and stays cached across collection switches within the same exchange.
 export function useIndexRelativeStrength(limit?: number, exchange?: string) {
   const authStatus = useSessionStore((state) => state.status);
 
@@ -315,9 +298,7 @@ export function useIndexRelativeStrength(limit?: number, exchange?: string) {
     retry: false,
     staleTime: 10 * 60_000,
     gcTime: 30 * 60_000,
-    // Keeps the previous exchange's indices visible while a background
-    // refresh (or, now that the caller always knows `exchange` up front,
-    // a genuine first request) is in flight (Phase D.9 #11).
+
     placeholderData: (previousData) => previousData,
   });
 

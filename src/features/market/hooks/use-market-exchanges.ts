@@ -5,8 +5,6 @@ import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
 import { getExchangeRates, getMarketExchanges } from "../api/market-exchanges-api";
 
-// This barely ever changes (it's ~70 real-world stock exchanges plus NSE) —
-// a long staleTime avoids refetching it on every page visit.
 const EXCHANGES_STALE_TIME_MS = 24 * 60 * 60_000;
 const EXCHANGE_RATES_STALE_TIME_MS = 15 * 60_000;
 

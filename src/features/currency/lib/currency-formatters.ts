@@ -10,9 +10,6 @@ export function getCurrencyForExchange(
   return match?.currency?.toUpperCase() || "USD";
 }
 
-// ratesToUsd: { [currencyCode]: how many USD 1 unit of that currency is
-// worth } — see backend's listExchangeRates. Triangulates through USD since
-// that's how the underlying FOREX pairs are quoted.
 export function convertCurrency(
   value: number,
   fromCurrency: AppCurrency,
@@ -45,8 +42,7 @@ export function formatCurrencyValue(
       maximumFractionDigits: fractionDigits.maximum,
     }).format(convertedValue);
   } catch {
-    // Intl.NumberFormat throws on a currency code it doesn't recognize —
-    // fall back to a plain "CODE 123.45" rendering rather than crashing.
+
     return `${displayCurrency} ${convertedValue.toFixed(fractionDigits.maximum)}`;
   }
 }

@@ -20,9 +20,6 @@ import {
   updateAdminMarketCollection,
 } from "../api/admin-api";
 
-// Not started/generating a moving target that shouldn't go stale for long,
-// but a real "Ready" result changes rarely - the poll interval below
-// handles the "Generating" -> "Ready" transition without a manual refetch.
 const BACKTEST_STATUS_STALE_TIME_MS = 30_000;
 
 function useIsAdmin() {
@@ -146,8 +143,6 @@ export function useAdminWeeklyStrongBacktestStatus(id: string | null) {
     queryFn: () => getAdminWeeklyStrongBacktestStatus(id as string),
     enabled: enabled && Boolean(id),
     staleTime: BACKTEST_STATUS_STALE_TIME_MS,
-    // Keeps polling while a backfill is in flight so "Generating" flips to
-    // "Ready" on its own without the admin needing to refresh the page.
     refetchInterval: (query) =>
       query.state.data?.status.state === "generating" ? BACKTEST_STATUS_STALE_TIME_MS : false,
   });

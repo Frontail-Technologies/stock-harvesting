@@ -26,19 +26,9 @@ type ScannerPriceAlertMenuProps = {
   disabled?: boolean;
 };
 
-// A target/condition carried over from a different symbol would be stale,
-// not a convenience - the caller mounts this with
-// key={`${exchange}:${symbol}`} so switching stocks remounts it with a
-// clean draft (and closes an open popover/sheet) instead of resetting
-// state inside an effect.
 export function ScannerPriceAlertMenu({ stock, disabled }: ScannerPriceAlertMenuProps) {
   const [open, setOpen] = useState(false);
-  // Decided by real viewport width, not by which TopToolbar row this
-  // instance happens to be mounted in - a 320px popover can still feel
-  // oversized on a narrow-but-not-quite-"sm:hidden" window (tablet
-  // portrait, a resized desktop browser), so this uses its own, wider
-  // threshold rather than inheriting the toolbar's 640px row-visibility
-  // breakpoint.
+
   const isMobileViewport = useMediaQuery("(max-width: 767px)");
   const [condition, setCondition] = useState<PriceAlertCondition>("ABOVE");
   const [targetPrice, setTargetPrice] = useState("");
@@ -53,14 +43,6 @@ export function ScannerPriceAlertMenu({ stock, disabled }: ScannerPriceAlertMenu
   const stockClosePrice =
     Number.isFinite(stock.close) && stock.close > 0 ? stock.close : null;
 
-  // The selectedStock passed down can briefly be a stale placeholder
-  // (close: 0) right after a URL-driven navigation, before the real stock
-  // row has loaded - ChartInfoOverlay works around the same gap by reading
-  // price from candles instead of stock.close. This popover doesn't have
-  // candles on hand, so it falls back to a direct symbol lookup instead,
-  // and only when the passed-in close is actually missing (the common
-  // case - selecting a stock via search already carries a real price - so
-  // this adds no extra request then).
   const fallbackPriceQuery = useQuery({
     queryKey: ["price-alerts", "fallback-price", stock.exchange, stock.symbol],
     queryFn: async () => {

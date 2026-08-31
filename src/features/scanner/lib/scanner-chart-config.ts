@@ -38,24 +38,14 @@ export const SCANNER_CHART_THEMES: Record<
     volumeGreen: "rgba(34,197,94,0.3)",
     volumeRed: "rgba(239,68,68,0.26)",
     gridLine: "rgba(255,255,255,0.028)",
-    // Mirrors --scanner-highlight-fill / --scanner-highlight-edge (and the
-    // -selected variants) in globals.css — canvas fillStyle can't read CSS
-    // custom properties, so the scan-band primitive (which paints on the
-    // chart's own canvas) needs these as literal values kept in sync with
-    // that file. The hovered/selected zone is a bit stronger than a normal
-    // detected zone, not a bright highlight.
+
     highlightFill: "rgba(250,240,88,0.22)",
     highlightEdge: "rgba(250,204,21,0.12)",
     highlightFillSelected: "rgba(250,240,88,0.32)",
     highlightEdgeSelected: "rgba(250,204,21,0.18)",
   },
   light: {
-    // A warm neutral canvas (matches the brand's off-white elsewhere), not
-    // a cool slate-tinted white - the previous #F8FAFC/#334155/slate-based
-    // border and crosshair colors were a different, colder palette than
-    // the rest of the light-mode scanner chrome, which is what made this
-    // read as generic "washed-out white app" rather than the same
-    // charcoal/off-white identity the dark theme already has.
+
     panelBackground: "#FAFAF8",
     text: "#73736E",
     scaleBorder: "#DDDCD7",
@@ -71,12 +61,7 @@ export const SCANNER_CHART_THEMES: Record<
 };
 
 export const SCANNER_CHART_LAYOUT = {
-  // The right edge should show a small amount of breathing room after the
-  // latest real candle, not a reserved runway of empty future time - this
-  // pool only needs to be as large as the biggest padding getVisibleLogicalRange
-  // will ever actually apply (see MAX_RIGHT_PADDING_BARS in
-  // build-scanner-chart-data.ts), so panning a little past the last candle
-  // still has whitespace bars to land on.
+
   futureWhitespaceBars: 12,
   visibleBarsTarget: 185,
   barSpacing: 8,
@@ -100,14 +85,7 @@ export function scannerCrosshairOptions(
   return {
     mode: CrosshairMode.Normal,
     vertLine: {
-      // The native line always renders on the chart's own canvas, which
-      // sits BELOW the drawing overlay's SVG (z-index 14) in the DOM - any
-      // committed vertical-line/horizontal-line drawing (or any other
-      // overlay content) would always paint over it. DrawingOverlay draws
-      // its own crosshair lines on top of everything instead (see
-      // CustomCrosshair there); this native line stays off so the two
-      // don't double-render. labelVisible is untouched - the axis price/
-      // time readout still uses the native crosshair position.
+
       visible: false,
       labelVisible: visible,
       color: getScannerChartTheme(theme).crosshair,

@@ -212,10 +212,6 @@ function ReplaceVersionDialog({
   );
 }
 
-// Read-only history (Effective From | Members | Source | Imported At |
-// Status) plus a view-members action and an explicit, safeguarded
-// replace/correction workflow (Phase D #14) - no direct editing of an
-// already-created version's members from this table.
 export function AdminCollectionVersionHistory({ collectionId }: { collectionId: string }) {
   const versionsQuery = useAdminCollectionVersions(collectionId);
   const versions = versionsQuery.data?.versions ?? [];

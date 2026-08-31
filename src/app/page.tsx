@@ -28,8 +28,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Organization + SoftwareApplication only — real facts, no fabricated ratings,
-// pricing or counts.
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [

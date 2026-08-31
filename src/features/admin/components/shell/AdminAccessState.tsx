@@ -15,12 +15,7 @@ export function AdminLoadingState() {
 }
 
 export function AdminForbiddenState() {
-  // Item 20 - since admin accounts have no USER portal session anymore,
-  // this can't imply a return to an authenticated workspace. It links to
-  // the public main site's root instead (a cross-origin destination on a
-  // split host, so this can't be a relative <Link>) - if that account also
-  // wants to use the main product, it authenticates there separately, on
-  // its own terms.
+
   const siteUrl = getSiteUrl().origin;
 
   return (

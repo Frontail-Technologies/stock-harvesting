@@ -23,10 +23,15 @@ responsibility boundaries in general.
   later" with no context is worse than no comment. Remove stale
   TODO/FIXME comments you encounter if the thing they reference no longer
   applies.
-- **Comments explain WHY, not WHAT.** If a comment restates what the next
-  line obviously does, delete the comment. A comment earns its place by
-  documenting a non-obvious constraint, a workaround for a specific bug, or
-  a decision a future reader would otherwise reverse by "fixing" it back.
+- **Frontend application source (`src/**`) stays comment-free.** Do not add
+  narrative, AI-implementation-notes-style, or section-header comments —
+  including WHY-comments. Architecture, invariants, and rationale belong in
+  `/docs`, not inline. The only comments allowed in `src/**` are ones a
+  tool genuinely requires to function (`eslint-disable[-next-line]`,
+  `@ts-ignore`/`@ts-expect-error`, `prettier-ignore`, triple-slash
+  references, required license/copyright headers) — never prose. Backend
+  code is unaffected by this rule; ordinary WHY-comments are still fine
+  there.
 
 ## Responsibility
 
