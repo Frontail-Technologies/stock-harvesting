@@ -20,6 +20,10 @@ export type StockListResponse = {
   };
 };
 
+export type ChartEligibleStockSearchResponse = {
+  stocks: StockListItem[];
+};
+
 export type CandleListResponse = {
   candles: Candle[];
 };

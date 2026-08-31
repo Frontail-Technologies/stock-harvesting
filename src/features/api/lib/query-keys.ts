@@ -31,6 +31,8 @@ export const queryKeys = {
     }) => ["market-data", "stocks", "infinite", input] as const,
     stockSearch: (input: { query: string; limit?: number; exchange?: string }) =>
       ["market-data", "stock-search", input] as const,
+    chartEligibleBseStockSearch: (input: { query: string; limit?: number }) =>
+      ["market-data", "chart-eligible-bse-stock-search", input] as const,
     candles: (input: {
       symbol: string;
       timeframe: string;

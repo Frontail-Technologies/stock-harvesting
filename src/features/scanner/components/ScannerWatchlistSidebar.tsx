@@ -2,13 +2,7 @@
 
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
-import {
-  ChevronDown,
-  PanelRightClose,
-  PanelRightOpen,
-  Plus,
-  SquareArrowOutUpRight,
-} from "lucide-react";
+import { ChevronDown, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
 import type { Stock } from "@/types/market";
 import {
   DropdownMenu,
@@ -32,9 +26,13 @@ import { useIsDesktopViewport } from "../hooks/use-is-desktop-viewport";
 import {
   SCANNER_WATCHLIST_PANEL_MAX_WIDTH,
   SCANNER_WATCHLIST_PANEL_MIN_WIDTH,
-  SCANNER_WATCHLIST_PANEL_RAIL_WIDTH,
   useScannerUiStore,
 } from "../stores/scanner-ui-store";
+
+// Keeps the chart from ever being crushed to nothing when a wide stored
+// panel width meets a narrow (but still "desktop") viewport - the stored
+// width itself is untouched, this only clamps what's actually rendered.
+const MIN_CHART_WIDTH_PX = 320;
 
 const COLLAPSE_ON_DRAG_THRESHOLD = SCANNER_WATCHLIST_PANEL_MIN_WIDTH / 2;
 
@@ -120,26 +118,6 @@ function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
       >
         Open Watchlists page
       </Link>
-    </div>
-  );
-}
-
-function WatchlistRail({ onMaximize }: { onMaximize: () => void }) {
-  return (
-    <div className="flex h-full flex-col items-center pt-2">
-      <Tooltip>
-        <TooltipTrigger
-          type="button"
-          onClick={onMaximize}
-          aria-label="Expand watchlist panel"
-          className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <PanelRightOpen className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent side="left" className="scanner-portal">
-          Expand watchlist panel
-        </TooltipContent>
-      </Tooltip>
     </div>
   );
 }
@@ -318,16 +296,29 @@ export function ScannerWatchlistSidebar({
 }: ScannerWatchlistSidebarProps) {
   const isOpen = useScannerUiStore((state) => state.isWatchlistPanelOpen);
   const setOpen = useScannerUiStore((state) => state.setWatchlistPanelOpen);
-  const isMinimized = useScannerUiStore((state) => state.isWatchlistPanelMinimized);
-  const setMinimized = useScannerUiStore((state) => state.setWatchlistPanelMinimized);
   const storedWidth = useScannerUiStore((state) => state.watchlistPanelWidth);
   const setWatchlistPanelWidth = useScannerUiStore((state) => state.setWatchlistPanelWidth);
   const isDesktop = useIsDesktopViewport();
   const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? Infinity : window.innerWidth
+  );
 
-  const expandedWidth = dragWidth ?? storedWidth;
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  const targetWidth = !isOpen ? 0 : isMinimized ? SCANNER_WATCHLIST_PANEL_RAIL_WIDTH : expandedWidth;
+  // Only clamps what's rendered right now - never overwrites the stored
+  // preference, so widening the window back out restores the full value.
+  const viewportMaxWidth = Math.max(
+    SCANNER_WATCHLIST_PANEL_MIN_WIDTH,
+    Math.min(SCANNER_WATCHLIST_PANEL_MAX_WIDTH, viewportWidth - MIN_CHART_WIDTH_PX)
+  );
+  const expandedWidth = Math.min(dragWidth ?? storedWidth, viewportMaxWidth);
+
+  const targetWidth = isOpen ? expandedWidth : 0;
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -367,11 +358,11 @@ export function ScannerWatchlistSidebar({
         selectedSymbol={selectedSymbol}
         selectedExchange={selectedExchange}
         onSelectStock={onSelectStock}
-        onCollapse={() => setMinimized(true)}
-        collapseLabel="Minimize watchlist panel"
+        onCollapse={() => setOpen(false)}
+        collapseLabel="Collapse watchlist panel"
       />
     ),
-    [selectedSymbol, selectedExchange, onSelectStock, setMinimized]
+    [selectedSymbol, selectedExchange, onSelectStock, setOpen]
   );
 
   if (!isDesktop) {
@@ -397,24 +388,22 @@ export function ScannerWatchlistSidebar({
 
   return (
     <div
-
-      className="relative flex h-full shrink-0 flex-col overflow-hidden rounded-[3px] border border-border/60 bg-background transition-[width,margin-left] duration-200 ease-out"
+      className={cn(
+        "relative flex h-full shrink-0 flex-col overflow-hidden rounded-[3px] transition-[width,margin-left] duration-200 ease-out",
+        isOpen && "border border-border/60 bg-background"
+      )}
       style={{ width: targetWidth, marginLeft: isOpen ? 4 : 0 }}
     >
-      {!isMinimized && (
+      {isOpen && (
         <div
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize watchlist panel"
-          onPointerDown={isOpen ? handleDragStart : undefined}
+          onPointerDown={handleDragStart}
           className="absolute top-0 -left-0.75 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
         />
       )}
-      {isMinimized ? (
-        <WatchlistRail onMaximize={() => setMinimized(false)} />
-      ) : (
-        desktopBody
-      )}
+      {isOpen && desktopBody}
     </div>
   );
 }

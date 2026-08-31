@@ -36,7 +36,6 @@ type ScannerUiState = {
 
   isWatchlistPanelOpen: boolean;
 
-  isWatchlistPanelMinimized: boolean;
   watchlistPanelWidth: number;
   activeWatchlistId: string | null;
   setSelectedSymbol: (symbol: string) => void;
@@ -55,12 +54,9 @@ type ScannerUiState = {
   toggleScannerHighlights: () => void;
   setWatchlistPanelOpen: (open: boolean) => void;
   toggleWatchlistPanel: () => void;
-  setWatchlistPanelMinimized: (minimized: boolean) => void;
   setWatchlistPanelWidth: (width: number) => void;
   setActiveWatchlistId: (id: string | null) => void;
 };
-
-export const SCANNER_WATCHLIST_PANEL_RAIL_WIDTH = 44;
 
 export const SCANNER_WATCHLIST_PANEL_MIN_WIDTH = 240;
 export const SCANNER_WATCHLIST_PANEL_MAX_WIDTH = 480;
@@ -90,7 +86,6 @@ export const useScannerUiStore = create<ScannerUiState>()(
       showBacktestStats: true,
       scannerHighlightsVisible: true,
       isWatchlistPanelOpen: false,
-      isWatchlistPanelMinimized: false,
       watchlistPanelWidth: SCANNER_WATCHLIST_PANEL_DEFAULT_WIDTH,
       activeWatchlistId: null,
       setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
@@ -127,8 +122,6 @@ export const useScannerUiStore = create<ScannerUiState>()(
       setWatchlistPanelOpen: (isWatchlistPanelOpen) => set({ isWatchlistPanelOpen }),
       toggleWatchlistPanel: () =>
         set((state) => ({ isWatchlistPanelOpen: !state.isWatchlistPanelOpen })),
-      setWatchlistPanelMinimized: (isWatchlistPanelMinimized) =>
-        set({ isWatchlistPanelMinimized }),
       setWatchlistPanelWidth: (width) =>
         set({ watchlistPanelWidth: clampWatchlistPanelWidth(width) }),
       setActiveWatchlistId: (activeWatchlistId) => set({ activeWatchlistId }),
@@ -146,7 +139,6 @@ export const useScannerUiStore = create<ScannerUiState>()(
         showBacktestStats: state.showBacktestStats,
         scannerHighlightsVisible: state.scannerHighlightsVisible,
         isWatchlistPanelOpen: state.isWatchlistPanelOpen,
-        isWatchlistPanelMinimized: state.isWatchlistPanelMinimized,
         watchlistPanelWidth: state.watchlistPanelWidth,
         activeWatchlistId: state.activeWatchlistId,
       }),

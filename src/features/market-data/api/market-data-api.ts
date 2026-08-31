@@ -2,6 +2,7 @@ import { apiFetch, API_ROUTES } from "@/features/api";
 import type {
   CandleListInput,
   CandleListResponse,
+  ChartEligibleStockSearchResponse,
   HistoryRangeInput,
   HistoryRangeResponse,
   IndexRelativeStrengthResponse,
@@ -60,6 +61,16 @@ export async function searchStocksApi(input: StockListInput = {}) {
       moveFilter: input.moveFilter,
       minVolume: input.minVolume,
       includeUnpriced: input.includeUnpriced ? "true" : undefined,
+    })
+  );
+}
+
+export async function searchChartEligibleBseStocksApi(input: { q: string; limit?: number }) {
+  return apiFetch<ChartEligibleStockSearchResponse>(
+    withQuery(API_ROUTES.marketData.chartEligibleStockSearch, {
+      q: input.q,
+      limit: input.limit,
+      exchange: "BSE",
     })
   );
 }

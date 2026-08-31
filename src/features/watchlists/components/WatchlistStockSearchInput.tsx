@@ -4,11 +4,11 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { createPortal } from "react-dom";
 import { Check, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { useMarketExchanges, useMarketStore } from "@/features/market";
-import { useStockSearch } from "@/features/market-data";
+import { useChartEligibleBseStockSearch } from "@/features/market-data";
 import { cn } from "@/utils/cn";
 import { useAddWatchlistItem } from "../hooks/use-watchlists";
+
+const MENU_VIEWPORT_MARGIN = 8;
 
 type WatchlistStockSearchInputProps = {
   watchlistId: string;
@@ -31,15 +31,10 @@ export function WatchlistStockSearchInput({
   const menuRef = useRef<HTMLDivElement>(null);
   const addItem = useAddWatchlistItem();
 
-  const currentExchange = useMarketStore((state) => state.selectedExchange);
-  const { exchanges } = useMarketExchanges();
-  const [exchange, setExchange] = useState(currentExchange);
-
   const trimmedQuery = query.trim();
-  const stockSearchQuery = useStockSearch(query, 8, {
+  const stockSearchQuery = useChartEligibleBseStockSearch(query, 8, {
     enabled: open && trimmedQuery.length >= 2,
     minLength: 2,
-    exchange,
   });
   const results = trimmedQuery.length >= 2 ? stockSearchQuery.rows : [];
   const existingKeys = useMemo(
@@ -94,7 +89,18 @@ export function WatchlistStockSearchInput({
     const updateMenuRect = () => {
       const rect = inputRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setMenuRect({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 260) });
+      const desiredWidth = Math.max(rect.width, 260);
+      const maxWidth = window.innerWidth - MENU_VIEWPORT_MARGIN * 2;
+      const width = Math.min(desiredWidth, maxWidth);
+      // Anchor to the input's right edge and grow leftward when the
+      // panel/sidebar is docked at the viewport's right edge (the common
+      // case here) - growing rightward from rect.left would push the menu
+      // past the viewport edge instead of staying visible.
+      const left = Math.min(
+        Math.max(rect.right - width, MENU_VIEWPORT_MARGIN),
+        window.innerWidth - width - MENU_VIEWPORT_MARGIN
+      );
+      setMenuRect({ top: rect.bottom + 4, left, width });
     };
 
     updateMenuRect();
@@ -108,19 +114,6 @@ export function WatchlistStockSearchInput({
 
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
-      <Select
-        value={exchange}
-        onValueChange={(next) => {
-          setExchange(next);
-          setAddedKey(null);
-        }}
-        options={
-          exchanges.length > 0
-            ? exchanges.map((item) => ({ value: item.code, label: item.code }))
-            : [{ value: exchange, label: exchange }]
-        }
-        triggerClassName="h-8 w-20 px-2 text-xs"
-      />
       <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -135,7 +128,7 @@ export function WatchlistStockSearchInput({
             if (trimmedQuery.length >= 2) setOpen(true);
           }}
           onKeyDown={handleInputKeyDown}
-          placeholder={`Search ${exchange} stocks to add...`}
+          placeholder="Search BSE stocks to add..."
           className="h-8 w-full border-border bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
         />
       </div>
@@ -169,7 +162,7 @@ export function WatchlistStockSearchInput({
                       )}
                     >
                       <span className="min-w-0 flex-1">
-                        <span className="block font-semibold text-foreground">
+                        <span className="block truncate font-semibold text-foreground">
                           {stock.symbol}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">

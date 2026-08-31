@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useTheme } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getBrandLogoPath } from "./brand-logo-paths";
 
@@ -40,8 +39,6 @@ export function BrandLogo({
   forceTheme,
 }: BrandLogoProps) {
   const classes = sizeClasses[size];
-  const { theme } = useTheme();
-  const resolvedTheme = forceTheme ?? theme;
 
   return (
     <span className={cn("inline-flex items-center gap-2", classes.root, className)}>
@@ -52,14 +49,35 @@ export function BrandLogo({
         )}
         aria-hidden="true"
       >
-        <Image
-          src={getBrandLogoPath(resolvedTheme)}
-          alt=""
-          width={420}
-          height={420}
-          loading="eager"
-          className={cn("h-full w-auto max-w-none object-contain", classes.image)}
-        />
+        {forceTheme ? (
+          <Image
+            src={getBrandLogoPath(forceTheme)}
+            alt=""
+            width={420}
+            height={420}
+            loading="eager"
+            className={cn("h-full w-auto max-w-none object-contain", classes.image)}
+          />
+        ) : (
+          <>
+            <Image
+              src={getBrandLogoPath("light")}
+              alt=""
+              width={420}
+              height={420}
+              loading="eager"
+              className={cn("h-full w-auto max-w-none object-contain dark:hidden", classes.image)}
+            />
+            <Image
+              src={getBrandLogoPath("dark")}
+              alt=""
+              width={420}
+              height={420}
+              loading="eager"
+              className={cn("hidden h-full w-auto max-w-none object-contain dark:block", classes.image)}
+            />
+          </>
+        )}
       </span>
 
       <span
@@ -69,7 +87,15 @@ export function BrandLogo({
           textClassName,
         )}
       >
-        <span className={resolvedTheme === "dark" ? "text-white" : "text-foreground"}>
+        <span
+          className={
+            forceTheme
+              ? forceTheme === "dark"
+                ? "text-white"
+                : "text-foreground"
+              : "text-foreground dark:text-white"
+          }
+        >
           Stock
         </span>
         <span className="text-brand-gold">Harvesting</span>

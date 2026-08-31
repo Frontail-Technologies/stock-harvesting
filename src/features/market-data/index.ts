@@ -8,6 +8,7 @@ export {
 } from "./api/market-data-api";
 export {
   useCandles,
+  useChartEligibleBseStockSearch,
   useHistoryRange,
   useIndexRelativeStrength,
   useInfiniteStocks,

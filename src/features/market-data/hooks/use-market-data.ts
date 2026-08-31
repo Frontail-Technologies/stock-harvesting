@@ -15,6 +15,7 @@ import {
   getHistoryRange,
   getIndexRelativeStrength,
   getStocks,
+  searchChartEligibleBseStocksApi,
   searchStocksApi,
 } from "../api/market-data-api";
 import { normalizeStocks } from "../lib/stock-mappers";
@@ -252,6 +253,45 @@ export function useStockSearch(
     debouncedQuery: normalizedQuery,
     rows,
     usingFallback: query.isError && DEV_MOCK_FALLBACK_ENABLED,
+  };
+}
+
+// Watchlist/Charts stock-selection picker only - always BSE, always
+// chart-eligible (backend-filtered to instruments with stored 1D candle
+// history). Deliberately a separate hook/endpoint from useStockSearch
+// rather than an option on it - see searchChartEligibleBseStocks on the
+// backend.
+export function useChartEligibleBseStockSearch(
+  queryText: string,
+  limit = STOCK_SEARCH_LIMIT,
+  options: { enabled?: boolean; minLength?: number } = {}
+) {
+  const authStatus = useSessionStore((state) => state.status);
+  const minLength = options.minLength ?? 2;
+  const debouncedQuery = useDebouncedValue(queryText, SCANNER_SEARCH_DEBOUNCE_MS);
+  const normalizedQuery = debouncedQuery.trim();
+  const query = useQuery({
+    queryKey: queryKeys.marketData.chartEligibleBseStockSearch({
+      query: normalizedQuery,
+      limit,
+    }),
+    queryFn: async () => {
+      const response = await searchChartEligibleBseStocksApi({ q: normalizedQuery, limit });
+      return normalizeStocks(response.stocks);
+    },
+    enabled:
+      authStatus !== "unknown" &&
+      options.enabled !== false &&
+      normalizedQuery.length >= minLength,
+    retry: false,
+    staleTime: STOCK_SEARCH_STALE_TIME_MS,
+    gcTime: 30 * 60_000,
+  });
+
+  return {
+    ...query,
+    debouncedQuery: normalizedQuery,
+    rows: query.data ?? EMPTY_STOCK_ROWS,
   };
 }
 

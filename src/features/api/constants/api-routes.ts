@@ -18,6 +18,7 @@ export const API_ROUTES = {
   marketData: {
     stocks: "/api/market-data/stocks",
     stockSearch: "/api/market-data/stocks/search",
+    chartEligibleStockSearch: "/api/market-data/stocks/search/chart-eligible",
     candles: (symbol: string) =>
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
     historyRange: "/api/market-data/history-range",
