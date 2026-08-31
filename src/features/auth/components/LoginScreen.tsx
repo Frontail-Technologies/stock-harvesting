@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { cn } from "@/utils/cn";
-import { getAdminOrigin } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
 import { useSessionStore } from "../stores/session-store";
 
@@ -201,18 +200,18 @@ function SignalHarvestIllustration({ className }: { className?: string }) {
   );
 }
 
-// Reason codes the backend's Google callback can redirect back here with
-// (see auth.service.ts's evaluatePortalAccess / auth.routes.ts's
-// redirectToLogin). "admin-account-on-user-portal" is the important one
-// (item 3): the backend already rejected the login and created NO user
-// session at all for that account - this is purely a message to show
-// (with a link to the separate Admin Portal login), never something the
-// frontend re-derives from session state or reacts to by redirecting.
-const ADMIN_ACCOUNT_REJECTION_REASON = "admin-account-on-user-portal";
-const REJECTION_MESSAGES: Record<string, string> = {
-  failed: "Google login is not available. Please try again.",
-  "state-mismatch": "Your login attempt expired. Please try again.",
-};
+// The backend's Google callback (auth.routes.ts's redirectToLogin) can
+// redirect back here with an "?auth=<reason>" query param for any rejected
+// login - including an admin-only account submitted here, which the
+// backend already rejects outright (evaluatePortalAccess) with no user
+// session created at all. Every one of those reasons - wrong-portal
+// account, an expired OAuth state, or Google itself failing - renders as
+// this exact same generic message. This is deliberate, not a missing
+// feature: this login must never reveal that an account exists, that it's
+// an admin account, or that a separate Admin Portal exists, so the reason
+// value itself is only ever used to decide *whether* to show an error, not
+// what it says.
+const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
 export function LoginScreen() {
   const router = useRouter();
@@ -232,11 +231,7 @@ export function LoginScreen() {
   // looks like: the backend already created no session at all, it just
   // redirected back here with a reason code to display.
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
-  const isAdminAccountRejection = authReason === ADMIN_ACCOUNT_REJECTION_REASON;
-  const queryError =
-    authReason && authReason !== "success" && !isAdminAccountRejection
-      ? (REJECTION_MESSAGES[authReason] ?? "Sign-in was not completed. Please try again.")
-      : null;
+  const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
 
   // With a cached session snapshot, `status` usually resolves to
@@ -322,53 +317,31 @@ export function LoginScreen() {
         <div className="login-auth-surface">
           <BrandLogo size="md" />
 
-          {isAdminAccountRejection ? (
-            <>
-              <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
-                This account uses the Admin Portal.
-              </h1>
-              <p className="mt-2 text-sm text-landing-text-secondary">
-                Administrator accounts sign in separately, on their own portal - not here.
-              </p>
+          <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-sm text-landing-text-secondary">
+            Sign in to continue to your Stock Harvesting workspace.
+          </p>
 
-              <a
-                href={getAdminOrigin() ? `${getAdminOrigin()}/login` : "/admin/login"}
-                className={cn(
-                  "mt-8 flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm transition hover:border-landing-border-strong hover:bg-landing-fg/10",
-                )}
-              >
-                Open Admin Portal
-              </a>
-            </>
-          ) : (
-            <>
-              <h1 className="mt-8 text-2xl font-bold tracking-tight text-landing-fg">
-                Welcome back
-              </h1>
-              <p className="mt-2 text-sm text-landing-text-secondary">
-                Sign in to continue to your Stock Harvesting workspace.
-              </p>
+          <Button
+            variant="outline"
+            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
+            onClick={handleGoogleLogin}
+            disabled={googleLogin.isPending}
+          >
+            {googleLogin.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <GoogleIcon className="size-5" />
+            )}
+            {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
+          </Button>
 
-              <Button
-                variant="outline"
-                className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
-                onClick={handleGoogleLogin}
-                disabled={googleLogin.isPending}
-              >
-                {googleLogin.isPending ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <GoogleIcon className="size-5" />
-                )}
-                {googleLogin.isPending ? "Connecting..." : "Continue with Google"}
-              </Button>
-
-              {error && (
-                <p className="mt-4 rounded-lg border border-landing-border bg-landing-fg/5 px-3 py-2 text-center text-sm text-landing-text-body">
-                  {error}
-                </p>
-              )}
-            </>
+          {error && (
+            <p className="mt-4 rounded-lg border border-landing-border bg-landing-fg/5 px-3 py-2 text-center text-sm text-landing-text-body">
+              {error}
+            </p>
           )}
 
           <div className="mt-6 border-t border-landing-border pt-4">

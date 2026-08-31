@@ -27,7 +27,6 @@ import { useAdminLogout } from "@/features/auth";
 import { ThemeToggle } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
-import { IS_PRODUCTION_LOCKDOWN } from "@/utils/production-lockdown";
 import { adminPath, getSiteUrl } from "@/utils/seo";
 import { ADMIN_NAV_ITEMS } from "../../constants/admin-nav";
 
@@ -160,38 +159,35 @@ export function AdminSidebar({
               <ThemeToggle />
             </AdminSidebarTooltip>
             <SidebarTrigger />
-            {IS_PRODUCTION_LOCKDOWN ? (
-              <AdminSidebarTooltip label="Log out">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-lg"
-                  aria-label="Log out"
-                  disabled={logout.isPending}
-                  onClick={handleLogout}
-                  className="rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </AdminSidebarTooltip>
-            ) : (
-              <AdminSidebarTooltip label={user.name || user.email}>
-                <div aria-label="Account">
-                  <Avatar className="size-9">
-                    {user.avatarUrl ? (
-                      <AvatarImage
-                        src={user.avatarUrl}
-                        alt={user.name || user.email}
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : null}
-                    <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                      {avatarInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </AdminSidebarTooltip>
-            )}
+            <AdminSidebarTooltip label={user.name || user.email}>
+              <div aria-label="Account">
+                <Avatar className="size-9">
+                  {user.avatarUrl ? (
+                    <AvatarImage
+                      src={user.avatarUrl}
+                      alt={user.name || user.email}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+                    {avatarInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </AdminSidebarTooltip>
+            <AdminSidebarTooltip label="Log out">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-lg"
+                aria-label="Log out"
+                disabled={logout.isPending}
+                onClick={handleLogout}
+                className="rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </AdminSidebarTooltip>
           </>
         ) : (
           <>
@@ -213,47 +209,8 @@ export function AdminSidebar({
               </div>
             </div>
 
-            {IS_PRODUCTION_LOCKDOWN ? (
-              <div className="flex w-full items-center justify-between gap-3 border-t border-sidebar-border/70 pt-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar className="size-10 shrink-0">
-                    {user.avatarUrl ? (
-                      <AvatarImage
-                        src={user.avatarUrl}
-                        alt={user.name || user.email}
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : null}
-                    <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                      {avatarInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-sidebar-foreground">
-                      {user.name || user.email}
-                    </div>
-                    <div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-sidebar-foreground/45">
-                      {user.role}
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Log out"
-                  disabled={logout.isPending}
-                  onClick={handleLogout}
-                  className="rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </div>
-            ) : (
-              <div
-                aria-label="Account"
-                className="flex w-full items-center gap-3 border-t border-sidebar-border/70 pt-3 text-left"
-              >
+            <div className="flex w-full items-center justify-between gap-3 border-t border-sidebar-border/70 pt-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <Avatar className="size-10 shrink-0">
                   {user.avatarUrl ? (
                     <AvatarImage
@@ -275,7 +232,18 @@ export function AdminSidebar({
                   </div>
                 </div>
               </div>
-            )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Log out"
+                disabled={logout.isPending}
+                onClick={handleLogout}
+                className="rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
           </>
         )}
       </SidebarFooter>

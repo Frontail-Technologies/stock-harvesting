@@ -38,17 +38,16 @@ function GoogleIcon({ className = "size-4" }: { className?: string }) {
 // product landing page. Role authorization is re-verified from the
 // real session after auth completes; nothing here decides admin access on
 // its own.
-// Reason codes the backend's Google callback can redirect back here with
-// (see auth.service.ts's evaluatePortalAccess / auth.routes.ts's
-// redirectToLogin) - "not-admin-on-admin-portal" is the important one
-// (item 5): the backend already rejected the login and created NO admin
-// session at all, so this is purely a message to show, not something the
-// frontend re-derives from session state.
-const REJECTION_MESSAGES: Record<string, string> = {
-  "not-admin-on-admin-portal": "You do not have access to the Admin Portal.",
-  failed: "Google login is not available. Please try again.",
-  "state-mismatch": "Your login attempt expired. Please try again.",
-};
+//
+// The backend's Google callback (auth.routes.ts's redirectToLogin) can
+// redirect back here with an "?auth=<reason>" query param for any rejected
+// login - a non-admin account submitted here, an expired OAuth state, or
+// Google itself failing. All of them render the same generic message
+// rather than distinguishing "wrong credentials" from "right credentials,
+// wrong role" - the backend already rejected the login and created NO
+// admin session at all either way, and this screen shouldn't expose
+// account role information unnecessarily.
+const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
 export function AdminLoginScreen() {
   const router = useRouter();
@@ -64,10 +63,7 @@ export function AdminLoginScreen() {
   // a rejected login (item 5) means the backend already created no admin
   // session at all, it just redirected back here with a reason code.
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
-  const queryError =
-    authReason && authReason !== "success"
-      ? (REJECTION_MESSAGES[authReason] ?? "Sign-in was not completed. Please try again.")
-      : null;
+  const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
 
   useEffect(() => {

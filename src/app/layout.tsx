@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthBootstrap } from "@/features/auth";
@@ -7,7 +9,8 @@ import { GlobalStockSearchModal } from "@/features/global-search/components/Glob
 import { ThemeProvider } from "@/features/theme/components/ThemeProvider";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
 import { PwaProvider } from "@/features/pwa";
-import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
+import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl, getAdminHost } from "@/utils/seo";
+import { RESOLVED_PATHNAME_HEADER, normalizeHost, resolveRequestHost } from "@/utils/hostname";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -129,11 +132,29 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Last-resort backstop for hostname routing (src/proxy.ts normally
+  // handles this): if the request resolves to the admin host but didn't
+  // arrive here having been routed into the "/admin" tree - proxy
+  // misconfigured, a reverse proxy stripping/renaming the forwarded host,
+  // or any other failure mode - fail closed rather than let the admin host
+  // ever render a USER-portal page (Landing included, since this layout is
+  // the one thing every route shares). See src/proxy.ts's
+  // RESOLVED_PATHNAME_HEADER comment for how the header below gets set.
+  const adminHost = getAdminHost();
+  if (adminHost) {
+    const headersList = await headers();
+    const requestHost = resolveRequestHost(headersList);
+    const resolvedPathname = headersList.get(RESOLVED_PATHNAME_HEADER) ?? "";
+    if (requestHost === normalizeHost(adminHost) && !resolvedPathname.startsWith("/admin")) {
+      redirect("/admin/login");
+    }
+  }
+
   return (
     <html
       lang="en"
