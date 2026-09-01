@@ -129,7 +129,14 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
                 <Link href="/charts" className="h-9 cursor-pointer px-3" />
               }
             >
-              Open Charts
+              Charts
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              render={
+                <Link href="/dashboard" className="h-9 cursor-pointer px-3" />
+              }
+            >
+              Dashboard
             </DropdownMenuItem>
             <DropdownMenuItem
               render={
