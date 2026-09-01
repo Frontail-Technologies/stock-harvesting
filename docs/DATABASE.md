@@ -147,10 +147,20 @@ write that needs to succeed or fail as one unit:
   codebase's control — Postgres's own rollback guarantee is Postgres's,
   not re-tested here).
 - Collection CSV import (`market-collections.service.ts`) — member
-  insert/deactivate + collection metadata update.
+  insert/deactivate + collection metadata update. The member insert/
+  deactivate steps are currently row-by-row inside this transaction (not
+  batched) — a real backend-hardening item, not fixed in this pass.
 - Drawing replace-all (`drawings.service.ts`) — delete + re-insert.
 - Refresh-token rotation (`auth.service.ts`) — `SELECT ... FOR UPDATE` plus
   family-wide revocation on reuse detection.
+- Weekly Strong backtest week persistence (`persistWeeklyStrongBacktestWeek`,
+  `weekly-strong-backtest.service.ts`) — upsert the run row (idempotent via
+  `ON CONFLICT` on `(collectionId, weekEnding, membershipMode)`) + delete
+  that run's previous members + re-insert the current ones, so a rerun
+  never leaves stale members from a superseded generation. See
+  `weekly-strong-backtest.persistence.test.ts` for the same
+  fake-transaction-client proof pattern as `replaceCandlesAtomically`
+  above.
 
 Functions that may run either standalone or inside an existing transaction
 accept a `dbClient: DbOrTx = db` parameter (see `db/client.ts`) — the

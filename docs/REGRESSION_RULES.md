@@ -213,3 +213,17 @@ found, but not exhaustively provable from a read-only audit). Breaking a
     "instant feedback before the network round-trip" affordance again,
     that must be a loading state, not a raw-candle recomputation. See
     [KNOWN_ISSUES.md](./KNOWN_ISSUES.md), [DOMAIN_BOUNDARIES.md](./DOMAIN_BOUNDARIES.md).
+
+27. **Scanner's live near-high scan and its backtest overlay must answer
+    the same qualification question with the same implementation.**
+    `CONFIRMED, FIXED` — even after rule 26's client-side fix, the
+    *backend's own* live path (`scanner/rules/near-250-week-high.ts`) still
+    ran an independent weekly-only simplification while the backtest path
+    (`computeSymbolBreakoutBacktest`) used the canonical two-condition
+    evaluator — the two could disagree on which weeks qualify, on the same
+    page, for the same symbol. Both now share one fetch/gate step
+    (`getSymbolWeeklyStrongSeriesInput`, `market-data.service.ts`) and one
+    evaluator call (`evaluateWeeklyStrongSeries`) with the same window-size
+    formula (`deriveScannerLookbackBars`, `weekly-strong-evaluator.ts`). See
+    [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) and
+    `near-250-week-high.test.ts`'s consistency tests.

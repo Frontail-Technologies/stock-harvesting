@@ -57,6 +57,46 @@ for the removed identifiers/ratio and confirmed absent
 
 ---
 
+### (Resolved this pass) Scanner's live near-high scan disagreed with its own backtest overlay
+
+**Severity was HIGH — a live production correctness bug**, not just a
+duplication smell. `scanner/rules/near-250-week-high.ts` (the live scan
+behind `GET /api/scanner/results`) ran its own independent, weekly-only
+"close within ratio of its rolling high" check. `computeSymbolBreakoutBacktest`
+(the backtest overlay on the same Charts page) used the canonical
+two-condition evaluator (`weekly-strong-evaluator.ts`), requiring BOTH a
+daily and a weekly leg to pass. `market-data.service.ts`'s own comment on
+`computeSymbolBreakoutBacktest` already documented that the weekly-only
+version "silently dropped the daily confirmation condition, which is why
+its numbers didn't match 'our logic'" — but that comment was written when
+the backtest path was fixed; the live path was never migrated off the
+weekly-only rule at the same time.
+
+**Fix**: `scanner/rules/near-250-week-high.ts` now delegates to
+`evaluateWeeklyStrongSeries` (the same canonical evaluator) instead of
+computing its own threshold. Both the live scan and the backtest now fetch
+their input through one shared function, `getSymbolWeeklyStrongSeriesInput`
+(`market-data.service.ts`) — same daily+weekly series, same completed-week
+trim, same minimum-history gate — and derive their window sizes through
+one shared function, `deriveScannerLookbackBars`
+(`weekly-strong-evaluator.ts`). The dead `NEAR_250_WEEK_HIGH_RULE` constant
+(the old rule's own duplicate copy of the 0.85 threshold) was removed.
+
+**Verified**: new consistency tests in `near-250-week-high.test.ts` assert
+the live-scan wrapper produces exactly the evaluator's own pass/fail
+decision bar-for-bar, including a case that a weekly-only rule would have
+wrongly called a match (weekly leg passes, daily leg fails). Backend
+`tsc`/full test suite clean (171 tests). See
+`docs/REGRESSION_RULES.md` rule 27.
+
+**Relevant files**: `backend/src/modules/scanner/rules/near-250-week-high.ts`,
+`backend/src/modules/scanner/scanner.service.ts`,
+`backend/src/modules/scanner/scanner.constants.ts`,
+`backend/src/modules/market-data/market-data.service.ts`,
+`backend/src/modules/market-data/weekly-strong-evaluator.ts`.
+
+---
+
 ### (Resolved this pass) 55-day change calculation — off-by-one check
 
 **Audit finding**: checked `calculate55DayChange`
