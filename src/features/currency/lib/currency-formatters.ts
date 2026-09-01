@@ -10,40 +10,21 @@ export function getCurrencyForExchange(
   return match?.currency?.toUpperCase() || "USD";
 }
 
-export function convertCurrency(
-  value: number,
-  fromCurrency: AppCurrency,
-  toCurrency: AppCurrency,
-  ratesToUsd: Record<string, number>
-) {
-  if (fromCurrency === toCurrency) return value;
-
-  const fromRate = ratesToUsd[fromCurrency] ?? 1;
-  const toRate = ratesToUsd[toCurrency] ?? 1;
-  if (toRate === 0) return value;
-
-  return (value * fromRate) / toRate;
-}
-
-export function formatCurrencyValue(
-  value: number,
-  displayCurrency: AppCurrency,
-  sourceCurrency: AppCurrency,
-  ratesToUsd: Record<string, number>
-) {
-  const convertedValue = convertCurrency(value, sourceCurrency, displayCurrency, ratesToUsd);
-  const fractionDigits = getAdaptiveFractionDigits(convertedValue);
+// Currency comes entirely from the instrument's own exchange (see
+// getCurrencyForExchange) - there is no manual/user-selected display
+// currency, so this only ever formats a value in its own native currency.
+export function formatCurrencyValue(value: number, currency: AppCurrency) {
+  const fractionDigits = getAdaptiveFractionDigits(value);
 
   try {
-    return new Intl.NumberFormat(displayCurrency === "INR" ? "en-IN" : "en-US", {
+    return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
       style: "currency",
-      currency: displayCurrency,
+      currency,
       minimumFractionDigits: fractionDigits.minimum,
       maximumFractionDigits: fractionDigits.maximum,
-    }).format(convertedValue);
+    }).format(value);
   } catch {
-
-    return `${displayCurrency} ${convertedValue.toFixed(fractionDigits.maximum)}`;
+    return `${currency} ${value.toFixed(fractionDigits.maximum)}`;
   }
 }
 

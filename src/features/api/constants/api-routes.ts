@@ -23,7 +23,6 @@ export const API_ROUTES = {
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
     historyRange: "/api/market-data/history-range",
     exchanges: "/api/market-data/exchanges",
-    exchangeRates: "/api/market-data/exchange-rates",
     indexRelativeStrength: "/api/market-data/index-relative-strength",
   },
   marketCollections: {

@@ -8,8 +8,3 @@ export type MarketExchangeInfo = {
 export type MarketExchangesResponse = {
   exchanges: MarketExchangeInfo[];
 };
-
-export type ExchangeRatesResponse = {
-  rates: Record<string, number>;
-  base: "USD";
-};
