@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gt, gte, ilike, inArray, lt, or, sql } from "drizzle-orm";
 
-import { db } from "../../db/client";
+import { db, type DbOrTx } from "../../db/client";
 import {
   auditLogs,
   instruments,
@@ -24,22 +24,18 @@ import {
   pickTopRelativeStrengthRows,
 } from "../market-data/market-data.service";
 
-// Phase D.10 - getCollectionRelativeStrength/getCollectionWeeklyStrongStocks
-// used to wrap the EXPENSIVE live computation directly
-// (computeRelativeStrengthMetrics/computeGroupRelativeStrength/
-// computeWeeklyStrongStocks - years of candle history per active member,
-// measured cold: ~0.8-3s). That expensive step now lives one layer down,
-// behind a PERSISTED snapshot (dashboard-snapshots.service.ts /
-// dashboard_metric_snapshots) that's invalidated when the underlying data
-// actually changes (a real sync, or a confirmed import - see
-// invalidateCollectionSnapshots below and
-// market-data.service.ts's refreshAllLatestInstrumentPrices), not on a
-// fixed TTL. What this in-process cache now sits in front of is a fast DB
-// read (~100-300ms), not a multi-second computation - so its TTL is
-// deliberately short (a safety-net micro-cache to collapse concurrent
-// requests for the same collection within the same few seconds, not the
-// source of freshness truth the way it used to have to be).
+// The expensive live computation (years of candle history per member) now
+// lives behind a persisted snapshot (dashboard-snapshots.service.ts),
+// invalidated when the underlying data actually changes, not on a fixed
+// TTL. This in-process cache just sits in front of that fast DB read - a
+// short safety-net to collapse concurrent requests, not the source of
+// freshness truth.
 const COLLECTION_CACHE_TTL_MS = 60_000;
+
+// 500-row chunks (1,500 params for the 3-param matched-member upsert, 501
+// for the deactivation batch) - comfortably under Postgres's 65,535-param
+// protocol limit, matching the convention used elsewhere in this codebase.
+const COLLECTION_MEMBER_WRITE_CHUNK_SIZE = 500;
 
 type MemberStatus = "new" | "already-active" | "reactivate";
 
@@ -203,16 +199,11 @@ async function getCollectionMembersForCollection(
   });
 }
 
-// Phase D.10 #1 - Sector and Industry (and, before this pass, an entirely
-// unused third `limit:200` call from the Dashboard's own `rsQuery` - see
-// the Phase D.10 report) each used to independently re-run the full
-// candle-driven base computation. getOrComputeCollectionRelativeStrengthBase
-// runs it ONCE per invalidation cycle (persisted) - deriving the
-// requested view (a plain top-N list, or a sector/industry grouping) from
-// that same stored base is pure/cheap (pickTopRelativeStrengthRows /
-// groupRelativeStrengthMetrics - no candle I/O), so three different
-// `{limit, groupBy}` combinations for the same collection now share one
-// snapshot instead of independently recomputing.
+// getOrComputeCollectionRelativeStrengthBase runs the expensive base
+// computation once per invalidation cycle (persisted); deriving the
+// requested view (top-N list or sector/industry grouping) from that stored
+// base is pure/cheap, so every {limit, groupBy} combination for a
+// collection shares one snapshot instead of recomputing.
 export async function getCollectionRelativeStrength(input: {
   code: string;
   limit: number;
@@ -247,10 +238,11 @@ export async function getCollectionRelativeStrength(input: {
   });
 }
 
-// ChartInk-style "within 15% of its own multi-year closing high" breakout
-// screen, scoped to this collection's active members. Phase D.10: reads a
-// persisted snapshot instead of re-running computeWeeklyStrongStocks live
-// on every request - see getOrComputeWeeklyStrongSnapshot.
+// The Weekly Strong breakout screen (see weekly-strong-evaluator.ts for
+// the actual qualification logic - not restated here), scoped to this
+// collection's active members. Reads a persisted snapshot instead of
+// re-running computeWeeklyStrongStocks live on every request - see
+// getOrComputeWeeklyStrongSnapshot.
 export async function getCollectionWeeklyStrongStocks(input: { code: string }) {
   const collection = await requireCollectionByCode(input.code);
   const cacheKey = `collectionWeeklyStrongStocks:${collection.code}`;
@@ -265,11 +257,7 @@ export async function getCollectionWeeklyStrongStocks(input: { code: string }) {
   });
 }
 
-// Note: the old getCollectionWeeklyStrongStocksBacktest (count-only, live-
-// computed on every request) has been removed - see
-// weekly-strong-backtest.service.ts for the persisted replacement
-// (Phase C2). getActiveMemberInstrumentRows below is still shared by the
-// two functions above and that new module.
+// Shared by the two functions above and weekly-strong-backtest.service.ts.
 export async function getActiveMemberInstrumentRows(collectionId: string) {
   return db
     .select({
@@ -355,18 +343,14 @@ export async function previewCollectionImport(input: { id: string; csvContent: s
   return classifyCollectionImport(collection, input.csvContent);
 }
 
-// Confirming an import does several things atomically in ONE transaction:
-// (1) the pre-existing active-flag update below, which stays the source
-// of truth for current/live Dashboard reads (Phase D #16); (2) creates
-// one new IMMUTABLE market_collection_versions snapshot dated
-// `effectiveFrom` (Phase D #2, #4) - never during dry-run
-// (previewCollectionImport above never calls this function); (3) Phase
-// D.5 lifecycle correctness - see the two invalidation blocks inline
-// below. If a version already exists for that exact effectiveFrom, the
-// whole import is rejected (nothing is written) rather than silently
-// overwritten - use replaceCollectionVersionMembers
-// (market-collection-versions.service.ts) for an explicit, safeguarded
-// correction instead.
+// Confirming an import does 3 things atomically in one transaction: (1)
+// updates the active-flag, the source of truth for live Dashboard reads;
+// (2) creates one new immutable market_collection_versions snapshot dated
+// `effectiveFrom`; (3) invalidates current/historical-membership backtest
+// runs (see the two invalidation blocks below). A version already existing
+// for that exact effectiveFrom rejects the whole import rather than
+// silently overwriting it - use replaceCollectionVersionMembers for an
+// explicit correction instead.
 export async function importCollectionCsv(input: {
   id: string;
   csvContent: string;
@@ -398,29 +382,8 @@ export async function importCollectionCsv(input: {
         );
       }
 
-      for (const row of report.matched) {
-        if (row.status === "already-active") continue;
-
-        await tx
-          .insert(marketCollectionMembers)
-          .values({ collectionId: collection.id, instrumentId: row.instrumentId, active: true })
-          .onConflictDoUpdate({
-            target: [marketCollectionMembers.collectionId, marketCollectionMembers.instrumentId],
-            set: { active: true, updatedAt: new Date() },
-          });
-      }
-
-      for (const row of report.toDeactivate) {
-        await tx
-          .update(marketCollectionMembers)
-          .set({ active: false, updatedAt: new Date() })
-          .where(
-            and(
-              eq(marketCollectionMembers.collectionId, collection.id),
-              eq(marketCollectionMembers.instrumentId, row.instrumentId)
-            )
-          );
-      }
+      await upsertMatchedCollectionMembers(tx, collection.id, report.matched);
+      await deactivateCollectionMembers(tx, collection.id, report.toDeactivate.map((row) => row.instrumentId));
 
       await tx
         .update(marketCollections)
@@ -432,7 +395,7 @@ export async function importCollectionCsv(input: {
         })
         .where(eq(marketCollections.id, collection.id));
 
-      // Phase D.5 #2 - current_membership lifecycle. current_membership
+      // current_membership lifecycle: current_membership
       // runs are documented as "whatever this collection's active set is
       // AT GENERATION TIME" - if this import actually changed the active
       // set, every already-persisted current_membership run now reflects
@@ -488,7 +451,7 @@ export async function importCollectionCsv(input: {
         );
       }
 
-      // Phase D.5 #1 - new-version invalidation. This new version is now
+      // New-version invalidation: this new version is now
       // authoritative for the window [effectiveFrom, next version's
       // effectiveFrom or unbounded). Any historical_membership run whose
       // weekEnding falls in that exact window was necessarily resolved
@@ -536,12 +499,9 @@ export async function importCollectionCsv(input: {
   invalidateCacheByPrefix(`collectionRelativeStrength:${collection.code}:`);
   invalidateCacheByPrefix(`collectionWeeklyStrongStocks:${collection.code}`);
   invalidateCacheByPrefix(`collectionWeeklyStrongBacktest:${collection.code}`);
-  // Phase D.10 #5 - the AUTHORITATIVE invalidation for the persisted
-  // snapshot (the in-process caches above are now just a short safety-net
-  // layer on top of it, see COLLECTION_CACHE_TTL_MS). Membership changing
-  // is exactly the kind of "underlying data actually changed" event the
-  // report calls out - the next read of either metric type for this
-  // collection recomputes once and re-persists.
+  // The authoritative invalidation for the persisted snapshot (the
+  // in-process caches above are just a short safety-net layer on top).
+  // The next read of either metric type recomputes once and re-persists.
   await invalidateCollectionSnapshots(collection.id);
 
   await audit(input.actorUserId, "market_collection.imported", "market_collection", collection.id, {
@@ -559,6 +519,40 @@ export async function importCollectionCsv(input: {
     invalidatedCurrentMembershipRuns,
     invalidatedHistoricalWeeks,
   };
+}
+
+// Batched INSERT ... ON CONFLICT for matched rows (already-active rows
+// need no write). Split out from importCollectionCsv for testability (see
+// market-collections.import-bulk-writes.test.ts).
+export async function upsertMatchedCollectionMembers(
+  tx: DbOrTx,
+  collectionId: string,
+  matched: Array<{ instrumentId: string; status: MemberStatus }>
+) {
+  const rowsToUpsert = matched.filter((row) => row.status !== "already-active");
+  for (let index = 0; index < rowsToUpsert.length; index += COLLECTION_MEMBER_WRITE_CHUNK_SIZE) {
+    const chunk = rowsToUpsert.slice(index, index + COLLECTION_MEMBER_WRITE_CHUNK_SIZE);
+    await tx
+      .insert(marketCollectionMembers)
+      .values(chunk.map((row) => ({ collectionId, instrumentId: row.instrumentId, active: true })))
+      .onConflictDoUpdate({
+        target: [marketCollectionMembers.collectionId, marketCollectionMembers.instrumentId],
+        set: { active: true, updatedAt: new Date() },
+      });
+  }
+}
+
+// Batched deactivation - collectionId stays a real equality filter (not
+// folded into the IN-list) so this can never cross-affect another
+// collection's row for the same instrument.
+export async function deactivateCollectionMembers(tx: DbOrTx, collectionId: string, instrumentIds: string[]) {
+  for (let index = 0; index < instrumentIds.length; index += COLLECTION_MEMBER_WRITE_CHUNK_SIZE) {
+    const chunk = instrumentIds.slice(index, index + COLLECTION_MEMBER_WRITE_CHUNK_SIZE);
+    await tx
+      .update(marketCollectionMembers)
+      .set({ active: false, updatedAt: new Date() })
+      .where(and(eq(marketCollectionMembers.collectionId, collectionId), inArray(marketCollectionMembers.instrumentId, chunk)));
+  }
 }
 
 async function classifyCollectionImport(
@@ -628,16 +622,12 @@ async function classifyCollectionImport(
   };
 }
 
-// Accepts a bare newline list of symbols, a simple single-column CSV with a
-// "symbol" header, or NSE's own official index-constituent CSV export
-// (e.g. "ind_nifty100list.csv": Company Name, Industry, Symbol, Series,
-// ISIN Code — Symbol isn't the first column there). If the header row has a
-// column literally named "symbol", that column is used; otherwise the
-// first comma-separated field on each line is treated as the symbol.
-// Symbols must look like a plausible equity ticker; anything that doesn't
-// match is reported as invalid rather than silently dropped. Exported for
-// market-collection-versions.service.ts's replace/correction workflow,
-// which reuses the exact same parsing rules rather than a second parser.
+// Accepts a bare newline list of symbols, a single-column CSV with a
+// "symbol" header, or NSE's own index-constituent CSV export (where Symbol
+// isn't the first column). Uses a "symbol" header column if present,
+// otherwise the first field per line. Non-ticker-shaped entries are
+// reported as invalid, never silently dropped. Reused as-is by
+// market-collection-versions.service.ts's replace/correction workflow.
 export function parseCollectionCsv(csvContent: string) {
   const lines = csvContent
     .split(/\r?\n/)
