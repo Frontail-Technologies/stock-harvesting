@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LayoutDashboard, LineChart, ListChecks, LogOut } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/toast";
 import { useCurrentUser, useLogout } from "@/features/auth";
 import { getAvatarInitials } from "@/utils/api-client";
 
@@ -30,7 +32,12 @@ export function ScannerAccountMenu() {
     : "SH";
 
   const handleLogout = async () => {
-    await logout.mutateAsync().catch(() => undefined);
+    try {
+      await logout.mutateAsync();
+      toast.success("Logged out successfully");
+    } catch {
+      // no toast on failure
+    }
     router.replace("/login");
   };
 
@@ -78,6 +85,25 @@ export function ScannerAccountMenu() {
             </span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={<Link href="/dashboard" className="h-9 cursor-pointer px-3" />}
+        >
+          <LayoutDashboard className="size-4" />
+          Dashboard
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          render={<Link href="/watchlists" className="h-9 cursor-pointer px-3" />}
+        >
+          <ListChecks className="size-4" />
+          Watchlists
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          render={<Link href="/charts" className="h-9 cursor-pointer px-3" />}
+        >
+          <LineChart className="size-4" />
+          Charts
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

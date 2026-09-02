@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronDown, MoreHorizontal, SquareArrowOutUpRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,7 +152,7 @@ function WatchlistExpandedItems({
   return (
     <div>
       {watchlist.items.length === 0 ? (
-        <p className="py-2 text-sm text-muted-foreground">No stocks in this watchlist yet.</p>
+        <EmptyState size="compact" title="No stocks in this watchlist yet." className="py-2" />
       ) : (
         <ul className="flex flex-col divide-y divide-border/70 border-t border-border/70">
           {watchlist.items.map((item) => (

@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useMarketCollections, type MarketCollection } from "@/features/market-collections";
 import { cn } from "@/utils/cn";
 import { getCountryDisplay } from "../constants/dashboard-countries";
+import { DashboardEmptyIllustration } from "./DashboardEmptyIllustration";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
 import { DashboardSegmentContent } from "./DashboardSegmentContent";
 
@@ -148,8 +150,12 @@ export function DashboardPage() {
       {collectionsQuery.isLoading ? (
         <DashboardGridSkeleton />
       ) : collections.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-          No segments available for this market.
+        <div className="rounded-xl border border-border bg-card">
+          <EmptyState
+            illustration={<DashboardEmptyIllustration />}
+            title="No segments available for this market."
+            description="Try a different market, or check back once data is available."
+          />
         </div>
       ) : effectiveSegment ? (
 

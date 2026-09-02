@@ -25,6 +25,8 @@ import { ScanBandOverlay } from "./ScanBandOverlay";
 import { ScannerBacktestStatsOverlay } from "./ScannerBacktestStatsOverlay";
 import { DrawingOverlay } from "./DrawingOverlay";
 
+const WATERMARK_SAFE_GAP_PX = 18;
+
 type ScannerChartStageProps = {
   containerRef: RefObject<HTMLDivElement | null>;
   chartHandles: ScannerChartHandles | null;
@@ -83,6 +85,29 @@ export function ScannerChartStage({
     preloadBrandLogo("dark").catch(() => {});
     preloadBrandLogo("light").catch(() => {});
   }, []);
+
+  const [priceScaleWidth, setPriceScaleWidth] = useState(0);
+
+  useEffect(() => {
+    const chart = chartHandles?.chart;
+    const container = stageRef.current;
+    if (!chart || !container) return;
+
+    const updatePriceScaleWidth = () => {
+      try {
+        setPriceScaleWidth(chart.priceScale("right").width());
+      } catch {
+        // chart may be mid-teardown
+      }
+    };
+
+    updatePriceScaleWidth();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updatePriceScaleWidth);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [chartHandles, candles]);
 
   useEffect(() => {
     if (!captureRequest || !stageRef.current) return;
@@ -219,18 +244,21 @@ export function ScannerChartStage({
       }}
     >
       <div ref={containerRef} className="relative z-10 h-full w-full" />
-      <div className="pointer-events-none absolute bottom-9 right-20 z-20 flex select-none items-center gap-1.5 bg-transparent opacity-80 sm:bottom-10 sm:right-20">
+      <div
+        className="pointer-events-none absolute bottom-9 z-20 flex select-none items-center gap-1 bg-transparent opacity-60 sm:bottom-10"
+        style={{ right: priceScaleWidth + WATERMARK_SAFE_GAP_PX }}
+      >
         <NextImage
           src={getBrandLogoPath(theme)}
           alt=""
           width={220}
           height={70}
           loading="eager"
-          className="h-6 w-auto shrink-0 object-contain sm:h-9"
+          className="h-3.5 w-auto shrink-0 object-contain sm:h-4.5"
           unoptimized
         />
         <span
-          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-lg font-bold leading-none tracking-tight sm:text-2xl"
+          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[0.6875rem] font-bold leading-none tracking-tight sm:text-sm"
           style={{ color: getScreenshotTextColors(theme).text }}
         >
           <span>Stock</span>

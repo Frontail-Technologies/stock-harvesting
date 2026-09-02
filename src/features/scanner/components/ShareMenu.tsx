@@ -65,7 +65,10 @@ export function ShareMenu({ stock, compact, className, disabled }: ShareMenuProp
                     size="icon"
                     aria-label="Share chart"
                     disabled={disabled}
-                    className={cn("cursor-pointer", className)}
+                    className={cn(
+                      "cursor-pointer disabled:pointer-events-auto disabled:cursor-not-allowed",
+                      className,
+                    )}
                   />
                 }
               />

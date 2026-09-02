@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Stock } from "@/types/market";
 import { cn } from "@/utils/cn";
 
@@ -65,8 +66,13 @@ export function GlobalSearchResultsList({
 
   if (results.length === 0) {
     return (
-      <div className={cn("px-3 py-2.5 text-sm text-muted-foreground", className)}>
-        No stocks found.
+      <div className={cn("px-3", className)}>
+        <EmptyState
+          size="compact"
+          title="No matching stocks found."
+          description="Try another symbol or company name."
+          className="py-4"
+        />
       </div>
     );
   }

@@ -65,7 +65,7 @@ export const SCANNER_CHART_LAYOUT = {
   futureWhitespaceBars: 12,
   visibleBarsTarget: 185,
   barSpacing: 8,
-  minBarSpacing: 4,
+  minBarSpacing: 0.2,
   candleScaleMargins: { top: 0.04, bottom: 0.13 },
   volumeScaleMargins: { top: 0.91, bottom: 0 },
 } as const;

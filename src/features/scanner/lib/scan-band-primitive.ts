@@ -12,6 +12,7 @@ import type {
 const WIDTH_MULTIPLIER = 0.92;
 const MIN_COLUMN_WIDTH_PX = 1;
 const EDGE_WIDTH_PX = 1;
+const MERGE_EPSILON_PX = 0.5;
 
 type HighlightRect = { left: number; right: number; selected: boolean };
 
@@ -150,6 +151,24 @@ export class ScanBandPrimitive implements ISeriesPrimitive<Time> {
       rects.push({ left: x - halfWidth, right: x + halfWidth, selected: time === this.hoveredTime });
     }
 
-    return rects;
+    rects.sort((a, b) => a.left - b.left);
+
+    // Adjacent highlighted candles are merged into one contiguous run before
+    // painting. Each candle's rect was previously drawn independently, so
+    // sub-pixel scroll offsets would round two neighboring rects into
+    // overlapping pixel columns on some frames and not others - the
+    // translucent fill (and edge stroke) then double-painted that seam,
+    // which read as the highlight flickering/darkening while panning.
+    const merged: HighlightRect[] = [];
+    for (const rect of rects) {
+      const last = merged[merged.length - 1];
+      if (last && last.selected === rect.selected && rect.left <= last.right + MERGE_EPSILON_PX) {
+        last.right = Math.max(last.right, rect.right);
+      } else {
+        merged.push({ ...rect });
+      }
+    }
+
+    return merged;
   }
 }

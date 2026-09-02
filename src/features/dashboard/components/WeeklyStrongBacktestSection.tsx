@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Info } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -525,8 +526,8 @@ function WeekResultsView({
                 ))}
             {!isLoading && members.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
-                  No stocks passed in this week.
+                <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                  <EmptyState size="compact" title="No stocks passed in this week." className="py-0" />
                 </TableCell>
               </TableRow>
             )}
@@ -806,8 +807,8 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
           Couldn&apos;t load backtest history.
         </div>
       ) : !generated || points.length === 0 ? (
-        <div className="flex h-64 items-center justify-center text-center text-sm text-muted-foreground">
-          Backtest history has not been generated yet.
+        <div className="flex h-64 items-center justify-center">
+          <EmptyState size="compact" title="Backtest history has not been generated yet." />
         </div>
       ) : isResultsView && selectedWeek ? (
 

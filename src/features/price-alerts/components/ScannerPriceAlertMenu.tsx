@@ -3,6 +3,7 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bell, Loader2, X } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -333,16 +334,23 @@ function PriceAlertFormBody({
         {isPending ? "Creating..." : "Create Alert"}
       </button>
 
-      {(alertsLoading || alerts.length > 0) && (
-        <div className="border-t border-border pt-3">
-          <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Active Alerts
-          </p>
-          <div className="mt-1.5 flex max-h-36 flex-col gap-1 overflow-y-auto">
-            {alertsLoading ? (
-              <p className="text-xs text-muted-foreground">Loading...</p>
-            ) : (
-              alerts.map((alert) => (
+      <div className="border-t border-border pt-3">
+        {!alertsLoading && alerts.length === 0 ? (
+          <EmptyState
+            size="compact"
+            title="No price alerts yet."
+            description="Create an alert to get notified when a stock reaches your level."
+          />
+        ) : (
+          <>
+            <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Active Alerts
+            </p>
+            <div className="mt-1.5 flex max-h-36 flex-col gap-1 overflow-y-auto">
+              {alertsLoading ? (
+                <p className="text-xs text-muted-foreground">Loading...</p>
+              ) : (
+                alerts.map((alert) => (
                 <div
                   key={alert.id}
                   className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5"
@@ -366,11 +374,12 @@ function PriceAlertFormBody({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

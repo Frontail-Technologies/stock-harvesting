@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } 
 import Link from "next/link";
 import { ChevronDown, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
 import type { Stock } from "@/types/market";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,11 +55,7 @@ function WatchlistRows({
   onSelectStock: (stock: Stock) => void;
 }) {
   if (items.length === 0) {
-    return (
-      <p className="px-2.5 py-3 text-xs text-muted-foreground">
-        No stocks in this watchlist yet.
-      </p>
-    );
+    return <EmptyState size="compact" title="No stocks in this watchlist yet." className="py-3" />;
   }
 
   return (
@@ -99,25 +96,14 @@ function WatchlistRows({
 
 function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
-      <p className="text-sm font-semibold text-foreground">No watchlists yet</p>
-      <p className="max-w-[16rem] text-xs text-muted-foreground">
-        Create a watchlist to track stocks and jump straight into Charts.
-      </p>
-      <button
-        type="button"
-        onClick={onCreate}
-        className="mt-1 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-      >
-        <Plus className="size-3.5" />
-        Create Watchlist
-      </button>
-      <Link
-        href="/watchlists"
-        className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-      >
-        Open Watchlists page
-      </Link>
+    <div className="flex flex-1 flex-col items-center justify-center px-4">
+      <EmptyState
+        size="compact"
+        title="No watchlists yet"
+        description="Create a watchlist to track stocks and jump straight into Charts."
+        primaryAction={{ label: "Create Watchlist", icon: Plus, onClick: onCreate }}
+        secondaryAction={{ label: "Open Watchlists page", href: "/watchlists" }}
+      />
     </div>
   );
 }

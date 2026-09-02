@@ -11,83 +11,72 @@ import { cn } from "@/utils/cn";
 const LANDING_NAV_CONTROL_CLASS =
   "border-landing-border bg-landing-fg/6 text-landing-text-strong backdrop-blur-sm hover:border-landing-border-strong hover:bg-landing-fg/10 hover:text-landing-fg";
 
-export function Navbar() {
+export type LandingNavLink = { label: string; href: string };
+
+const LANDING_NAV_LINKS: LandingNavLink[] = [
+  { label: "Analysis", href: "#scanner-method" },
+  { label: "How it Works", href: "#workflow" },
+  { label: "Markets", href: "#markets" },
+];
+
+type NavbarProps = {
+  links?: LandingNavLink[];
+  sticky?: boolean;
+};
+
+export function Navbar({ links = LANDING_NAV_LINKS, sticky = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    if (sticky) return;
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [sticky]);
 
   return (
-    <header data-scrolled={scrolled} className="landing-navbar fixed top-0 inset-x-0 z-50">
+    <header
+      data-scrolled={sticky ? true : scrolled}
+      className={cn("landing-navbar inset-x-0 z-50", sticky ? "sticky top-0" : "fixed top-0")}
+    >
       <div className="landing-container relative flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] h-16 md:h-22">
         <div className="landing-frame-line landing-frame-line-left" aria-hidden="true" />
         <div className="landing-frame-line landing-frame-line-right" aria-hidden="true" />
 
-        <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
-          <Link href="#scanner-method" className="landing-nav-link">
-            Analysis
-          </Link>
-          <Link href="#workflow" className="landing-nav-link">
-            How it Works
-          </Link>
-          <Link href="#markets" className="landing-nav-link">
-            Markets
-          </Link>
+        <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className="landing-nav-link">
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        <Link href="/" aria-label="Stock Harvesting home" className="justify-self-center shrink-0">
-          <BrandLogo size="sm" />
+        <Link
+          href="/"
+          aria-label="Stock Harvesting home"
+          className="shrink-0 justify-self-center scale-90 sm:scale-100"
+        >
+          <BrandLogo size="sm" textClassName="text-base sm:text-3xl" />
         </Link>
 
-        <div className="flex items-center justify-self-end gap-2.5">
-          <div className="hidden lg:block lg:w-56 xl:w-64">
+        <div className="flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
+          <div className="hidden lg:block lg:w-48 xl:w-64">
             <GlobalSearchNavbarField className={LANDING_NAV_CONTROL_CLASS} />
           </div>
 
-          <div className="hidden md:flex lg:hidden">
+          <div className="flex lg:hidden">
             <GlobalSearchMobileSheet className={cn("rounded-md border", LANDING_NAV_CONTROL_CLASS)} />
           </div>
 
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden lg:flex items-center">
             <AccountMenu className="border border-landing-border" />
           </div>
 
-          <div className="flex md:hidden items-center gap-1.5">
-            <GlobalSearchMobileSheet className={cn("rounded-md border", LANDING_NAV_CONTROL_CLASS)} />
-            <AccountMenu className="border border-landing-border" />
+          <div className="flex lg:hidden items-center">
+            <AccountMenu className="border border-landing-border" extraLinks={links} />
           </div>
-
-          <button
-            id="landing-mobile-menu-toggle"
-            className="md:hidden flex flex-col gap-1.5 p-2 rounded-md hover:bg-landing-fg/8 transition-colors cursor-pointer"
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((prev) => !prev)}
-          >
-            <span className={cn("landing-hamburger-bar", mobileOpen && "rotate-45 translate-y-2")} />
-            <span className={cn("landing-hamburger-bar", mobileOpen && "opacity-0")} />
-            <span className={cn("landing-hamburger-bar", mobileOpen && "-rotate-45 -translate-y-2")} />
-          </button>
         </div>
       </div>
-
-      {mobileOpen ? (
-        <div className="md:hidden bg-landing-bg border-t border-landing-border px-6 py-4 flex flex-col gap-3">
-          <Link href="#scanner-method" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
-            Analysis
-          </Link>
-          <Link href="#workflow" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
-            How it Works
-          </Link>
-          <Link href="#markets" className="landing-nav-link py-2" onClick={() => setMobileOpen(false)}>
-            Markets
-          </Link>
-        </div>
-      ) : null}
     </header>
   );
 }

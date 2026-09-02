@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "@/components/ui/toast";
 import {
   Tooltip,
   TooltipContent,
@@ -24,13 +25,19 @@ import { useTheme } from "@/features/theme";
 import { cn } from "@/utils/cn";
 import { getAvatarInitials } from "@/utils/api-client";
 
+type AccountMenuLink = {
+  label: string;
+  href: string;
+};
+
 type AccountMenuProps = {
   className?: string;
 
   portalClassName?: string;
+  extraLinks?: AccountMenuLink[];
 };
 
-export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
+export function AccountMenu({ className, portalClassName, extraLinks }: AccountMenuProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const currentUserQuery = useCurrentUser();
@@ -42,7 +49,12 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
     : null;
 
   const handleLogout = async () => {
-    await logout.mutateAsync().catch(() => undefined);
+    try {
+      await logout.mutateAsync();
+      toast.success("Logged out successfully");
+    } catch {
+      // no toast on failure
+    }
     router.replace("/login");
   };
 
@@ -111,6 +123,21 @@ export function AccountMenu({ className, portalClassName }: AccountMenuProps) {
           portalClassName,
         )}
       >
+        {extraLinks && extraLinks.length > 0 ? (
+          <>
+            <DropdownMenuGroup>
+              {extraLinks.map((link) => (
+                <DropdownMenuItem
+                  key={link.href}
+                  render={<Link href={link.href} className="h-9 cursor-pointer px-3" />}
+                >
+                  {link.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         {currentUser ? (
           <>
             <DropdownMenuGroup>

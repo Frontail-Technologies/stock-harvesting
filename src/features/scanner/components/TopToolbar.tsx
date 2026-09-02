@@ -12,7 +12,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCurrency } from "@/features/currency";
-import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { ScannerPriceAlertMenu } from "@/features/price-alerts";
 import { ThemeToggle } from "@/features/theme";
@@ -126,9 +125,10 @@ export function TopToolbar({
   return (
     <div className="flex shrink-0 flex-col overflow-hidden rounded-[3px] border-b border-border/60 bg-background sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2 sm:py-1">
 
-      <div className="flex h-11 items-center gap-1 px-1 sm:hidden">
-        <GlobalSearchMobileSheet />
-        <div className="min-w-0 flex-1" aria-hidden />
+      <div className="flex h-11 items-center gap-1.5 px-2 sm:hidden">
+        <div className="min-w-0 flex-1">
+          <GlobalSearchNavbarField className="h-8" />
+        </div>
         <ScannerWatchlistToggle />
         <ScannerPriceAlertMenu
           key={`${stock.exchange}:${stock.symbol}`}

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { AdminForbiddenState } from "@/features/admin/components/shell/AdminAccessState";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { getSiteUrl } from "@/utils/seo";
 import { useGoogleLogin } from "../hooks/use-auth";
 import { useAdminSessionStore } from "../stores/admin-session-store";
 
@@ -87,29 +86,14 @@ export function AdminLoginScreen() {
 
   return (
     <div className="grid min-h-dvh place-items-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 text-card-foreground shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
-            <ShieldCheck className="size-4.5" />
-          </div>
-          <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-              Stock Harvesting
-            </p>
-            <p className="text-sm font-semibold text-foreground">Admin</p>
-          </div>
-        </div>
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 text-center text-card-foreground shadow-sm">
+        <BrandLogo size="sm" className="mx-auto" />
 
-        <h1 className="mt-6 text-xl font-bold tracking-tight text-foreground">
-          Administrator access
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in with an administrator account to open the console.
-        </p>
+        <p className="mt-6 text-sm font-medium text-muted-foreground">Login to continue</p>
 
         <Button
           variant="outline"
-          className="mt-6 h-11 w-full cursor-pointer gap-3 rounded-lg text-sm font-semibold disabled:cursor-not-allowed"
+          className="mt-6 h-11 w-full cursor-pointer gap-3 rounded-lg border-border bg-white text-sm font-semibold text-foreground disabled:cursor-not-allowed dark:bg-input/30 dark:hover:bg-input/50"
           onClick={handleGoogleLogin}
           disabled={googleLogin.isPending || status !== "guest"}
         >
@@ -118,20 +102,10 @@ export function AdminLoginScreen() {
         </Button>
 
         {error && (
-          <p className="mt-4 rounded-lg border border-border bg-background px-3 py-2 text-center text-sm text-muted-foreground">
+          <p className="mt-4 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
             {error}
           </p>
         )}
-
-        <p className="mt-6 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-          Not an administrator?{" "}
-          <a
-            href={`${getSiteUrl().origin}/login`}
-            className="font-medium text-primary hover:underline"
-          >
-            Go to Stock Harvesting
-          </a>
-        </p>
       </div>
     </div>
   );

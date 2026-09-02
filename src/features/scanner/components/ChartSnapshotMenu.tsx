@@ -74,7 +74,10 @@ export function ChartSnapshotMenu({ compact, className, disabled }: ChartSnapsho
                   size="icon"
                   aria-label="Chart snapshot"
                   disabled={disabled}
-                  className={cn("cursor-pointer", className)}
+                  className={cn(
+                    "cursor-pointer disabled:pointer-events-auto disabled:cursor-not-allowed",
+                    className,
+                  )}
                 />
               }
             />

@@ -6,8 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { queryKeys } from "@/features/api";
 import { AdPlacement, AdsenseScript } from "@/features/adsense";
-import { Button } from "@/components/ui/button";
-import { Toaster } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Stock } from "@/types/market";
 import { AuthGuard, useSessionStore } from "@/features/auth";
 import { useMarketStream, type MarketStreamEvent } from "@/features/market-stream";
@@ -40,6 +39,7 @@ import type {
   ScannerTheme,
   Timeframe,
 } from "../types";
+import { ChartsEmptyIllustration } from "./ChartsEmptyIllustration";
 import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
@@ -256,7 +256,6 @@ export function ScannerPage() {
         )}
       >
         <AdsenseScript placementKeys={["scanner_bottom"]} />
-        <Toaster />
         <TopToolbar
           stock={selectedStock ?? buildEmptyStock(selectedExchange)}
           chartType={chartType}
@@ -314,17 +313,17 @@ export function ScannerPage() {
 function ScannerEmptyState({ onOpenSearch }: { onOpenSearch: () => void }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-        <div className="flex flex-col items-center gap-1.5">
-          <p className="text-sm font-semibold text-foreground">Search for a stock to open its chart</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Find any stock to start reviewing its chart.
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="lg" onClick={onOpenSearch} className="gap-2">
-          <Search className="size-4" />
-          Search stocks
-        </Button>
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        <EmptyState
+          illustration={<ChartsEmptyIllustration />}
+          title="Select a stock to start reviewing."
+          description="Search for a company to open its chart and market context."
+          primaryAction={{
+            label: "Search stocks",
+            icon: Search,
+            onClick: onOpenSearch,
+          }}
+        />
       </div>
       <AdPlacement placementKey="scanner_bottom" variant="scanner" className="shrink-0" />
     </div>

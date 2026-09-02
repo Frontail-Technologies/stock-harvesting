@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toast";
 import { AuthBootstrap } from "@/features/auth";
 import { QueryProvider } from "@/features/api";
 import { GlobalStockSearchModal } from "@/features/global-search/components/GlobalStockSearchModal";
@@ -157,6 +158,7 @@ export default async function RootLayout({
 
               <GlobalStockSearchModal />
               {children}
+              <Toaster />
             </TooltipProvider>
           </ThemeProvider>
         </QueryProvider>

@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { Home, LogOut, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import {
   Sidebar,
   SidebarContent,
@@ -51,7 +52,12 @@ export function AdminSidebar({
   const logout = useAdminLogout();
 
   const handleLogout = async () => {
-    await logout.mutateAsync().catch(() => undefined);
+    try {
+      await logout.mutateAsync();
+      toast.success("Logged out successfully");
+    } catch {
+      // no toast on failure
+    }
 
     router.replace("/admin/login");
   };

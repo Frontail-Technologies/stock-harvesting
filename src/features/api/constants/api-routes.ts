@@ -21,6 +21,8 @@ export const API_ROUTES = {
     chartEligibleStockSearch: "/api/market-data/stocks/search/chart-eligible",
     candles: (symbol: string) =>
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
+    publicCandles: (symbol: string) =>
+      `/api/market-data/public/candles/${encodeURIComponent(symbol)}`,
     historyRange: "/api/market-data/history-range",
     exchanges: "/api/market-data/exchanges",
     indexRelativeStrength: "/api/market-data/index-relative-strength",

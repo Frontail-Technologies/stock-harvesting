@@ -254,8 +254,6 @@ export function LoginScreen() {
       </div>
 
       <div className="login-auth">
-        <p className="login-meta-label">Auth / Secure Access</p>
-
         <div className="login-visual-mobile" aria-hidden="true">
           <div className="login-visual-grid" />
           <SignalHarvestIllustration />
@@ -273,7 +271,7 @@ export function LoginScreen() {
 
           <Button
             variant="outline"
-            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-fg/5 text-base font-semibold text-landing-fg shadow-sm hover:border-landing-border-strong hover:bg-landing-fg/10 disabled:cursor-not-allowed"
+            className="mt-8 h-12 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-white text-base font-semibold text-landing-fg shadow-sm hover:bg-landing-fg/5 disabled:cursor-not-allowed dark:bg-landing-fg/5 dark:hover:bg-landing-fg/10"
             onClick={handleGoogleLogin}
             disabled={googleLogin.isPending}
           >
@@ -290,10 +288,6 @@ export function LoginScreen() {
               {error}
             </p>
           )}
-
-          <div className="mt-6 border-t border-landing-border pt-4">
-            <p className="text-xs text-landing-text-muted">Secure authentication via Google</p>
-          </div>
         </div>
       </div>
     </div>

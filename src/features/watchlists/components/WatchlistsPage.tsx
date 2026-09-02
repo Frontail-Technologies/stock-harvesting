@@ -3,56 +3,16 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/utils/cn";
 import { AddStockDialog } from "./AddStockDialog";
 import { CreateWatchlistDialog } from "./CreateWatchlistDialog";
 import { DeleteWatchlistDialog } from "./DeleteWatchlistDialog";
 import { RenameWatchlistDialog } from "./RenameWatchlistDialog";
+import { WatchlistEmptyIllustration } from "./WatchlistEmptyIllustration";
 import { WatchlistRow } from "./WatchlistRow";
 import { useWatchlists } from "../hooks/use-watchlists";
 import type { WatchlistSummary } from "../types";
-
-const EMPTY_PREVIEW_ROWS = [
-  { width: "68%", trend: "up" as const },
-  { width: "44%", trend: "down" as const },
-  { width: "80%", trend: "up" as const },
-  { width: "52%", trend: "down" as const },
-];
-
-function WatchlistEmptyPreview() {
-  return (
-    <div
-      aria-hidden
-      className="w-full max-w-[220px] rounded-xl border border-border bg-card px-4 py-3.5"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Watchlist
-        </span>
-        <span className="flex size-5 items-center justify-center rounded-full bg-muted font-mono text-[0.625rem] font-semibold text-muted-foreground">
-          {EMPTY_PREVIEW_ROWS.length}
-        </span>
-      </div>
-      <div className="mt-3 flex flex-col gap-2.5">
-        {EMPTY_PREVIEW_ROWS.map((row, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <span
-              className="h-2 flex-1 rounded-full bg-muted"
-              style={{ maxWidth: row.width }}
-            />
-            <span
-              className={cn(
-                "h-2 w-6 shrink-0 rounded-full",
-                row.trend === "up" ? "bg-success/35" : "bg-danger/35",
-              )}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function WatchlistsPage() {
   const { watchlists, isLoading } = useWatchlists();
@@ -98,26 +58,16 @@ export function WatchlistsPage() {
             <Spinner size="sm" />
           </div>
         ) : watchlists.length === 0 ? (
-          <div className="flex flex-col items-center gap-5 py-6 text-center sm:py-8">
-            <WatchlistEmptyPreview />
-            <div className="flex max-w-sm flex-col gap-1.5">
-              <p className="text-sm font-semibold text-foreground">
-                Keep stocks you want to review together.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Create watchlists to organize companies and open them quickly in
-                Charts.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className="w-full gap-1.5 sm:w-auto"
-            >
-              <Plus className="size-4" />
-              Create Watchlist
-            </Button>
-          </div>
+          <EmptyState
+            illustration={<WatchlistEmptyIllustration />}
+            title="Keep stocks you want to review together."
+            description="Create watchlists to organize companies and open them quickly in Charts."
+            primaryAction={{
+              label: "Create Watchlist",
+              icon: Plus,
+              onClick: () => setCreateOpen(true),
+            }}
+          />
         ) : (
           <div className="flex flex-col gap-3">
 

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -246,7 +247,7 @@ export function WeeklyStrongStockTable({
 
             {filteredItems.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={SORTABLE_COLUMNS.length} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={SORTABLE_COLUMNS.length} className="py-6 text-center text-sm text-muted-foreground">
                   {isLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner size="sm" />
@@ -255,9 +256,13 @@ export function WeeklyStrongStockTable({
                   ) : isError ? (
                     "Couldn't load this list."
                   ) : q ? (
-                    "No matches for your search."
+                    <EmptyState size="compact" title="No matches for your search." className="py-0" />
                   ) : (
-                    "No stocks matched for the latest completed week."
+                    <EmptyState
+                      size="compact"
+                      title="No stocks matched for the latest completed week."
+                      className="py-0"
+                    />
                   )}
                 </TableCell>
               </TableRow>
