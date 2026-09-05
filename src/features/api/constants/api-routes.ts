@@ -38,6 +38,8 @@ export const API_ROUTES = {
       `/api/market-collections/${encodeURIComponent(code)}/members`,
     relativeStrength: (code: string) =>
       `/api/market-collections/${encodeURIComponent(code)}/relative-strength`,
+    sectorIndustryTaxonomy: (code: string) =>
+      `/api/market-collections/${encodeURIComponent(code)}/sector-industry-taxonomy`,
     weeklyStrongStocks: (code: string) =>
       `/api/market-collections/${encodeURIComponent(code)}/weekly-strong-stocks`,
   },
@@ -127,6 +129,7 @@ export const API_ROUTES = {
     items: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/items`,
     item: (id: string, itemId: string) =>
       `/api/watchlists/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
+    relativeStrength: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/relative-strength`,
   },
   monetization: {
     config: "/api/monetization/config",

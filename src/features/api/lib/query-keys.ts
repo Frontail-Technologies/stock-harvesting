@@ -61,6 +61,8 @@ export const queryKeys = {
       limit?: number;
       groupBy?: "sector" | "industry";
     }) => ["market-collections", "relative-strength", input] as const,
+    sectorIndustryTaxonomy: (input: { code: string }) =>
+      ["market-collections", "sector-industry-taxonomy", input] as const,
     weeklyStrongStocks: (input: { code: string }) =>
       ["market-collections", "weekly-strong-stocks", input] as const,
     admin: {
@@ -126,6 +128,8 @@ export const queryKeys = {
   watchlists: {
     list: ["watchlists", "list"] as const,
     detail: (id: string) => ["watchlists", "detail", id] as const,
+    relativeStrength: (input: { id: string; limit?: number }) =>
+      ["watchlists", "relative-strength", input] as const,
   },
   priceAlerts: {
     list: (input: { exchange?: string; symbol?: string; status?: string }) =>

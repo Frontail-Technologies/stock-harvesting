@@ -1,10 +1,10 @@
 import { Spinner } from "@/components/ui/spinner";
 
 const skeletonCardTitles = [
-  "Relative Strength Index",
-  "Relative Strength Sector",
-  "Relative Strength Industry",
-  "Weekly Strong Stock List",
+  "Index Harvest",
+  "Sector Harvest",
+  "Industry Harvest",
+  "Stock Harvest",
 ];
 
 const rowWidths = [72, 42, 36, 34, 28, 24, 22, 20, 18, 16, 15, 14];
@@ -23,7 +23,7 @@ export function DashboardGridSkeleton() {
   );
 }
 
-function DashboardWidgetSkeleton({
+export function DashboardWidgetSkeleton({
   title,
   offset,
 }: {

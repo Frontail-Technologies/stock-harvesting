@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
-import { Info, Maximize2, Minimize2 } from "lucide-react";
+"use client";
+
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { Info, Maximize2 } from "lucide-react";
 import { useCurrency } from "@/features/currency";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { DashboardCardData } from "@/types/dashboard";
 import { cn } from "@/utils/cn";
-
-export type DashboardWidgetPanelMode = "normal" | "minimized" | "maximized";
 
 const MAX_BAR_PCT = 88;
 const MIN_BAR_PCT = 2;
@@ -62,18 +63,30 @@ function BarWithLabel({
 
 export function DashboardWidget({
   card,
-  mode = "normal",
-  onToggleMinimize,
-  onToggleMaximize,
+  expanded = false,
+  onExpand,
+  headerActions,
+  emptyState,
 }: {
   card: DashboardCardData;
-  mode?: DashboardWidgetPanelMode;
-  onToggleMinimize?: () => void;
-  onToggleMaximize?: () => void;
+  expanded?: boolean;
+  onExpand?: () => void;
+  // Optional extra header controls rendered alongside the existing
+  // expand/info icons - Dashboard itself never passes this, so its own
+  // rendering is unchanged; other features (e.g. Widget) reusing this same
+  // presentation for their own ranked-stock cards use it for actions this
+  // component has no built-in concept of (reorder, remove, etc.).
+  headerActions?: ReactNode;
+  // Optional replacement for the built-in "No additional movers to show
+  // right now" message - Dashboard never passes this either, so its own
+  // empty copy is unchanged; Widget uses it for a Segment/Watchlist-
+  // specific empty message (and, for an empty Watchlist, an action link).
+  emptyState?: ReactNode;
 }) {
   const { formatStockCurrency } = useCurrency();
   const scaleMax = Math.max(...card.items.map((item) => Math.abs(item.value)), 1);
   const crossFilter = card.crossFilter;
+  const onItemClick = card.onItemClick;
 
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [plotHeight, setPlotHeight] = useState(DEFAULT_PLOT_HEIGHT_PX);
@@ -98,45 +111,42 @@ export function DashboardWidget({
     <div className="flex h-full min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-3.5 text-card-foreground">
       <div className="flex items-center justify-between gap-2">
         <h3 className="truncate text-sm font-semibold text-foreground">{card.title}</h3>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {onToggleMaximize && (
-            <button
-              type="button"
-              onClick={onToggleMaximize}
-              aria-pressed={mode === "maximized"}
-              title={mode === "maximized" ? "Restore panel" : "Maximize panel"}
-              className={cn(
-                "rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                mode === "maximized" && "bg-muted text-foreground"
-              )}
-            >
-              <Maximize2 className="size-3.5" />
-            </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {onExpand && !expanded && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={onExpand}
+                    className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  />
+                }
+              >
+                <Maximize2 className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Open full view</TooltipContent>
+            </Tooltip>
           )}
-          {onToggleMinimize && (
-            <button
-              type="button"
-              onClick={onToggleMinimize}
-              aria-pressed={mode === "minimized"}
-              title={mode === "minimized" ? "Restore panel" : "Minimize panel"}
-              className={cn(
-                "rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                mode === "minimized" && "bg-muted text-foreground"
-              )}
-            >
-              <Minimize2 className="size-3.5" />
-            </button>
-          )}
+          {headerActions}
           <Info className="size-3.5 shrink-0 text-muted-foreground" />
         </div>
       </div>
       <p className="mt-1 text-[0.6875rem] text-muted-foreground">{card.timestamp}</p>
 
-      <div ref={rowsContainerRef} className="mt-3 flex max-h-104 min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div
+        ref={rowsContainerRef}
+        className={cn(
+          "mt-3 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto",
+          !expanded && "max-h-104"
+        )}
+      >
         {card.items.length === 0 ? (
-          <div className="py-3 text-[0.6875rem] text-muted-foreground">
-            No additional movers to show right now
-          </div>
+          emptyState ?? (
+            <div className="py-3 text-[0.6875rem] text-muted-foreground">
+              No additional movers to show right now
+            </div>
+          )
         ) : null}
         {card.items.map((item) => {
           const isPositive = item.value >= 0;
@@ -150,32 +160,40 @@ export function DashboardWidget({
 
           const isSelected = crossFilter?.selectedLabel === item.label;
           const isMuted = Boolean(crossFilter?.selectedLabel) && !isSelected;
+          const isClickable = Boolean(crossFilter) || Boolean(onItemClick);
+          const activateRow = () => {
+            if (crossFilter) crossFilter.onSelectLabel(item.label);
+            else onItemClick?.(item);
+          };
           const rowTooltip = crossFilter
             ? `${item.label}\n${isSelected ? "Selected · Click to clear" : "Click to filter"}`
-            : item.label;
+            : onItemClick
+              ? `${item.label}\nOpen in Charts`
+              : item.label;
 
           return (
             <div
               key={item.rank}
               title={rowTooltip}
-              onClick={crossFilter ? () => crossFilter.onSelectLabel(item.label) : undefined}
+              onClick={isClickable ? activateRow : undefined}
               onKeyDown={
-                crossFilter
+                isClickable
                   ? (event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        crossFilter.onSelectLabel(item.label);
+                        activateRow();
                       }
                     }
                   : undefined
               }
-              role={crossFilter ? "button" : undefined}
-              tabIndex={crossFilter ? 0 : undefined}
+              role={isClickable ? "button" : undefined}
+              tabIndex={isClickable ? 0 : undefined}
               aria-pressed={crossFilter ? isSelected : undefined}
               style={{ height: rowSlotHeight }}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-sm outline-none transition-all",
-                crossFilter && "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring/50",
+                isClickable && "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring/50",
+                onItemClick && "hover:bg-muted/60",
                 isMuted && "opacity-45"
               )}
             >
