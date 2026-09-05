@@ -21,7 +21,7 @@ export function StockAnalystView({ analystSummary, currency }: StockAnalystViewP
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-foreground">Analyst / Market View</h2>
+      <h2 className="text-lg font-semibold text-foreground">Analyst / Market View</h2>
 
       <StockSectionCard className="mt-3">
       <div className="flex flex-wrap items-baseline justify-between gap-3">

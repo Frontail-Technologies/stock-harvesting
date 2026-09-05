@@ -21,8 +21,8 @@ function ListColumn({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <Icon className={cn("size-4", tone === "success" ? "text-success" : "text-danger")} />
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <Icon className={cn("size-5", tone === "success" ? "text-success" : "text-danger")} />
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
       </div>
       <ul className="mt-3 flex flex-col divide-y divide-border">
         {items.map((item) => (

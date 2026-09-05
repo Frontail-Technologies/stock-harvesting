@@ -17,7 +17,7 @@ export function StockCompanyOverview({ companyName, profile }: StockCompanyOverv
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-foreground">About {companyName}</h2>
+      <h2 className="text-lg font-semibold text-foreground">About {companyName}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
         {profile.description}
       </p>

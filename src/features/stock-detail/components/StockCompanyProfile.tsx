@@ -9,7 +9,7 @@ type StockCompanyProfileProps = {
 export function StockCompanyProfile({ companyName, profile }: StockCompanyProfileProps) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-foreground">Inside {companyName}</h2>
+      <h2 className="text-lg font-semibold text-foreground">Inside {companyName}</h2>
 
       <div className="mt-3 grid grid-cols-2 gap-x-6 sm:grid-cols-3">
         <div className="border-t border-border py-3">

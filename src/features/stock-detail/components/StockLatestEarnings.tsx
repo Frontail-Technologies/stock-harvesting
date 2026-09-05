@@ -1,7 +1,6 @@
 import { formatCurrencyValue } from "@/features/currency/lib/currency-formatters";
 import { cn } from "@/utils/cn";
 import type { StockFinancialPeriod } from "../types";
-import { StockSectionCard } from "./StockSectionCard";
 
 type StockLatestEarningsProps = {
   quarterly: StockFinancialPeriod[];
@@ -47,30 +46,28 @@ export function StockLatestEarnings({ quarterly, currency }: StockLatestEarnings
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">Latest earnings</h2>
+        <h2 className="text-lg font-semibold text-foreground">Latest earnings</h2>
         <span className="text-xs text-muted-foreground">{latest.label}</span>
       </div>
-      <StockSectionCard className="mt-3 p-0">
-        <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex flex-col gap-1 px-4 py-3">
-              <span className="text-xs font-medium text-muted-foreground">{stat.label}</span>
-              <span className="text-base font-semibold tabular-nums text-foreground">{stat.value}</span>
-              {stat.changePct !== null && (
-                <span
-                  className={cn(
-                    "text-xs font-medium tabular-nums",
-                    stat.changePct >= 0 ? "text-success" : "text-danger",
-                  )}
-                >
-                  {stat.changePct >= 0 ? "+" : ""}
-                  {stat.changePct.toFixed(1)}% QoQ
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </StockSectionCard>
+      <div className="mt-3 grid grid-cols-2 gap-x-6 border-t border-border sm:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="flex flex-col gap-1 py-3">
+            <span className="text-xs font-medium text-muted-foreground">{stat.label}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{stat.value}</span>
+            {stat.changePct !== null && (
+              <span
+                className={cn(
+                  "text-xs font-medium tabular-nums",
+                  stat.changePct >= 0 ? "text-success" : "text-danger",
+                )}
+              >
+                {stat.changePct >= 0 ? "+" : ""}
+                {stat.changePct.toFixed(1)}% QoQ
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

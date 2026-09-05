@@ -11,7 +11,7 @@ type StockFinancialsSectionProps = {
 export function StockFinancialsSection({ financials, currency }: StockFinancialsSectionProps) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-foreground">Financials</h2>
+      <h2 className="text-lg font-semibold text-foreground">Financials</h2>
 
       <StockSectionCard className="mt-3">
         <StockFinancialCharts

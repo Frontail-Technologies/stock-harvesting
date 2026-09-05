@@ -1,20 +1,10 @@
 import { formatCurrencyValue } from "@/features/currency/lib/currency-formatters";
 import type { StockFundamentals } from "../types";
-import { StockSectionCard } from "./StockSectionCard";
 
 type StockKeyMetricsProps = {
   fundamentals: StockFundamentals;
   currency: string;
 };
-
-function MetricCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3 first:pl-0 last:pr-0">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="text-base font-semibold tabular-nums text-foreground">{value}</span>
-    </div>
-  );
-}
 
 export function StockKeyMetrics({ fundamentals, currency }: StockKeyMetricsProps) {
   const metrics: Array<{ label: string; value: string }> = [
@@ -31,14 +21,33 @@ export function StockKeyMetrics({ fundamentals, currency }: StockKeyMetricsProps
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-foreground">Key stats</h2>
-      <StockSectionCard className="mt-3 p-0">
-        <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-3 sm:divide-y-0">
+      <h2 className="text-lg font-semibold text-foreground">Key stats</h2>
+
+      {/* Desktop/tablet: one horizontal strip. */}
+      <div className="mt-3 hidden overflow-x-auto border-t border-border sm:block">
+        <div className="flex min-w-max divide-x divide-border">
           {metrics.map((metric) => (
-            <MetricCell key={metric.label} label={metric.label} value={metric.value} />
+            <div key={metric.label} className="flex shrink-0 flex-col gap-1 px-4 py-3">
+              <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+                {metric.label}
+              </span>
+              <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
+                {metric.value}
+              </span>
+            </div>
           ))}
         </div>
-      </StockSectionCard>
+      </div>
+
+      {/* Mobile: compact vertical label/value list. */}
+      <div className="mt-3 flex flex-col divide-y divide-border border-t border-border sm:hidden">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-xs font-medium text-muted-foreground">{metric.label}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</span>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

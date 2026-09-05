@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { buttonVariants } from "@/components/ui/button";
 import { formatCurrencyValue } from "@/features/currency/lib/currency-formatters";
 import { ShareMenu } from "@/features/scanner/components/ShareMenu";
 import type { Stock } from "@/types/market";
@@ -19,7 +18,6 @@ type StockDetailHeaderProps = {
   sector: string;
   industry: string;
   currency: string;
-  fullChartHref: string;
 };
 
 export function StockDetailHeader({
@@ -31,7 +29,6 @@ export function StockDetailHeader({
   sector,
   industry,
   currency,
-  fullChartHref,
 }: StockDetailHeaderProps) {
   const initials = getAvatarInitials(companyName || stock.symbol, stock.symbol);
   const hasChange = changeAbs !== null && changePct !== null;
@@ -74,13 +71,6 @@ export function StockDetailHeader({
             className="size-9 rounded-md border border-border"
           />
           <ShareMenu stock={stock} className="size-9 rounded-md border border-border" />
-          <Link
-            href={fullChartHref}
-            className={cn(buttonVariants({ variant: "default", size: "sm" }), "gap-1.5")}
-          >
-            <ExternalLink className="size-3.5" />
-            <span className="hidden sm:inline">Open full chart</span>
-          </Link>
         </div>
       </div>
 

@@ -12,11 +12,10 @@ import {
   computeLatestChange,
 } from "../lib/stock-detail-range";
 import { buildFullChartHref } from "../lib/stock-detail-links";
+import { StockAnalysisUnlock } from "./StockAnalysisUnlock";
 import { StockAnalystView } from "./StockAnalystView";
 import { StockCompanyOverview } from "./StockCompanyOverview";
 import { StockCompanyProfile } from "./StockCompanyProfile";
-import { StockDetailChart } from "./StockDetailChart";
-import { StockDetailCta } from "./StockDetailCta";
 import { StockDetailHeader } from "./StockDetailHeader";
 import { StockFaq } from "./StockFaq";
 import { StockFinancialsSection } from "./StockFinancialsSection";
@@ -24,6 +23,7 @@ import { StockKeyMetrics } from "./StockKeyMetrics";
 import { StockLatestEarnings } from "./StockLatestEarnings";
 import { StockMockDataNotice } from "./StockMockDataNotice";
 import { StockPeerComparison } from "./StockPeerComparison";
+import { StockPublicChart } from "./StockPublicChart";
 import { StockRangeSummary } from "./StockRangeSummary";
 import { StockStrengthsRisks } from "./StockStrengthsRisks";
 
@@ -88,14 +88,13 @@ export async function StockDetailPage({ symbol, exchange }: StockDetailPageProps
           sector={mockDetail.companyProfile.sector}
           industry={mockDetail.companyProfile.industry}
           currency={currency}
-          fullChartHref={fullChartHref}
         />
 
         <StockRangeSummary dayRange={dayRange} fiftyTwoWeekRange={fiftyTwoWeekRange} currency={currency} />
       </div>
 
-      <div className="mt-8">
-        <StockDetailChart
+      <div className="mt-6">
+        <StockPublicChart
           symbol={symbol}
           exchange={exchange}
           currency={currency}
@@ -104,18 +103,18 @@ export async function StockDetailPage({ symbol, exchange }: StockDetailPageProps
         />
       </div>
 
-      <div className="mt-10">
+      <div className="mt-4">
         <StockMockDataNotice />
       </div>
 
-      <div className="divide-y divide-border [&>section]:py-8">
+      <div className="[&>section]:py-5 sm:[&>section]:py-7">
         <StockKeyMetrics fundamentals={mockDetail.fundamentals} currency={currency} />
 
         <StockLatestEarnings quarterly={mockDetail.financials.quarterly} currency={currency} />
 
         <StockCompanyOverview companyName={displayName} profile={mockDetail.companyProfile} />
 
-        <section className="flex flex-col gap-8">
+        <section className="flex flex-col gap-6">
           <StockStrengthsRisks
             strengths={mockDetail.insights.strengths}
             risks={mockDetail.insights.risks}
@@ -140,7 +139,7 @@ export async function StockDetailPage({ symbol, exchange }: StockDetailPageProps
         <StockFaq items={mockDetail.faq} />
       </div>
 
-      <StockDetailCta symbol={symbol} exchange={exchange} />
+      <StockAnalysisUnlock symbol={symbol} />
     </div>
   );
 }
