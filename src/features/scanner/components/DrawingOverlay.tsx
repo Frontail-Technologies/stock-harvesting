@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -28,6 +29,7 @@ import {
 } from "../tools/cursor-tool-config";
 import {
   defaultDrawingStyle,
+  drawingStrokeWidths,
   resolveDrawingStyle,
   withAlpha,
 } from "../tools/drawing-style-config";
@@ -171,7 +173,151 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function clampPointToViewport(point: ScreenPoint, width: number, height: number): ScreenPoint {
+  return { x: clamp(point.x, 0, width), y: clamp(point.y, 0, height) };
+}
+
+// SVG strokes render centered on their coordinate, so a shape whose edge is
+// clamped to exactly 0/width/height still has half its stroke (and any
+// handle circle whose center sits there) cut off by the SVG's own clip
+// bounds. MEASUREMENT_SAFE_INSET_PX is the pixel margin the Measure
+// rectangle's rendered footprint needs from that clip edge to always stay
+// fully visible: half the thickest stroke width the style toolbar allows,
+// or the handle circle's own radius (see the `r={5}` start/end handles in
+// MeasurementElementView below) - whichever reaches further from the
+// anchor point. Conservative on purpose (based on the max supported stroke,
+// not the current one) so it stays correct at every width without needing
+// to thread the live style into the positioning math.
+const MEASUREMENT_HANDLE_RADIUS_PX = 5;
+const MEASUREMENT_MAX_STROKE_WIDTH_PX = Math.max(...drawingStrokeWidths);
+const MEASUREMENT_SAFE_INSET_PX = Math.max(
+  MEASUREMENT_MAX_STROKE_WIDTH_PX / 2,
+  MEASUREMENT_HANDLE_RADIUS_PX
+);
+
+type SafeBounds = { left: number; top: number; right: number; bottom: number };
+
+// Insets a width/height pane into the safe area a shape's rendered
+// footprint must stay within - guards against the inset exceeding half the
+// pane on a very narrow/short viewport (rather than producing an inverted,
+// negative-size range).
+function computeSafeBounds(width: number, height: number, inset: number): SafeBounds {
+  const horizontalInset = Math.min(inset, width / 2);
+  const verticalInset = Math.min(inset, height / 2);
+  return {
+    left: horizontalInset,
+    top: verticalInset,
+    right: Math.max(horizontalInset, width - horizontalInset),
+    bottom: Math.max(verticalInset, height - verticalInset),
+  };
+}
+
+function clampPointToBounds(point: ScreenPoint, bounds: SafeBounds): ScreenPoint {
+  return {
+    x: clamp(point.x, bounds.left, bounds.right),
+    y: clamp(point.y, bounds.top, bounds.bottom),
+  };
+}
+
+// Clamps a proposed pixel drag delta so the ENTIRE bounding box of
+// `screenPoints` (the shape's true on-screen bounds, in its ORIGINAL,
+// pre-drag position) stays inside `bounds` after the delta is applied.
+// This only governs the ephemeral pixel delta produced by an active user
+// drag - it never touches stored market/time coordinates directly, so a
+// chart pan/zoom later making the same drawing partially off-screen is
+// unaffected (that's expected, not a bug: see DrawingOverlay's
+// pointer-move handler, which invokes this only for an active "move" drag,
+// never for pan/zoom-driven recalculation).
+//
+// If the shape's ORIGINAL position was already outside `bounds` (e.g. a
+// measurement saved before this fix existed), minDelta/maxDelta below is
+// still well-defined - it evaluates to whatever delta is needed to bring
+// that edge exactly onto the bounds, which clamp() then honors immediately
+// on the very first pointer-move event of the drag, normalizing the shape
+// into the safe area rather than assuming it started valid.
+function clampMoveDelta(
+  screenPoints: ScreenPoint[],
+  deltaX: number,
+  deltaY: number,
+  bounds: SafeBounds
+): { x: number; y: number } {
+  const minX = Math.min(...screenPoints.map((point) => point.x));
+  const maxX = Math.max(...screenPoints.map((point) => point.x));
+  const minY = Math.min(...screenPoints.map((point) => point.y));
+  const maxY = Math.max(...screenPoints.map((point) => point.y));
+
+  return {
+    x: clamp(deltaX, bounds.left - minX, bounds.right - maxX),
+    y: clamp(deltaY, bounds.top - minY, bounds.bottom - maxY),
+  };
+}
+
+const TOOLBAR_VIEWPORT_MARGIN_PX = 12;
+const TOOLBAR_SIDE_GAP_PX = 12;
+
+// Places the floating style toolbar beside the selected drawing/measurement
+// instead of above it: right first, then left, then clamped inside the
+// usable pane if neither side fits (e.g. a drawing spanning most of the
+// width, or a narrow mobile viewport). Bounds are computed from screen
+// points already clamped into the pane - this only affects where the
+// (purely visual, ephemeral) toolbar renders, never the drawing's actual
+// market coordinates, so a point currently panned off-screen still yields a
+// reachable toolbar anchored to the nearest visible edge.
+function computeSideToolbarPosition(
+  screenPoints: ScreenPoint[],
+  toolbarWidth: number,
+  toolbarHeight: number,
+  viewportWidth: number,
+  viewportHeight: number
+): { x: number; y: number } {
+  const anchors = screenPoints.map((point) => clampPointToViewport(point, viewportWidth, viewportHeight));
+  const minX = Math.min(...anchors.map((point) => point.x));
+  const minY = Math.min(...anchors.map((point) => point.y));
+  const maxX = Math.max(...anchors.map((point) => point.x));
+  const maxY = Math.max(...anchors.map((point) => point.y));
+
+  const maxLeft = Math.max(
+    TOOLBAR_VIEWPORT_MARGIN_PX,
+    viewportWidth - toolbarWidth - TOOLBAR_VIEWPORT_MARGIN_PX
+  );
+  const y = clamp(
+    (minY + maxY) / 2 - toolbarHeight / 2,
+    TOOLBAR_VIEWPORT_MARGIN_PX,
+    Math.max(TOOLBAR_VIEWPORT_MARGIN_PX, viewportHeight - toolbarHeight - TOOLBAR_VIEWPORT_MARGIN_PX)
+  );
+
+  const rightX = maxX + TOOLBAR_SIDE_GAP_PX;
+  if (rightX <= maxLeft) {
+    return { x: rightX, y };
+  }
+
+  const leftX = minX - TOOLBAR_SIDE_GAP_PX - toolbarWidth;
+  if (leftX >= TOOLBAR_VIEWPORT_MARGIN_PX) {
+    return { x: leftX, y };
+  }
+
+  return { x: clamp(rightX, TOOLBAR_VIEWPORT_MARGIN_PX, maxLeft), y };
+}
+
+// The drawable area must exclude the right price scale and bottom time
+// scale. pointToScreen/screenToDrawingPoint below are pure chart-API calls
+// (timeScale().logicalToCoordinate, series.priceToCoordinate) with no DOM
+// involved, so the plot bounds used for clamping have to come from that
+// same chart-internal coordinate system too - not a DOM container rect,
+// which is a different space and doesn't reliably agree with it.
+// timeScale().width() is exactly the horizontal plot width (it already
+// excludes the price scale column by definition), and paneSize().height is
+// the vertical plot height (excludes the time scale strip below it).
 function getDrawingOverlaySize(chart: IChartApi, container: HTMLDivElement) {
+  try {
+    const width = chart.timeScale().width();
+    const height = chart.paneSize().height;
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      return { width, height };
+    }
+  } catch {
+  }
+
   try {
     const paneSize = chart.paneSize();
     if (
@@ -823,7 +969,7 @@ function DrawingElementView({
         key={`${item.id}-${anchor.handle}`}
         cx={screenPoint.x}
         cy={screenPoint.y}
-        r={5}
+        r={6}
         fill="var(--scanner-handle-fill)"
         stroke={SELECTED_STROKE}
         strokeWidth={2}
@@ -1479,6 +1625,17 @@ export function DrawingOverlay({
   const { formatStockCurrency } = useCurrency();
   const formatPrice = (value: number) => formatStockCurrency(value, exchange);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  // Keeps the SVG/toolbar-facing cached size in step with a live read
+  // (see the measurement drag/resize path below) without an unconditional
+  // setState on every pointer-move - only updates when the value actually
+  // moved, so the rest of the render (SVG width/height, toolbar
+  // positioning) reflects the corrected size too, but nothing else has to
+  // change how it consumes `size`.
+  const syncOverlaySizeIfChanged = (next: { width: number; height: number }) => {
+    setSize((current) =>
+      current.width === next.width && current.height === next.height ? current : next
+    );
+  };
   const [renderTick, setRenderTick] = useState(0);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
   const [measurement, setMeasurement] = useState<MeasurementState | null>(null);
@@ -1783,21 +1940,47 @@ export function DrawingOverlay({
       }
 
       if (drag.kind === "measurement") {
+        // Read the plot size live rather than trusting the cached `size`
+        // state - the price scale's width (and therefore the real safe
+        // bounds) can change without the chart container itself resizing
+        // (e.g. toggling Auto/Percentage scale changes label text length),
+        // and the cached state only refreshes on container resize/pan/zoom.
+        // Cheap and deterministic: this is the same computation as
+        // getDrawingOverlaySize, just invoked at the moment of interaction
+        // instead of relying on a resize-driven cache.
+        const liveSize = getDrawingOverlaySize(chart, container);
+        syncOverlaySizeIfChanged(liveSize);
+        const measurementBounds = computeSafeBounds(liveSize.width, liveSize.height, MEASUREMENT_SAFE_INSET_PX);
+
         if (drag.mode === "move") {
-          setMeasurement(
-            moveMeasurementByDelta(
-              drag.original,
-              screenPoint.x - drag.origin.x,
-              screenPoint.y - drag.origin.y
-            )
-          );
+          const originalStartScreen = pointToScreen(drag.original.start);
+          const originalEndScreen = pointToScreen(drag.original.end);
+          const rawDeltaX = screenPoint.x - drag.origin.x;
+          const rawDeltaY = screenPoint.y - drag.origin.y;
+          const { x: deltaX, y: deltaY } =
+            originalStartScreen && originalEndScreen
+              ? clampMoveDelta(
+                  [originalStartScreen, originalEndScreen],
+                  rawDeltaX,
+                  rawDeltaY,
+                  measurementBounds
+                )
+              : { x: rawDeltaX, y: rawDeltaY };
+
+          setMeasurement(moveMeasurementByDelta(drag.original, deltaX, deltaY));
           return;
         }
 
+        // Resize: clamp the pointer's screen position to the safe (inset)
+        // bounds before converting it to a market/time coordinate, so the
+        // dragged handle - and the stroke/circle rendered at it - physically
+        // stops before the SVG clip edge instead of resizing past it.
+        const clampedHandleScreen = clampPointToBounds(screenPoint, measurementBounds);
+        const handleChartPoint = screenToDrawingPoint(clampedHandleScreen, false) ?? chartPoint;
         setMeasurement(
           drag.mode === "start"
-            ? createMeasurementState(chartPoint, drag.original.end, drag.original.style)
-            : createMeasurementState(drag.original.start, chartPoint, drag.original.style)
+            ? createMeasurementState(handleChartPoint, drag.original.end, drag.original.style)
+            : createMeasurementState(drag.original.start, handleChartPoint, drag.original.style)
         );
         return;
       }
@@ -1887,6 +2070,12 @@ export function DrawingOverlay({
 
     const screenPoint = getScreenPointFromEvent(event);
     if (!screenPoint) return;
+
+    // Refresh the plot size once right away so the very first pointermove
+    // of this drag clamps against current geometry, not whatever was last
+    // cached (e.g. from before a scale-mode toggle).
+    const container = containerRef.current;
+    if (container) syncOverlaySizeIfChanged(getDrawingOverlaySize(chart, container));
 
     dragRef.current = {
       kind: "measurement",
@@ -2061,22 +2250,8 @@ export function DrawingOverlay({
 
     const toolbarWidth = Math.min(282, Math.max(220, size.width - 24));
     const toolbarHeight = 44;
-    const toolbarGap = 30;
-    const minX = Math.min(...screenPoints.map((point) => point.x));
-    const minY = Math.min(...screenPoints.map((point) => point.y));
-    const maxX = Math.max(...screenPoints.map((point) => point.x));
-    const x = clamp(
-      (minX + maxX) / 2 - toolbarWidth / 2,
-      12,
-      Math.max(12, size.width - toolbarWidth - 12)
-    );
-    const y = clamp(
-      minY - toolbarHeight - toolbarGap,
-      12,
-      Math.max(12, size.height - toolbarHeight - 12)
-    );
 
-    return { x, y };
+    return computeSideToolbarPosition(screenPoints, toolbarWidth, toolbarHeight, size.width, size.height);
   })();
 
   const measurementToolbarPosition = (() => {
@@ -2088,22 +2263,8 @@ export function DrawingOverlay({
 
     const toolbarWidth = Math.min(282, Math.max(220, size.width - 24));
     const toolbarHeight = 44;
-    const toolbarGap = 30;
-    const minX = Math.min(start.x, end.x);
-    const minY = Math.min(start.y, end.y);
-    const maxX = Math.max(start.x, end.x);
-    const x = clamp(
-      (minX + maxX) / 2 - toolbarWidth / 2,
-      12,
-      Math.max(12, size.width - toolbarWidth - 12)
-    );
-    const y = clamp(
-      minY - toolbarHeight - toolbarGap,
-      12,
-      Math.max(12, size.height - toolbarHeight - 12)
-    );
 
-    return { x, y };
+    return computeSideToolbarPosition([start, end], toolbarWidth, toolbarHeight, size.width, size.height);
   })();
   const textEditorPosition = textEditor
     ? {
@@ -2139,6 +2300,25 @@ export function DrawingOverlay({
   };
   void renderTick;
 
+  // Read the plot bounds live for the render-time clip rather than trusting
+  // the cached `size` state, so a ray/extended-line's own geometry (which
+  // already extends itself to size.width/size.height, see the "ray" branch
+  // in DrawingElementView) is still hard-stopped at the real, current plot
+  // edge even if `size` happens to be stale - a visual safety net on top of
+  // (not instead of) that geometry, and independent of it.
+  const clipPathId = useId();
+  const plotClipSize = (() => {
+    try {
+      const width = chart.timeScale().width();
+      const height = chart.paneSize().height;
+      if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+        return { width, height };
+      }
+    } catch {
+    }
+    return size;
+  })();
+
   return (
     <div className="pointer-events-none absolute inset-0" style={{ zIndex: 14 }}>
       {!isCursorTool(drawing.activeTool) && (
@@ -2167,8 +2347,14 @@ export function DrawingOverlay({
         width={size.width}
         height={size.height}
         viewBox={`0 0 ${Math.max(size.width, 1)} ${Math.max(size.height, 1)}`}
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 overflow-visible"
       >
+        <defs>
+          <clipPath id={clipPathId}>
+            <rect x={0} y={0} width={plotClipSize.width} height={plotClipSize.height} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipPathId})`}>
         {drawingsToRender.map((item) => (
 
           <g
@@ -2229,6 +2415,7 @@ export function DrawingOverlay({
             />
           </g>
         )}
+        </g>
       </svg>
 
       {selectedDrawing && selectedToolbarPosition && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -44,7 +44,6 @@ import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
 import { ScannerChart } from "./ScannerChart";
 import { ScannerWatchlistSidebar } from "./ScannerWatchlistSidebar";
-import { ScannerWatchlistWidget } from "./ScannerWatchlistWidget";
 import { TopToolbar } from "./TopToolbar";
 
 const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
@@ -132,6 +131,8 @@ export function ScannerPage() {
   const scannerHighlightsVisible = useScannerUiStore((state) => state.scannerHighlightsVisible);
   const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
   const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
+  const setActiveWatchlistId = useScannerUiStore((state) => state.setActiveWatchlistId);
+  const setWatchlistPanelOpen = useScannerUiStore((state) => state.setWatchlistPanelOpen);
 
   
   
@@ -165,18 +166,28 @@ export function ScannerPage() {
   
   
   
-  const [watchlistWidgetId, setWatchlistWidgetId] = useState<string | null>(() =>
-    searchParams.get("watchlist")
-  );
+  // Explicit Watchlist-origin navigation (?panel=watchlist, optionally with
+  // &watchlist=<id>, built by buildWatchlistChartsHref) opens the watchlist
+  // sidebar deterministically - never inferred from referrer/history, and
+  // never triggered by symbol links from Dashboard/Global Search/Stock
+  // Detail, which don't set `panel`. Re-applies only when the (panel, id)
+  // pair actually changes (a new watchlist link was clicked), not on every
+  // unrelated URL update (e.g. the symbol/exchange sync below) - so
+  // manually closing the sidebar afterward sticks instead of being
+  // reopened on the next render, and reloading/forward-navigating back to
+  // the same URL reliably reopens it (fresh mount resets the ref).
+  const appliedWatchlistPanelKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (searchParams.get("panel") !== "watchlist") return;
 
-  const handleCloseWatchlistWidget = () => {
-    setWatchlistWidgetId(null);
-    if (!searchParams.get("watchlist")) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("watchlist");
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  };
+    const watchlistIdFromUrl = searchParams.get("watchlist");
+    const key = watchlistIdFromUrl ?? "";
+    if (appliedWatchlistPanelKeyRef.current === key) return;
+
+    appliedWatchlistPanelKeyRef.current = key;
+    if (watchlistIdFromUrl) setActiveWatchlistId(watchlistIdFromUrl);
+    setWatchlistPanelOpen(true);
+  }, [searchParams, setActiveWatchlistId, setWatchlistPanelOpen]);
 
   
   
@@ -287,9 +298,6 @@ export function ScannerPage() {
               onTogglePercentageScale={togglePercentageScale}
               onToggleBacktestStats={toggleBacktestStats}
               onToggleScannerHighlights={toggleScannerHighlights}
-              watchlistWidgetId={watchlistWidgetId}
-              onSelectStock={handleSelectStock}
-              onCloseWatchlistWidget={handleCloseWatchlistWidget}
             />
           ) : (
             <ScannerEmptyState onOpenSearch={() => openSearchModal()} />
@@ -348,9 +356,6 @@ type ScannerDrawingWorkspaceProps = {
   onTogglePercentageScale: () => void;
   onToggleBacktestStats: () => void;
   onToggleScannerHighlights: () => void;
-  watchlistWidgetId: string | null;
-  onSelectStock: (stock: Stock) => void;
-  onCloseWatchlistWidget: () => void;
 };
 
 function ScannerDrawingWorkspace({
@@ -371,9 +376,6 @@ function ScannerDrawingWorkspace({
   onTogglePercentageScale,
   onToggleBacktestStats,
   onToggleScannerHighlights,
-  watchlistWidgetId,
-  onSelectStock,
-  onCloseWatchlistWidget,
 }: ScannerDrawingWorkspaceProps) {
   const queryClient = useQueryClient();
   const drawing = useScannerDrawingState(stock.symbol, timeframe);
@@ -582,15 +584,6 @@ function ScannerDrawingWorkspace({
             backtestStats={visibleBacktestStats}
             scannerHighlightsVisible={scannerHighlightsVisible}
           />
-          {watchlistWidgetId && (
-            <ScannerWatchlistWidget
-              watchlistId={watchlistWidgetId}
-              selectedSymbol={stock.symbol}
-              selectedExchange={stock.exchange}
-              onSelectStock={onSelectStock}
-              onClose={onCloseWatchlistWidget}
-            />
-          )}
         </div>
         <RangeFilterTabs
           value={effectiveRangeFilter}

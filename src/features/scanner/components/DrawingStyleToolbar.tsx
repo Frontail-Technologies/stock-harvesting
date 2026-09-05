@@ -108,7 +108,7 @@ export function DrawingStyleToolbar({
       }}
     >
       <div className="relative">
-        <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-toolbar-bg)] px-1.5 shadow-2xl">
+        <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--scanner-toolbar-border)] bg-[var(--scanner-toolbar-bg)] px-1.5 shadow-md">
           <Tooltip>
             <TooltipTrigger
               type="button"
