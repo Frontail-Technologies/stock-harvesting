@@ -17,11 +17,11 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
   const collection = collectionQuery.data?.collection ?? null;
 
   if (collectionQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading collection...</p>;
+    return <p className="text-sm text-muted-foreground">Loading segment...</p>;
   }
 
   if (collectionQuery.isError || !collection) {
-    return <p className="text-sm text-danger">Couldn&apos;t load this collection.</p>;
+    return <p className="text-sm text-danger">Couldn&apos;t load this segment.</p>;
   }
 
   return (
@@ -31,7 +31,7 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
         className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
-        Back to collections
+        Back to segments
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

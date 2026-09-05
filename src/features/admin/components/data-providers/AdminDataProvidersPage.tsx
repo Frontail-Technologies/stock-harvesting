@@ -277,7 +277,7 @@ export function AdminDataProvidersPage() {
               className="gap-1.5"
               disabled={!zerodhaConnection?.connected || indexBackfillMutation.isPending}
               onClick={handleIndexBackfill}
-              title="Backfill full price history for every synced NSE index - needed before the dashboard's Relative Strength Index box has real data"
+              title="Backfill full price history for every synced NSE index - needed before the dashboard's Index Harvest box has real data"
             >
               {indexBackfillMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -460,7 +460,7 @@ export function AdminDataProvidersPage() {
               className="gap-1.5"
               disabled={!globalDatafeedsStatus?.connected || bseIndexBackfillMutation.isPending}
               onClick={handleBseIndexBackfill}
-              title="Backfill full price history for every synced BSE index - needed before the BSE dashboard's Relative Strength Index box has real data"
+              title="Backfill full price history for every synced BSE index - needed before the BSE dashboard's Index Harvest box has real data"
             >
               {bseIndexBackfillMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -495,7 +495,7 @@ export function AdminDataProvidersPage() {
 
         <p className="mt-4 text-xs text-muted-foreground">
           Sector/industry classification (which also auto-populates the &quot;BSE - Classified
-          Universe&quot; dashboard collection) is synced from the &quot;Sync Sector Data&quot;
+          Universe&quot; dashboard segment) is synced from the &quot;Sync Sector Data&quot;
           button above - it covers both NSE and BSE in one pass.
         </p>
 

@@ -21,7 +21,7 @@ export function AdminCollectionMetadataForm({
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 lg:col-span-2">
-      <h2 className="text-sm font-semibold text-foreground">Collection metadata</h2>
+      <h2 className="text-sm font-semibold text-foreground">Segment metadata</h2>
 
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">Name</label>
@@ -35,7 +35,7 @@ export function AdminCollectionMetadataForm({
           onChange={(event) => setDescription(event.target.value)}
           rows={2}
           className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-          placeholder="Optional notes about this collection"
+          placeholder="Optional notes about this segment"
         />
       </div>
 
@@ -68,7 +68,7 @@ export function AdminCollectionMetadataForm({
           disabled={updateMutation.isPending}
           onClick={() => updateMutation.mutate({ id: collection.id, active: !collection.active })}
         >
-          {collection.active ? "Deactivate collection" : "Activate collection"}
+          {collection.active ? "Deactivate segment" : "Activate segment"}
         </Button>
 
         {updateMutation.isError ? (

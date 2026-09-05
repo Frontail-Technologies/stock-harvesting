@@ -68,15 +68,15 @@ export function AdminCreateCollectionDialog() {
         render={
           <Button type="button" size="sm" className="gap-1.5">
             <Plus className="size-3.5" />
-            New collection
+            New segment
           </Button>
         }
       />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create collection</DialogTitle>
+          <DialogTitle>Create Segment</DialogTitle>
           <DialogDescription>
-            Define collection metadata. Constituents are added afterward via CSV import.
+            Define segment metadata. Constituents are added afterward via CSV import.
           </DialogDescription>
         </DialogHeader>
 
@@ -123,13 +123,13 @@ export function AdminCreateCollectionDialog() {
               onChange={(event) => setDescription(event.target.value)}
               rows={2}
               className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              placeholder="Optional notes about this collection"
+              placeholder="Optional notes about this segment"
             />
           </div>
 
           {createMutation.isError ? (
             <p className="text-xs text-danger">
-              {createMutation.error?.message ?? "Couldn't create collection."}
+              {createMutation.error?.message ?? "Couldn't create segment."}
             </p>
           ) : null}
         </div>

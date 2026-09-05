@@ -21,7 +21,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: <Radio className="size-4" />,
   },
   {
-    label: "Market Collections",
+    label: "Segments",
     href: "/admin/market-collections",
     icon: <Layers className="size-4" />,
   },

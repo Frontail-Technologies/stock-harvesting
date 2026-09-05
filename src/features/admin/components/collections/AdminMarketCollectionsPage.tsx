@@ -24,7 +24,7 @@ export function AdminMarketCollectionsPage() {
     <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Market Collections</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Segments</h1>
           <p className="text-sm text-muted-foreground">
             Manage index/segment groups (NIFTY 50, NIFTY 100, ...) used to power the dashboard.
           </p>
@@ -87,14 +87,14 @@ export function AdminMarketCollectionsPage() {
                   {collectionsQuery.isLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner size="sm" />
-                      Loading collections...
+                      Loading segments...
                     </span>
                   ) : collectionsQuery.isError ? (
-                    "Unable to load collections."
+                    "Unable to load segments."
                   ) : (
                     <span className="inline-flex items-center gap-2">
                       <Layers className="size-4" />
-                      No collections yet. Create one to get started.
+                      No segments yet. Create one to get started.
                     </span>
                   )}
                 </TableCell>

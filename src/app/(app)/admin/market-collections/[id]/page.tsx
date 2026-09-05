@@ -2,7 +2,7 @@ import { AdminShell } from "@/features/admin";
 import { AdminMarketCollectionDetailPage } from "@/features/admin/components/collections/AdminMarketCollectionDetailPage";
 import { createAdminMetadata } from "../../admin-metadata";
 
-export const metadata = createAdminMetadata("Market Collection");
+export const metadata = createAdminMetadata("Segment");
 
 export default async function AdminMarketCollectionDetailRoute({
   params,
