@@ -69,9 +69,17 @@ export function WatchlistQuickAddButton({
   }, [open]);
 
   const handleAddToExisting = (watchlistId: string) => {
+    if (addedWatchlistId === watchlistId) return;
+    if (addItem.isPending && addItem.variables?.watchlistId === watchlistId) return;
+
+    setAddedWatchlistId(watchlistId);
     addItem.mutate(
       { watchlistId, exchange, symbol },
-      { onSuccess: () => setAddedWatchlistId(watchlistId) }
+      {
+        onError: () => {
+          setAddedWatchlistId((current) => (current === watchlistId ? null : current));
+        },
+      }
     );
   };
 
@@ -134,11 +142,13 @@ export function WatchlistQuickAddButton({
                 )}
                 {watchlists.map((watchlist) => {
                   const isAdded = addedWatchlistId === watchlist.id;
+                  const isPendingForThis =
+                    addItem.isPending && addItem.variables?.watchlistId === watchlist.id;
                   return (
                     <button
                       key={watchlist.id}
                       type="button"
-                      disabled={addItem.isPending}
+                      disabled={isAdded || isPendingForThis}
                       onClick={() => handleAddToExisting(watchlist.id)}
                       className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                     >

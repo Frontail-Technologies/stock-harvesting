@@ -4,19 +4,32 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Spinner } from "@/components/ui/spinner";
+import { Select, type SelectOption } from "@/components/ui/select";
+import { cn } from "@/utils/cn";
 import { AddStockDialog } from "./AddStockDialog";
 import { CreateWatchlistDialog } from "./CreateWatchlistDialog";
 import { DeleteWatchlistDialog } from "./DeleteWatchlistDialog";
 import { RenameWatchlistDialog } from "./RenameWatchlistDialog";
+import { WatchlistCardSkeleton } from "./WatchlistCardSkeleton";
 import { WatchlistEmptyIllustration } from "./WatchlistEmptyIllustration";
-import { WatchlistRow } from "./WatchlistRow";
+import { WatchlistFullViewDialog } from "./WatchlistFullViewDialog";
+import { WatchlistWidget } from "./WatchlistWidget";
 import { useWatchlists } from "../hooks/use-watchlists";
+import {
+  useWatchlistViewStore,
+  WATCHLIST_VIEW_MODE_CARD_GRID_CLASS,
+  WATCHLIST_VIEW_MODES,
+  type WatchlistViewMode,
+} from "../stores/watchlist-view-store";
 import type { WatchlistSummary } from "../types";
+
+const VIEW_MODE_OPTIONS: SelectOption[] = WATCHLIST_VIEW_MODES.map((mode) => ({
+  value: mode,
+  label: `${mode[0]} Watchlist in row`,
+}));
 
 export function WatchlistsPage() {
   const { watchlists, isLoading } = useWatchlists();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<WatchlistSummary | null>(
     null,
@@ -25,9 +38,11 @@ export function WatchlistsPage() {
     null,
   );
   const [addStockTargetId, setAddStockTargetId] = useState<string | null>(null);
+  const [fullViewId, setFullViewId] = useState<string | null>(null);
+  const viewMode = useWatchlistViewStore((state) => state.viewMode);
+  const setViewMode = useWatchlistViewStore((state) => state.setViewMode);
 
   const hasWatchlists = !isLoading && watchlists.length > 0;
-  const totalStocks = watchlists.reduce((sum, list) => sum + list.itemCount, 0);
 
   return (
     <>
@@ -41,23 +56,37 @@ export function WatchlistsPage() {
           </p>
         </div>
         {hasWatchlists && (
-          <Button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="gap-1.5"
-          >
-            <Plus className="size-4" />
-            New Watchlist
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as WatchlistViewMode)}
+              options={VIEW_MODE_OPTIONS}
+              triggerClassName="h-9 w-44"
+            />
+            <Button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-4" />
+              New Watchlist
+            </Button>
+          </div>
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner size="sm" />
-          </div>
-        ) : watchlists.length === 0 ? (
+      {isLoading ? (
+        <div
+          className={cn("grid gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}
+          aria-label="Loading watchlists"
+          role="status"
+        >
+          {[0, 1, 2].map((index) => (
+            <WatchlistCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : watchlists.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
           <EmptyState
             illustration={<WatchlistEmptyIllustration />}
             title="Keep stocks you want to review together."
@@ -68,41 +97,26 @@ export function WatchlistsPage() {
               onClick: () => setCreateOpen(true),
             }}
           />
-        ) : (
-          <div className="flex flex-col gap-3">
-
-            <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {watchlists.length}{" "}
-              {watchlists.length === 1 ? "Watchlist" : "Watchlists"}
-              <span className="mx-2 text-border">·</span>
-              {totalStocks} {totalStocks === 1 ? "Stock" : "Stocks"}
-            </p>
-            <div className="divide-y divide-border border-t border-border">
-              {watchlists.map((watchlist, index) => (
-                <WatchlistRow
-                  key={watchlist.id}
-                  watchlist={watchlist}
-                  index={index}
-                  expanded={expandedId === watchlist.id}
-                  onToggleExpanded={() =>
-                    setExpandedId((current) =>
-                      current === watchlist.id ? null : watchlist.id,
-                    )
-                  }
-                  onRename={() => setRenameTarget(watchlist)}
-                  onDelete={() => setDeleteTarget(watchlist)}
-                  onAddStock={() => setAddStockTargetId(watchlist.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className={cn("grid gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}>
+          {watchlists.map((watchlist) => (
+            <WatchlistWidget
+              key={watchlist.id}
+              watchlist={watchlist}
+              onRename={() => setRenameTarget(watchlist)}
+              onDelete={() => setDeleteTarget(watchlist)}
+              onAddStock={() => setAddStockTargetId(watchlist.id)}
+              onFullView={() => setFullViewId(watchlist.id)}
+            />
+          ))}
+        </div>
+      )}
 
       <CreateWatchlistDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(watchlistId) => setExpandedId(watchlistId)}
+        onCreated={(watchlistId) => setFullViewId(watchlistId)}
       />
       <RenameWatchlistDialog
         watchlist={renameTarget}
@@ -112,7 +126,7 @@ export function WatchlistsPage() {
         watchlist={deleteTarget}
         onClose={() => {
           setDeleteTarget((current) => {
-            if (current && expandedId === current.id) setExpandedId(null);
+            if (current && fullViewId === current.id) setFullViewId(null);
             return null;
           });
         }}
@@ -120,6 +134,11 @@ export function WatchlistsPage() {
       <AddStockDialog
         watchlistId={addStockTargetId}
         onClose={() => setAddStockTargetId(null)}
+      />
+      <WatchlistFullViewDialog
+        watchlistId={fullViewId}
+        onClose={() => setFullViewId(null)}
+        onAddStock={setAddStockTargetId}
       />
     </>
   );

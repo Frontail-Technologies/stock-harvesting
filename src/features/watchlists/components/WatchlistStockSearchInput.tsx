@@ -44,9 +44,22 @@ export function WatchlistStockSearchInput({
 
   const handleAdd = (stock: { exchange: string; symbol: string }) => {
     const key = `${stock.exchange}:${stock.symbol}`;
+    if (
+      addItem.isPending &&
+      addItem.variables?.exchange === stock.exchange &&
+      addItem.variables?.symbol === stock.symbol
+    ) {
+      return;
+    }
+
+    setAddedKey(key);
     addItem.mutate(
       { watchlistId, exchange: stock.exchange, symbol: stock.symbol },
-      { onSuccess: () => setAddedKey(key) }
+      {
+        onError: () => {
+          setAddedKey((current) => (current === key ? null : current));
+        },
+      }
     );
   };
 
@@ -148,12 +161,16 @@ export function WatchlistStockSearchInput({
                 results.map((stock) => {
                   const key = `${stock.exchange}:${stock.symbol}`;
                   const alreadyAdded = existingKeys.has(key) || addedKey === key;
+                  const isPendingForThis =
+                    addItem.isPending &&
+                    addItem.variables?.exchange === stock.exchange &&
+                    addItem.variables?.symbol === stock.symbol;
 
                   return (
                     <button
                       key={key}
                       type="button"
-                      disabled={alreadyAdded || addItem.isPending}
+                      disabled={alreadyAdded || isPendingForThis}
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => handleAdd(stock)}
                       className={cn(

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
-import { ChevronDown, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
+import { ChevronRight, MoreHorizontal, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
 import type { Stock } from "@/types/market";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -16,11 +16,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  chipColorForSymbol,
   CreateWatchlistDialog,
+  DeleteWatchlistDialog,
+  RenameWatchlistDialog,
   useWatchlist,
   useWatchlists,
   watchlistItemToStock,
   WatchlistStockSearchInput,
+  type WatchlistSummary,
 } from "@/features/watchlists";
 import { cn } from "@/utils/cn";
 import { useIsDesktopViewport } from "../hooks/use-is-desktop-viewport";
@@ -68,7 +72,7 @@ function WatchlistRows({
               type="button"
               onClick={() => onSelectStock(watchlistItemToStock(item))}
               className={cn(
-                "flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border-l-2 px-2 text-left transition-colors",
+                "flex h-8 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border-l-2 px-2 text-left transition-colors",
                 active
                   ? "border-l-primary bg-primary/10"
                   : "border-l-transparent hover:border-l-primary/40 hover:bg-muted/60"
@@ -76,11 +80,19 @@ function WatchlistRows({
             >
               <span
                 aria-hidden="true"
-                className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[0.6rem] font-bold tracking-tight text-primary"
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold tracking-tight",
+                  chipColorForSymbol(item.symbol)
+                )}
               >
                 {getInitials(item.symbol)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm",
+                  active ? "font-bold text-foreground" : "font-semibold text-foreground"
+                )}
+              >
                 {item.symbol}
               </span>
               <span className="shrink-0 font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
@@ -108,6 +120,127 @@ function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
+function WatchlistAccordionGroup({
+  watchlist,
+  expanded,
+  selectedSymbol,
+  selectedExchange,
+  onToggle,
+  onSelectStock,
+  onRename,
+  onDelete,
+}: {
+  watchlist: WatchlistSummary;
+  expanded: boolean;
+  selectedSymbol: string;
+  selectedExchange: string;
+  onToggle: () => void;
+  onSelectStock: (stock: Stock) => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const [showAddInput, setShowAddInput] = useState(false);
+  const { watchlist: detail, isLoading } = useWatchlist(expanded ? watchlist.id : null);
+
+  return (
+    <div>
+      <div
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onToggle();
+          }
+        }}
+        className={cn(
+          "flex h-8 w-full cursor-pointer items-center gap-1.5 rounded-md px-1.5 outline-none transition-colors",
+          expanded ? "bg-primary/5" : "hover:bg-muted/60"
+        )}
+      >
+        <ChevronRight
+          className={cn(
+            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-90"
+          )}
+        />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-left text-sm",
+            expanded ? "font-bold text-foreground" : "font-semibold text-foreground"
+          )}
+        >
+          {watchlist.name}
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">{watchlist.itemCount}</span>
+
+        <div onClick={(event) => event.stopPropagation()} className="shrink-0">
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    aria-label={`${watchlist.name} options`}
+                    className="inline-flex size-6 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  />
+                }
+              >
+                <MoreHorizontal className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="scanner-portal">
+                {watchlist.name} options
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="scanner-portal w-40">
+              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                Delete Watchlist
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="pl-5">
+          {isLoading || !detail ? (
+            <div className="flex justify-center py-3">
+              <Spinner size="sm" />
+            </div>
+          ) : (
+            <>
+              <WatchlistRows
+                items={detail.items}
+                selectedSymbol={selectedSymbol}
+                selectedExchange={selectedExchange}
+                onSelectStock={onSelectStock}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAddInput((prev) => !prev)}
+                className={cn(
+                  "mb-1 h-7 cursor-pointer px-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary",
+                  showAddInput && "text-primary"
+                )}
+              >
+                + Add Stock
+              </button>
+              {showAddInput && (
+                <div className="pb-2 pl-2">
+                  <WatchlistStockSearchInput watchlistId={detail.id} existingItems={detail.items} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScannerWatchlistPanelBody({
   selectedSymbol,
   selectedExchange,
@@ -125,7 +258,8 @@ function ScannerWatchlistPanelBody({
   const setActiveWatchlistId = useScannerUiStore((state) => state.setActiveWatchlistId);
   const { watchlists, isLoading: isListLoading } = useWatchlists();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [showAddInput, setShowAddInput] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<WatchlistSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WatchlistSummary | null>(null);
 
   useEffect(() => {
     if (isListLoading) return;
@@ -137,9 +271,6 @@ function ScannerWatchlistPanelBody({
     setActiveWatchlistId(watchlists[0].id);
   }, [activeWatchlistId, isListLoading, setActiveWatchlistId, watchlists]);
 
-  const { watchlist, isLoading: isDetailLoading } = useWatchlist(activeWatchlistId);
-  const selectedName = watchlist?.name ?? (isListLoading ? "Loading..." : "Select watchlist");
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-2.5 py-2">
@@ -147,6 +278,19 @@ function ScannerWatchlistPanelBody({
           Watchlists
         </span>
         <div className="ml-auto flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              onClick={() => setCreateDialogOpen(true)}
+              aria-label="Create watchlist"
+              className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="scanner-portal">
+              Create watchlist
+            </TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -179,91 +323,48 @@ function ScannerWatchlistPanelBody({
         </div>
       </div>
 
-      {watchlists.length === 0 && !isListLoading ? (
+      {isListLoading ? (
+        <div className="flex justify-center py-6">
+          <Spinner size="sm" />
+        </div>
+      ) : watchlists.length === 0 ? (
         <WatchlistEmptyState onCreate={() => setCreateDialogOpen(true)} />
       ) : (
-        <>
-          <div className="shrink-0 border-b border-border/60 p-1.5">
-            <div className="flex items-center gap-1.5">
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-muted aria-expanded:bg-muted focus-visible:ring-2 focus-visible:ring-primary/60">
-                  <span className="min-w-0 flex-1 truncate text-left">{selectedName}</span>
-                  <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="scanner-portal w-56">
-                  {watchlists.map((list) => (
-                    <DropdownMenuItem
-                      key={list.id}
-                      onClick={() => setActiveWatchlistId(list.id)}
-                      className={cn(
-                        "justify-between gap-2",
-                        list.id === activeWatchlistId && "bg-primary/10 text-foreground"
-                      )}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{list.name}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {list.itemCount}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setCreateDialogOpen(true)} className="gap-1.5">
-                    <Plus className="size-3.5" />
-                    New watchlist
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  onClick={() => setShowAddInput((prev) => !prev)}
-                  aria-label="Add symbol to this watchlist"
-                  aria-pressed={showAddInput}
-                  className={cn(
-                    "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                    showAddInput && "bg-muted text-primary"
-                  )}
-                >
-                  <Plus className="size-4" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="scanner-portal">
-                  Add symbol
-                </TooltipContent>
-              </Tooltip>
-            </div>
-
-            {showAddInput && watchlist && (
-              <div className="pt-1.5">
-                <WatchlistStockSearchInput
-                  watchlistId={watchlist.id}
-                  existingItems={watchlist.items}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
-            {isDetailLoading ? (
-              <div className="flex justify-center py-6">
-                <Spinner size="sm" />
-              </div>
-            ) : (
-              <WatchlistRows
-                items={watchlist?.items ?? []}
+        <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-1.5">
+          <div className="flex flex-col gap-0.5">
+            {watchlists.map((list) => (
+              <WatchlistAccordionGroup
+                key={list.id}
+                watchlist={list}
+                expanded={activeWatchlistId === list.id}
                 selectedSymbol={selectedSymbol}
                 selectedExchange={selectedExchange}
+                onToggle={() =>
+                  setActiveWatchlistId(activeWatchlistId === list.id ? null : list.id)
+                }
                 onSelectStock={onSelectStock}
+                onRename={() => setRenameTarget(list)}
+                onDelete={() => setDeleteTarget(list)}
               />
-            )}
+            ))}
           </div>
-        </>
+        </div>
       )}
 
       <CreateWatchlistDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onCreated={(watchlistId) => setActiveWatchlistId(watchlistId)}
+      />
+      <RenameWatchlistDialog watchlist={renameTarget} onClose={() => setRenameTarget(null)} />
+      <DeleteWatchlistDialog
+        watchlist={deleteTarget}
+        onClose={() => {
+          setDeleteTarget((current) => {
+            if (current && activeWatchlistId === current.id) setActiveWatchlistId(null);
+            return null;
+          });
+        }}
       />
     </div>
   );

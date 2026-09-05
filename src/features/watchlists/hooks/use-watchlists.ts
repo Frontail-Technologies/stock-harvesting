@@ -9,13 +9,19 @@ import {
   createWatchlist,
   deleteWatchlist,
   getWatchlist,
+  getWatchlistRelativeStrength,
   getWatchlists,
   removeWatchlistItem,
   renameWatchlist,
 } from "../api/watchlists-api";
-import type { WatchlistSummary } from "../types";
+import type { WatchlistDetail, WatchlistSummary } from "../types";
 
 const WATCHLISTS_STALE_TIME_MS = 60_000;
+// Ranking recomputes live on every request (no persisted snapshot, unlike
+// the Segment path) since Watchlist membership can change at any moment -
+// short-lived enough to feel current, long enough to collapse rapid
+// re-renders/refocuses into one request.
+const WATCHLIST_RELATIVE_STRENGTH_STALE_TIME_MS = 60_000;
 
 export function useWatchlists() {
   const authStatus = useSessionStore((state) => state.status);
@@ -66,6 +72,25 @@ export function useWatchlist(id: string | null) {
   return { ...query, watchlist };
 }
 
+export function useWatchlistRelativeStrength(input: { id: string | null; limit?: number }) {
+  const authStatus = useSessionStore((state) => state.status);
+  const query = useQuery({
+    queryKey: queryKeys.watchlists.relativeStrength({ id: input.id ?? "", limit: input.limit }),
+    queryFn: () => getWatchlistRelativeStrength({ id: input.id as string, limit: input.limit }),
+    enabled: authStatus === "authenticated" && Boolean(input.id),
+    retry: false,
+    staleTime: WATCHLIST_RELATIVE_STRENGTH_STALE_TIME_MS,
+    gcTime: 15 * 60_000,
+    placeholderData: (previousData) => previousData,
+  });
+
+  return {
+    ...query,
+    metrics: query.data?.metrics ?? [],
+    asOfDate: query.data?.asOfDate ?? null,
+  };
+}
+
 export function useCreateWatchlist() {
   const queryClient = useQueryClient();
 
@@ -101,12 +126,81 @@ export function useDeleteWatchlist() {
   });
 }
 
+type WatchlistListCache = { watchlists: WatchlistSummary[] };
+type WatchlistDetailCache = { watchlist: WatchlistDetail };
+type WatchlistMutationContext = {
+  previousList?: WatchlistListCache;
+  previousDetail?: WatchlistDetailCache;
+};
+
 export function useAddWatchlistItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: addWatchlistItem,
-    onSuccess: (_data, variables) => {
+    onMutate: async (variables): Promise<WatchlistMutationContext> => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.watchlists.list });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.watchlists.detail(variables.watchlistId),
+      });
+
+      const previousList = queryClient.getQueryData<WatchlistListCache>(queryKeys.watchlists.list);
+      const previousDetail = queryClient.getQueryData<WatchlistDetailCache>(
+        queryKeys.watchlists.detail(variables.watchlistId)
+      );
+
+      queryClient.setQueryData<WatchlistListCache | undefined>(queryKeys.watchlists.list, (current) => {
+        if (!current) return current;
+        return {
+          watchlists: current.watchlists.map((watchlist) =>
+            watchlist.id === variables.watchlistId
+              ? { ...watchlist, itemCount: watchlist.itemCount + 1 }
+              : watchlist
+          ),
+        };
+      });
+
+      queryClient.setQueryData<WatchlistDetailCache | undefined>(
+        queryKeys.watchlists.detail(variables.watchlistId),
+        (current) => {
+          if (!current) return current;
+          const alreadyPresent = current.watchlist.items.some(
+            (item) => item.exchange === variables.exchange && item.symbol === variables.symbol
+          );
+          if (alreadyPresent) return current;
+
+          return {
+            watchlist: {
+              ...current.watchlist,
+              items: [
+                ...current.watchlist.items,
+                {
+                  id: `optimistic-${variables.watchlistId}-${variables.exchange}-${variables.symbol}`,
+                  exchange: variables.exchange,
+                  symbol: variables.symbol,
+                  position: current.watchlist.items.length,
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+            },
+          };
+        }
+      );
+
+      return { previousList, previousDetail };
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(queryKeys.watchlists.list, context.previousList);
+      }
+      if (context?.previousDetail) {
+        queryClient.setQueryData(
+          queryKeys.watchlists.detail(variables.watchlistId),
+          context.previousDetail
+        );
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.watchlists.detail(variables.watchlistId),
@@ -120,7 +214,55 @@ export function useRemoveWatchlistItem() {
 
   return useMutation({
     mutationFn: removeWatchlistItem,
-    onSuccess: (_data, variables) => {
+    onMutate: async (variables): Promise<WatchlistMutationContext> => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.watchlists.list });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.watchlists.detail(variables.watchlistId),
+      });
+
+      const previousList = queryClient.getQueryData<WatchlistListCache>(queryKeys.watchlists.list);
+      const previousDetail = queryClient.getQueryData<WatchlistDetailCache>(
+        queryKeys.watchlists.detail(variables.watchlistId)
+      );
+
+      queryClient.setQueryData<WatchlistListCache | undefined>(queryKeys.watchlists.list, (current) => {
+        if (!current) return current;
+        return {
+          watchlists: current.watchlists.map((watchlist) =>
+            watchlist.id === variables.watchlistId
+              ? { ...watchlist, itemCount: Math.max(0, watchlist.itemCount - 1) }
+              : watchlist
+          ),
+        };
+      });
+
+      queryClient.setQueryData<WatchlistDetailCache | undefined>(
+        queryKeys.watchlists.detail(variables.watchlistId),
+        (current) => {
+          if (!current) return current;
+          return {
+            watchlist: {
+              ...current.watchlist,
+              items: current.watchlist.items.filter((item) => item.id !== variables.itemId),
+            },
+          };
+        }
+      );
+
+      return { previousList, previousDetail };
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(queryKeys.watchlists.list, context.previousList);
+      }
+      if (context?.previousDetail) {
+        queryClient.setQueryData(
+          queryKeys.watchlists.detail(variables.watchlistId),
+          context.previousDetail
+        );
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.watchlists.detail(variables.watchlistId),
