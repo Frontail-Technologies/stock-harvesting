@@ -1,6 +1,6 @@
 export const SITE_NAME = "Stock Harvesting";
 export const SITE_DESCRIPTION =
-  "A market scanner and charting workspace for reviewing stocks, weekly strength, scan signals, and chart annotations.";
+  "A market scanner and charting workspace for reviewing stocks, harvest signals, scan results, and chart annotations.";
 
 export function getSiteUrl() {
   const rawUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();

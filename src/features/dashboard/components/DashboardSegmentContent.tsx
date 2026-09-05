@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useCollectionRelativeStrength,
+  useCollectionSectorIndustryTaxonomy,
   type CollectionGroupRelativeStrengthRow,
   type CollectionRelativeStrengthMetric,
 } from "@/features/market-collections";
@@ -32,8 +34,14 @@ const INDEX_EXCHANGE_BY_EQUITY_EXCHANGE: Record<string, string> = {
 };
 
 export function DashboardSegmentContent({ code, exchange }: { code: string; exchange: string }) {
+  const router = useRouter();
 
   const rsQuery = useCollectionRelativeStrength({ code, limit: 200 });
+  // Sector<->industry pairs must come from the complete membership
+  // taxonomy, not a ranked/limited stock sample - otherwise a sector or
+  // industry with no representative in that sample can never resolve its
+  // relationship. See getCollectionSectorIndustryTaxonomy on the backend.
+  const taxonomyQuery = useCollectionSectorIndustryTaxonomy({ code });
   const sectorQuery = useCollectionRelativeStrength({
     code,
     limit: GROUP_RANKING_LIMIT,
@@ -50,7 +58,10 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
   const [crossFilter, setCrossFilter] = useState<CrossFilterState>(EMPTY_CROSS_FILTER);
 
-  const relation = useMemo(() => buildSectorIndustryRelation(rsQuery.metrics), [rsQuery.metrics]);
+  const relation = useMemo(
+    () => buildSectorIndustryRelation(taxonomyQuery.sectors),
+    [taxonomyQuery.sectors]
+  );
 
   const handleSectorClick = useCallback(
     (sector: string) => setCrossFilter((current) => selectSector(current, relation, sector)),
@@ -61,6 +72,16 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
     [relation]
   );
   const clearCrossFilters = useCallback(() => setCrossFilter(EMPTY_CROSS_FILTER), []);
+
+  const handleStockClick = useCallback(
+    (item: { label: string; exchange?: string }) => {
+      if (!item.exchange) return;
+      router.push(
+        `/charts?symbol=${encodeURIComponent(item.label)}&exchange=${encodeURIComponent(item.exchange)}`
+      );
+    },
+    [router]
+  );
 
   const filteredStockStrengthMetrics = useMemo(
     () => filterWeeklyStrongByCrossFilter(rsQuery.metrics, crossFilter),
@@ -80,6 +101,7 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
     crossFilter,
     onSectorClick: handleSectorClick,
     onIndustryClick: handleIndustryClick,
+    onStockClick: handleStockClick,
   });
 
   const isCrossFilterActive = crossFilter.selectedSector !== null || crossFilter.selectedIndustry !== null;
@@ -142,6 +164,7 @@ function buildCollectionCards(input: {
   crossFilter: CrossFilterState;
   onSectorClick: (sector: string) => void;
   onIndustryClick: (industry: string) => void;
+  onStockClick: DashboardCardData["onItemClick"];
 }): DashboardCardData[] {
 
   const visibleIndustryGroups = filterGroupsBySector(
@@ -153,29 +176,30 @@ function buildCollectionCards(input: {
   return [
     createStockCard(
       "relative-strength-index",
-      "Relative Strength Index",
+      "Index Harvest",
       formatAsOfDate(input.indexAsOfDate),
       input.indexMetrics
     ),
     createGroupCard(
       "relative-strength-sector",
-      "Relative Strength Sector",
+      "Sector Harvest",
       formatAsOfDate(input.sectorAsOfDate),
       input.sectorGroups,
       { selectedLabel: input.crossFilter.selectedSector, onSelectLabel: input.onSectorClick }
     ),
     createGroupCard(
       "relative-strength-industry",
-      "Relative Strength Industry",
+      "Industry Harvest",
       formatAsOfDate(input.industryAsOfDate),
       visibleIndustryGroups,
       { selectedLabel: input.crossFilter.selectedIndustry, onSelectLabel: input.onIndustryClick }
     ),
     createStockCard(
       "55-day-stock-strength",
-      "55 Day Stock Strength",
+      "Stock Harvest",
       formatAsOfDate(input.stockStrengthAsOfDate),
-      input.stockStrengthMetrics
+      input.stockStrengthMetrics,
+      input.onStockClick
     ),
   ];
 }
@@ -184,7 +208,8 @@ function createStockCard(
   id: string,
   title: string,
   timestamp: string,
-  metrics: StockChangeRow[]
+  metrics: StockChangeRow[],
+  onItemClick?: DashboardCardData["onItemClick"]
 ): DashboardCardData {
   const rows = [...metrics].sort((a, b) => b.change55dPct - a.change55dPct);
 
@@ -201,6 +226,7 @@ function createStockCard(
       metric: undefined,
       exchange: row.exchange,
     })),
+    onItemClick,
   };
 }
 

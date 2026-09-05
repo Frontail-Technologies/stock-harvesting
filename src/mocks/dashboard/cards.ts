@@ -15,7 +15,7 @@ const TIMESTAMP = "10th Jul, 3:30pm";
 export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-index",
-    title: "Relative Strength Index",
+    title: "Index Harvest",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -36,7 +36,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "relative-strength-sector",
-    title: "Relative Strength Sector",
+    title: "Sector Harvest",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -57,7 +57,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "relative-strength-industry",
-    title: "Relative Strength Industry",
+    title: "Industry Harvest",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -78,7 +78,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "weekly-strong-stock-list",
-    title: "Weekly Strong Stock List",
+    title: "Harvest Results",
     timestamp: TIMESTAMP,
     variant: "stockList",
     items: buildItems(
@@ -99,7 +99,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "relative-strength-index-top-500",
-    title: "Relative Strength Index Top 500",
+    title: "Index Harvest Top 500",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -120,7 +120,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "relative-strength-sector-mix",
-    title: "Relative Strength Sector Mix",
+    title: "Sector Harvest Mix",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -141,7 +141,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "relative-strength-industry-mix",
-    title: "Relative Strength Industry Mix",
+    title: "Industry Harvest Mix",
     timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
@@ -162,7 +162,7 @@ export const dashboardCards: DashboardCardData[] = [
   },
   {
     id: "weekly-mix-500-strong-stock-list",
-    title: "Weekly Mix 500 Strong Stock List",
+    title: "Harvest Mix 500 Results",
     timestamp: TIMESTAMP,
     variant: "stockList",
     items: buildItems(

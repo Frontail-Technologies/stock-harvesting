@@ -85,7 +85,7 @@ export function DashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-semibold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Market strength and weekly review</p>
+          <p className="mt-1 text-sm text-muted-foreground">Market strength and harvest review</p>
         </div>
         {updatedAtLabel && (
           <span className="mt-1 text-xs text-muted-foreground">Updated {updatedAtLabel}</span>

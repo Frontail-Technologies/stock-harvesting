@@ -1,12 +1,14 @@
 export {
   getCollectionMembers,
   getCollectionRelativeStrength,
+  getCollectionSectorIndustryTaxonomy,
   getCollectionWeeklyStrongStocks,
   getMarketCollections,
 } from "./api/market-collections-api";
 export {
   useCollectionMembers,
   useCollectionRelativeStrength,
+  useCollectionSectorIndustryTaxonomy,
   useCollectionWeeklyStrongStocks,
   useMarketCollections,
 } from "./hooks/use-market-collections";
@@ -21,6 +23,8 @@ export type {
   CollectionMembersResponse,
   CollectionRelativeStrengthMetric,
   CollectionRelativeStrengthResponse,
+  CollectionSectorIndustryTaxonomyResponse,
+  CollectionSectorIndustryTaxonomyRow,
   CollectionVersionMember,
   CollectionVersionMembersResponse,
   CollectionVersionReplaceResult,

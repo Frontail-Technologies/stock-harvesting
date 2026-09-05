@@ -3,6 +3,7 @@ import type {
   CollectionMembersInput,
   CollectionMembersResponse,
   CollectionRelativeStrengthResponse,
+  CollectionSectorIndustryTaxonomyResponse,
   CollectionWeeklyStrongStocksResponse,
   MarketCollection,
 } from "../types";
@@ -49,6 +50,12 @@ export function getCollectionRelativeStrength(input: {
       limit: input.limit,
       groupBy: input.groupBy,
     }),
+  );
+}
+
+export function getCollectionSectorIndustryTaxonomy(input: { code: string }) {
+  return apiFetch<CollectionSectorIndustryTaxonomyResponse>(
+    API_ROUTES.marketCollections.sectorIndustryTaxonomy(input.code),
   );
 }
 

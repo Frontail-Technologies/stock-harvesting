@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   keywords: [
     "stock scanner",
     "stock charting",
-    "weekly stock scanner",
+    "harvest stock scanner",
     "technical analysis",
     "market scanner",
     "Stock Harvesting",

@@ -209,7 +209,7 @@ const BacktestBarsSvg = memo(function BacktestBarsSvg({
       height={CHART_HEIGHT_PX}
       className="block overflow-visible"
       role="img"
-      aria-label={`Weekly passing-stock counts by sector, ${geometry.length} weeks`}
+      aria-label={`Harvest passing-stock counts by sector, ${geometry.length} periods`}
     >
       {ticks.map((tick) => {
         const y = (1 - tick / niceMax) * CHART_HEIGHT_PX;
@@ -738,9 +738,9 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Backtest History</h2>
+          <h2 className="text-base font-semibold text-foreground">Harvest Backtest</h2>
           <div className="mt-0.5 flex items-center gap-1.5">
-            <p className="text-xs text-muted-foreground">Historical weekly results, grouped by sector</p>
+            <p className="text-xs text-muted-foreground">Historical results, grouped by sector</p>
             {membershipNote && (
               <Tooltip>
                 <TooltipTrigger

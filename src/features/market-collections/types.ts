@@ -73,6 +73,17 @@ export type CollectionRelativeStrengthResponse = {
   asOfDate: string;
 };
 
+export type CollectionSectorIndustryTaxonomyRow = {
+  sector: string;
+  industries: string[];
+};
+
+export type CollectionSectorIndustryTaxonomyResponse = {
+  collection: { code: string; name: string; exchange: string };
+  sectors: CollectionSectorIndustryTaxonomyRow[];
+  asOfDate: string;
+};
+
 export type CollectionWeeklyStrongStock = {
   symbol: string;
   name: string;

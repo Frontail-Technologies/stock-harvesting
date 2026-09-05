@@ -22,4 +22,5 @@ export type DashboardCardData = {
   variant: DashboardCardVariant;
   items: DashboardItem[];
   crossFilter?: DashboardCardCrossFilter;
+  onItemClick?: (item: DashboardItem) => void;
 };

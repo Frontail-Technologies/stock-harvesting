@@ -1,22 +1,28 @@
-import type { CollectionRelativeStrengthMetric, CollectionWeeklyStrongStock } from "@/features/market-collections";
+import type {
+  CollectionSectorIndustryTaxonomyRow,
+  CollectionWeeklyStrongStock,
+} from "@/features/market-collections";
 
 export type SectorIndustryRelation = {
   industryToSector: ReadonlyMap<string, string>;
   sectorToIndustries: ReadonlyMap<string, ReadonlySet<string>>;
 };
 
+// Built from the complete sector->industries taxonomy (every classified
+// member of the segment, not a ranked/limited sample) so an industry with
+// no representative among the top Harvest movers can still resolve its
+// parent sector correctly.
 export function buildSectorIndustryRelation(
-  metrics: CollectionRelativeStrengthMetric[]
+  taxonomy: CollectionSectorIndustryTaxonomyRow[]
 ): SectorIndustryRelation {
   const industryToSector = new Map<string, string>();
-  const sectorToIndustries = new Map<string, Set<string>>();
+  const sectorToIndustries = new Map<string, ReadonlySet<string>>();
 
-  for (const metric of metrics) {
-    if (!metric.sector || !metric.industry) continue;
-    industryToSector.set(metric.industry, metric.sector);
-    const industries = sectorToIndustries.get(metric.sector) ?? new Set<string>();
-    industries.add(metric.industry);
-    sectorToIndustries.set(metric.sector, industries);
+  for (const row of taxonomy) {
+    sectorToIndustries.set(row.sector, new Set(row.industries));
+    for (const industry of row.industries) {
+      industryToSector.set(industry, row.sector);
+    }
   }
 
   return { industryToSector, sectorToIndustries };

@@ -6,6 +6,7 @@ import { useSessionStore } from "@/features/auth";
 import {
   getCollectionMembers,
   getCollectionRelativeStrength,
+  getCollectionSectorIndustryTaxonomy,
   getCollectionWeeklyStrongStocks,
   getMarketCollections,
 } from "../api/market-collections-api";
@@ -16,6 +17,11 @@ const COLLECTION_MEMBERS_STALE_TIME_MS = 60_000;
 
 const COLLECTION_RS_STALE_TIME_MS = 5 * 60_000;
 const COLLECTION_WEEKLY_STRONG_STALE_TIME_MS = 5 * 60_000;
+// Sector/industry membership taxonomy changes on a much slower cadence than
+// ranked Harvest results (only when the segment's constituents or their
+// classification change), so it's kept fresh far longer to avoid
+// refetching something that rarely moves.
+const COLLECTION_TAXONOMY_STALE_TIME_MS = 30 * 60_000;
 
 export function useMarketCollections(input: { exchange?: string } = {}) {
   const authStatus = useSessionStore((state) => state.status);
@@ -82,6 +88,22 @@ export function useCollectionRelativeStrength(input: {
   });
 
   return { ...query, metrics: query.data?.metrics ?? [], asOfDate: query.data?.asOfDate ?? null };
+}
+
+export function useCollectionSectorIndustryTaxonomy(input: { code: string }) {
+  const authStatus = useSessionStore((state) => state.status);
+  const query = useQuery({
+    queryKey: queryKeys.marketCollections.sectorIndustryTaxonomy(input),
+    queryFn: () => getCollectionSectorIndustryTaxonomy(input),
+    enabled: authStatus !== "unknown" && Boolean(input.code),
+    retry: false,
+    staleTime: COLLECTION_TAXONOMY_STALE_TIME_MS,
+    gcTime: 60 * 60_000,
+
+    placeholderData: (previousData) => previousData,
+  });
+
+  return { ...query, sectors: query.data?.sectors ?? [] };
 }
 
 export function useCollectionWeeklyStrongStocks(input: { code: string }) {

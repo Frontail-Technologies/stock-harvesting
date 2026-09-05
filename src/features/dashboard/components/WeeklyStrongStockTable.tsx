@@ -157,7 +157,7 @@ export function WeeklyStrongStockTable({
     <section className="relative flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Weekly Strong Stock List</h2>
+          <h2 className="text-base font-semibold text-foreground">Harvest Results</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Qualified stocks for this segment</p>
         </div>
         <div className="relative w-56">

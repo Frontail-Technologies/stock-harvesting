@@ -14,12 +14,11 @@ export function clampDashboardPanelWidth(width: number): number {
 type DashboardUiState = {
 
   panelWidths: Record<string, number>;
-  minimizedPanels: Record<string, boolean>;
 
-  maximizedPanelId: string | null;
+  expandedPanelId: string | null;
   setPanelWidth: (id: string, width: number) => void;
-  togglePanelMinimized: (id: string) => void;
-  toggleMaximizedPanel: (id: string) => void;
+  openExpandedPanel: (id: string) => void;
+  closeExpandedPanel: () => void;
   resetPanelWidth: (id: string) => void;
   resetAllPanelLayout: () => void;
 };
@@ -28,24 +27,14 @@ export const useDashboardUiStore = create<DashboardUiState>()(
   persist(
     (set) => ({
       panelWidths: {},
-      minimizedPanels: {},
-      maximizedPanelId: null,
+      expandedPanelId: null,
       setPanelWidth: (id, width) =>
         set((state) => ({
           panelWidths: { ...state.panelWidths, [id]: clampDashboardPanelWidth(width) },
         })),
 
-      togglePanelMinimized: (id) =>
-        set((state) => ({
-          minimizedPanels: { ...state.minimizedPanels, [id]: !state.minimizedPanels[id] },
-          maximizedPanelId: state.maximizedPanelId === id ? null : state.maximizedPanelId,
-        })),
-
-      toggleMaximizedPanel: (id) =>
-        set((state) => ({
-          maximizedPanelId: state.maximizedPanelId === id ? null : id,
-          minimizedPanels: { ...state.minimizedPanels, [id]: false },
-        })),
+      openExpandedPanel: (id) => set({ expandedPanelId: id }),
+      closeExpandedPanel: () => set({ expandedPanelId: null }),
 
       resetPanelWidth: (id) =>
         set((state) => {
@@ -53,14 +42,12 @@ export const useDashboardUiStore = create<DashboardUiState>()(
           delete next[id];
           return { panelWidths: next };
         }),
-      resetAllPanelLayout: () => set({ panelWidths: {}, minimizedPanels: {}, maximizedPanelId: null }),
+      resetAllPanelLayout: () => set({ panelWidths: {}, expandedPanelId: null }),
     }),
     {
       name: "stock-harvesting-dashboard-ui",
       partialize: (state) => ({
         panelWidths: state.panelWidths,
-        minimizedPanels: state.minimizedPanels,
-        maximizedPanelId: state.maximizedPanelId,
       }),
     }
   )
