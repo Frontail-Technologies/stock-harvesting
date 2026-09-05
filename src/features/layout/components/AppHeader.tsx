@@ -16,6 +16,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: "Charts", href: "/charts" },
   { label: "Dashboard", href: "/dashboard" },
+  { label: "Widget", href: "/widget" },
   { label: "Watchlists", href: "/watchlists" },
 ];
 
@@ -23,7 +24,7 @@ export function AppHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="relative z-50 h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/85">
+    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/85">
       <div className="flex h-full w-full items-center gap-3 px-3 sm:px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
           <Link href="/charts" className="flex items-center gap-2">

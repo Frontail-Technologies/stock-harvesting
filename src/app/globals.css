@@ -491,8 +491,8 @@
   }
 
   *::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   *::-webkit-scrollbar-track {
@@ -582,7 +582,7 @@ html.lenis body {
   width: 100%;
   max-width: 1600px;
   margin-inline: auto;
-  padding-inline: 1.5rem;
+  padding-inline: 0.875rem;
 }
 
 @media (min-width: 768px) {
@@ -775,7 +775,11 @@ html.lenis body {
      fades toward its edges via this same mask - this one was missing it,
      so its grid ran edge-to-edge at full strength instead, reading as much
      harsher than its siblings especially in light mode. */
-  mask-image: radial-gradient(ellipse 88% 80% at 50% 50%, black 0%, transparent 85%);
+  mask-image: radial-gradient(
+    ellipse 88% 80% at 50% 50%,
+    black 0%,
+    transparent 85%
+  );
 }
 .landing-workspace-illustration-primary {
   aspect-ratio: 640 / 300;
@@ -910,7 +914,7 @@ html.lenis body {
 .landing-navbar[data-scrolled="true"] {
   background-color: var(--landing-bg);
   border-bottom-color: var(--landing-border-strong);
-  box-shadow: 0 8px 24px var(--landing-shadow);
+  box-shadow: 0 1px 3px var(--landing-shadow);
 }
 
 .landing-nav-link {
@@ -929,7 +933,6 @@ html.lenis body {
   color: rgb(var(--landing-fg-rgb));
   background-color: var(--landing-border);
 }
-
 
 .landing-frame-line {
   position: absolute;
