@@ -53,6 +53,9 @@ max-connections calculation before raising `DB_POOL_MAX`).
 | `ENCRYPTION_MASTER_KEY` | **Yes** (min 32 chars) | AES-256-GCM field encryption (provider tokens, AI API keys) |
 | `ENCRYPTION_KEY_VERSION` | No (default `v1`) | Key version tag stored alongside encrypted fields, for future key rotation |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google OAuth login |
+| `TURNSTILE_SECRET_KEY` | Required in production auth protection | Cloudflare Turnstile secret key used only by the backend Siteverify call |
+| `AUTH_OTP_EMAIL_WEBHOOK_URL` | Required for production registration OTP email | Backend webhook URL for registration OTP delivery |
+| `AUTH_OTP_EMAIL_WEBHOOK_TOKEN` | No | Bearer token sent to the OTP email webhook |
 
 ### Data providers
 
@@ -103,6 +106,7 @@ Without `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, price alerts still work but can'
 | `NEXT_PUBLIC_ADMIN_HOST` | No | Host (not full URL) that serves the admin panel on its own subdomain, e.g. `admin.example.com`. Unset keeps `/admin` on the main host — see `src/proxy.ts`. When set, the admin host gets its own login (`/login` there → `AdminLoginScreen`, not the main site's login) and every admin URL is prefix-less (`admin.example.com/users`, not `.../admin/users`) — pair with the backend's `ADMIN_WEB_APP_URL` and add the admin origin to `CORS_ORIGIN` |
 | `NEXT_PUBLIC_DEV_MOCK_FALLBACK` | No | `"true"` enables mock-data fallbacks in dev when the backend is unavailable |
 | `NEXT_PUBLIC_DEBUG_MARKET_STREAM` | No | Verbose console logging for the live market-data WebSocket stream |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Required in production auth protection | Public Cloudflare Turnstile site key for login challenges |
 
 AdSense is no longer environment-configured. Mode (off/preview/live), the
 AdSense publisher ID, and each placement's enabled/slot-ID are all runtime

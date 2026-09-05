@@ -14,7 +14,7 @@ export function useLandingCta(): LandingCta {
   const status = useSessionStore((state) => state.status);
 
   if (status === "authenticated") {
-    return { status: "authenticated", href: "/charts", label: "Open Charts" };
+    return { status: "authenticated", href: "/dashboard", label: "Open Dashboard" };
   }
 
   if (status === "unknown") {

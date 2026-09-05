@@ -1,6 +1,20 @@
 import { adminApiFetch, API_ROUTES, clearAdminApiAccessToken, refreshAdminAccessToken } from "@/features/api";
 import type { AuthUser, RefreshResponse } from "../types";
 
+type AdminPasswordLoginInput = {
+  email: string;
+  password: string;
+  turnstileToken?: string;
+};
+
+export async function loginAdminWithPassword(input: AdminPasswordLoginInput) {
+  return adminApiFetch<RefreshResponse>(API_ROUTES.adminAuth.login, {
+    method: "POST",
+    body: JSON.stringify(input),
+    skipAuthRefresh: true,
+  });
+}
+
 export async function refreshAdminSession() {
   const payload = await refreshAdminAccessToken();
   return payload as RefreshResponse;

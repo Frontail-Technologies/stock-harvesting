@@ -2,12 +2,17 @@ export const API_ROUTES = {
   auth: {
     googleUrl: (portal?: "admin") =>
       portal ? `/api/auth/google/url?portal=${portal}` : "/api/auth/google/url",
+    login: "/api/auth/login",
+    register: "/api/auth/register",
+    registerResend: "/api/auth/register/resend",
+    registerVerify: "/api/auth/register/verify",
     refresh: "/api/auth/refresh",
     me: "/api/auth/me",
     logout: "/api/auth/logout",
   },
 
   adminAuth: {
+    login: "/api/admin-auth/login",
     refresh: "/api/admin-auth/refresh",
     me: "/api/admin-auth/me",
     logout: "/api/admin-auth/logout",

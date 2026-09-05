@@ -5,14 +5,19 @@ import { useEffect, useRef } from "react";
 import { ApiError, queryKeys } from "@/features/api";
 import {
   getCurrentAdminUser,
+  loginAdminWithPassword,
   logoutAdmin,
   refreshAdminSession,
 } from "../api/admin-auth-api";
 import {
   getCurrentAuthUser,
+  loginWithPassword,
   refreshSession,
+  requestRegistration,
+  resendRegistration,
   startGoogleLogin,
   logout as logoutRequest,
+  verifyRegistration,
 } from "../api/auth-api";
 import { useAdminSessionStore } from "../stores/admin-session-store";
 import { useSessionStore } from "../stores/session-store";
@@ -94,7 +99,37 @@ export function useCurrentUser() {
 
 export function useGoogleLogin() {
   return useMutation({
-    mutationFn: (portal?: "admin") => startGoogleLogin(portal),
+    mutationFn: (options?: { portal?: "admin"; turnstileToken?: string }) => startGoogleLogin(options),
+  });
+}
+
+export function usePasswordLogin() {
+  const setSession = useSessionStore((state) => state.setSession);
+
+  return useMutation({
+    mutationFn: loginWithPassword,
+    onSuccess: setSession,
+  });
+}
+
+export function useRegistrationRequest() {
+  return useMutation({
+    mutationFn: requestRegistration,
+  });
+}
+
+export function useRegistrationVerify() {
+  const setSession = useSessionStore((state) => state.setSession);
+
+  return useMutation({
+    mutationFn: verifyRegistration,
+    onSuccess: setSession,
+  });
+}
+
+export function useRegistrationResend() {
+  return useMutation({
+    mutationFn: resendRegistration,
   });
 }
 
@@ -189,5 +224,14 @@ export function useAdminLogout() {
       clearSession();
       queryClient.clear();
     },
+  });
+}
+
+export function useAdminPasswordLogin() {
+  const setSession = useAdminSessionStore((state) => state.setSession);
+
+  return useMutation({
+    mutationFn: loginAdminWithPassword,
+    onSuccess: setSession,
   });
 }
