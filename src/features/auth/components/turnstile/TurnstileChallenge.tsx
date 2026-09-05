@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/utils/cn";
-import { TURNSTILE_SITE_KEY } from "../../constants/turnstile";
+import { isTurnstileEnabled, TURNSTILE_SITE_KEY } from "../../constants/turnstile";
 
 type TurnstileStatus = "idle" | "loading" | "ready" | "verified" | "expired" | "error";
 
@@ -70,7 +70,7 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
     const containerRef = useRef<HTMLDivElement | null>(null);
     const widgetIdRef = useRef<string | null>(null);
     const tokenRef = useRef<string | null>(null);
-    const [status, setStatus] = useState<TurnstileStatus>(TURNSTILE_SITE_KEY ? "loading" : "ready");
+    const [status, setStatus] = useState<TurnstileStatus>(isTurnstileEnabled() ? "loading" : "ready");
 
     useImperativeHandle(ref, () => ({
       getToken: () => tokenRef.current,
@@ -85,7 +85,7 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
     }), [onTokenChange]);
 
     useEffect(() => {
-      if (!TURNSTILE_SITE_KEY) return;
+      if (!isTurnstileEnabled()) return;
       let cancelled = false;
 
       setStatus("loading");
@@ -130,7 +130,7 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
       };
     }, [action, onTokenChange]);
 
-    if (!TURNSTILE_SITE_KEY) {
+    if (!isTurnstileEnabled()) {
       return null;
     }
 

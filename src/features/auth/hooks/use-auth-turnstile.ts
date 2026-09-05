@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { TURNSTILE_SITE_KEY } from "../constants/turnstile";
+import { isTurnstileEnabled } from "../constants/turnstile";
 import type { TurnstileChallengeHandle } from "../components/turnstile";
 
 export type AuthTurnstileAction =
@@ -25,7 +25,7 @@ export function useAuthTurnstile(initialAction: AuthTurnstileAction) {
   const ref = useRef<TurnstileChallengeHandle | null>(null);
   const [action, setAction] = useState<AuthTurnstileAction>(initialAction);
   const [token, setToken] = useState<string | null>(null);
-  const required = Boolean(TURNSTILE_SITE_KEY);
+  const required = isTurnstileEnabled();
   const missing = required && !token;
 
   const reset = useCallback((nextAction?: AuthTurnstileAction) => {
@@ -46,6 +46,10 @@ export function useAuthTurnstile(initialAction: AuthTurnstileAction) {
 
   const ensureReady = useCallback(
     (nextAction: AuthTurnstileAction): TurnstileGateResult => {
+      if (!required) {
+        activate(nextAction);
+        return { ready: true, error: null };
+      }
       if (action !== nextAction) {
         activate(nextAction);
         return { ready: false, error: VERIFY_FIRST_MESSAGE };
@@ -55,7 +59,7 @@ export function useAuthTurnstile(initialAction: AuthTurnstileAction) {
       }
       return { ready: true, error: null };
     },
-    [action, missing, activate],
+    [required, action, missing, activate],
   );
 
   return { ref, action, token, setToken, missing, reset, activate, ensureReady };

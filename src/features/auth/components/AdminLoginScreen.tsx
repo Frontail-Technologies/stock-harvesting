@@ -11,7 +11,7 @@ import { ApiError } from "@/features/api";
 import { AdminForbiddenState } from "@/features/admin/components/shell/AdminAccessState";
 import { getAdminHost } from "@/utils/seo";
 import { loginFieldRules, type LoginFormValues } from "../schemas/login.schema";
-import { TURNSTILE_SITE_KEY } from "../constants/turnstile";
+import { isTurnstileEnabled } from "../constants/turnstile";
 import { useAdminPasswordLogin } from "../hooks/use-auth";
 import { useAdminSessionStore } from "../stores/admin-session-store";
 import { PasswordField } from "./PasswordField";
@@ -43,7 +43,7 @@ export function AdminLoginScreen() {
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
   const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
-  const turnstileMissing = Boolean(TURNSTILE_SITE_KEY && !turnstileToken);
+  const turnstileMissing = Boolean(isTurnstileEnabled() && !turnstileToken);
   const adminHome = getAdminHost() ? "/" : "/admin";
 
   useEffect(() => {
