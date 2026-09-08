@@ -280,7 +280,7 @@ deleting a collection removes only data it owns:
   no throw) if the row is gone — so even an already-running or unremoved
   job can never fail noisily or write state for a deleted collection.
 
-Bulk delete deduplicates ids server-side, caps a request at 100 ids, and
+Bulk delete deduplicates ids server-side, caps a request at 500 ids, and
 deletes every matched row in one `DELETE ... WHERE id IN (...)` statement —
 already atomic as a single Postgres statement, so no explicit transaction
 wrapper is needed. Ids that don't match an existing row are reported back
