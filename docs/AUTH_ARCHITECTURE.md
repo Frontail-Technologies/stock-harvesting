@@ -20,21 +20,47 @@ something is a known gap rather than a finished guarantee, it's marked
 request is allowed to *reach* — it only decides, inside the portal you're
 already authenticating into, whether that specific login is *accepted*.
 
-## 2. Login — Google OAuth only
+## 2. Login methods
 
-There is no password/credentials form anywhere in this codebase — the only
-login method is Google OAuth (`backend/src/modules/auth/auth.service.ts`).
-Both portals share the **same** OAuth start/callback endpoints
-(`GET /api/auth/google/url`, `GET /api/auth/google/callback`) — a short-lived
-`sh_oauth_portal` cookie (10 min TTL, set alongside the CSRF `sh_oauth_state`
-cookie) carries which portal a login started from, purely to pick the
-correct return origin and reason codes. **It is never trusted as proof of
-anything** — the actual decision is made after the Google profile resolves.
+Two independent login methods exist: Google OAuth (both portals) and
+password login (email + password, set during registration — no separate
+"forgot password" flow exists yet). Both funnel into the same
+`evaluatePortalAccess` decision and the same `createSession` before either
+ever issues a token.
+
+### Google OAuth
+
+`backend/src/modules/auth/google-auth.service.ts`. Both portals share the
+**same** OAuth start/callback endpoints (`GET /api/auth/google/url`,
+`GET /api/auth/google/callback`) — a short-lived `sh_oauth_portal` cookie
+(10 min TTL, set alongside the CSRF `sh_oauth_state` cookie) carries which
+portal a login started from, purely to pick the correct return origin and
+reason codes. **It is never trusted as proof of anything** — the actual
+decision is made after the Google profile resolves.
+
+### Password login + registration/OTP
+
+`backend/src/modules/auth/password-auth.service.ts` (`loginWithPassword`)
+and `registration.service.ts` (`requestUserRegistration` →
+`verifyUserRegistrationOtp`, plus `resendUserRegistrationOtp`). USER-portal
+self-registration only — there is no self-service password registration
+for the ADMIN portal; an admin's password is provisioned out of band and
+`admin-auth.routes.ts` only ever calls `loginWithPassword`.
+
+Registration is request → email-OTP verify → account created, not
+create-then-verify: `registrationVerifications` holds the pending
+name/password-hash/OTP-hash row, and the real `users` row (with
+`passwordHash` set) is only written once `verifyUserRegistrationOtp`
+confirms the code — see `auth.constants.ts` for the OTP expiry/resend-cooldown/
+max-attempt values. A verification code is single-use (`consumedAt`) and
+rechecked for expiry/attempt-count inside the same DB transaction that
+would consume it, so a code can't be replayed after a failed or successful
+verification.
 
 ### The decision: `evaluatePortalAccess`
 
-`backend/src/modules/auth/auth.service.ts` — pure function, unit tested in
-`auth-portal-destination.test.ts`:
+`backend/src/modules/auth/session.service.ts` — pure function, unit tested
+in `auth-portal-destination.test.ts`:
 
 ```
 evaluatePortalAccess(role, portal):
@@ -108,6 +134,13 @@ the DB row, never against which cookie name the client happened to send.
 Reuse/theft detection (revoke the whole token family on a reused token) is
 unchanged from before the portal split and applies independently per
 portal.
+
+`rotateRefreshToken` (`backend/src/modules/auth/session.service.ts`) reads
+the matched token row with `SELECT ... FOR UPDATE` inside a transaction, so
+two requests presenting the same refresh token concurrently (e.g. a
+multi-tab race) serialize instead of both reading the pre-rotation row and
+racing to mutate it — the second waits for the first's rotation to commit
+rather than revoking the winner's brand-new token as reuse.
 
 ## 5. Access token / JWT
 

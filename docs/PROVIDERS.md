@@ -65,6 +65,39 @@ Admin → Data Providers (`/admin/data-providers`).
   `useMarketStream` hook auto-reconnects after 2.5s indefinitely; already-
   rendered chart data is never cleared on disconnect.
 
+## BSE instrument persistence universe
+
+`toGlobalDatafeedsInstrument` (`adapters/global-datafeeds/global-datafeeds.mapper.ts`)
+maps every row `GetInstruments`/`Exchange=BSE` returns into the `instruments`
+table. For `exchange === "BSE"` specifically, a row is persisted whenever it
+passes `isBseEquityIdentity` — **identity only**: an ISIN starting `INE`
+(the real ISO 6166 prefix for an Indian equity security). This is the
+**reference/security universe** — it is not a chart-readiness filter and
+does not gate on `QuotationLot`, 52-week high/low, trading `Series`, or
+`IsCommonExchange` (SME-board and recently-listed BSE constituents
+legitimately have `QuotationLot > 1`, no 52-week range yet, a series
+outside the historically-assumed set, **and** `IsCommonExchange: false` —
+confirmed directly against a live `GetInstruments` response: real,
+INE-ISIN SME-board securities like `ABRIL`/`ACCORDTS`/`ANL`/`ADMACH` all
+carry `IsCommonExchange: false`, so gating on it would have continued
+silently dropping exactly the securities this fix exists for). A stricter
+filter here silently dropped real, importable BSE securities, e.g. SME IPO
+collection constituents. `exchange === "BSE_IDX"` is unaffected — this
+identity gate never applies to it.
+
+Persisting an instrument does **not** imply it has candle/quote data.
+Whether a symbol is usable for a specific market-data feature is decided at
+that feature's own boundary, and every consumer that matters already
+degrades gracefully on missing/insufficient history rather than assuming
+every persisted row is chartable: `computeAllRelativeStrengthMetrics` and
+`computeWeeklyStrongStocks` (`market-data.metrics.ts`) both skip an
+instrument with no or too-short candle history; `getChartCandles`
+(`market-data.service.ts`) resolves a symbol with no history to an
+empty/no-data response, not an error. No separate eligibility gate exists
+between persistence and these — if one is ever genuinely needed for a new
+feature, add it at that feature's own fetch boundary, not back into the
+persistence mapper.
+
 ## Live diagnostics
 
 Backend scripts (run with `tsx`, not part of the normal build):

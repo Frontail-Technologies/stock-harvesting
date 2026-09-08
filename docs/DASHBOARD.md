@@ -111,6 +111,45 @@ not a client-rendered "now" timestamp. Each of the 4 widgets shows its
 ever genuinely diverge (a rare cross-scope invalidation timing gap),
 that's visible on the widgets, not silently hidden.
 
+**This `asOfDate` is deliberately left as a daily marker, not converted to
+a Friday.** The 4 top widgets are a **daily** 55-day rolling metric (see
+the table at the top of this doc) — "As of {date}" already means exactly
+what it says: the latest daily session the ranking was computed from.
+Converting it to a week-ending Friday would misrepresent what the metric
+actually is. Do not force these onto the canonical `weekEnding` below;
+they are a genuinely different cadence, confirmed by reading
+`computeAllRelativeStrengthMetrics`'s own "only daily candles are needed"
+comment.
+
+The page's own top-of-page timestamp ("Last refreshed {date, time}",
+`DashboardPage.tsx`) is a third, unrelated concept again: it's
+`dataUpdatedAt` from React Query — a client-side fetch marker, not a
+trading-day or week-ending value at all. It answers "when did my browser
+last hear from the API," nothing more. Labeled "Last refreshed" rather
+than "Updated" specifically to avoid being read as a Harvest-week date.
+
+## Canonical weekly identity
+
+The **Weekly Strong** system (Harvest Results table, In/Out tables,
+Backtest — the right-hand column of the table at the top of this doc) is a
+genuinely different cadence from the daily `asOfDate` above: it operates
+on **completed weekly candles**, so its date identity is a canonical
+**week-ending Friday**, not a daily marker. `CollectionWeeklyStrongStocksResponse.weekEnding`
+(`getOrComputeWeeklyStrongSnapshot` → `resolveCompletedWeekEndingFromTradingDay`,
+`trading-calendar.ts` — see [MARKET_DATA.md](./MARKET_DATA.md)) replaces
+the old ambiguous `asOfDate` field on this one response; it is derived
+from the already-persisted daily marker at the read boundary, so no new
+column or migration was needed, and it can never claim a more recent week
+than what the underlying computation actually used.
+
+`WeeklyStrongMembershipChanges.tsx` ("Stocks In This Week" / "Stocks Out
+This Week") compares this same canonical `weekEnding` against the
+Backtest's `previousWeekEnding` for the "vs {date}" line — both resolved
+through the same shared helper, never a client-side Monday/Friday
+computation. See [BACKTEST.md](./BACKTEST.md) "Canonical week-ending
+Friday" for how the Backtest's own persisted (Monday-ish) `weekEnding`
+column is converted at its own API boundary.
+
 ## Persisted snapshots — invalidation
 
 `dashboard_metric_snapshots` rows are versioned via an `evaluatorVersion`

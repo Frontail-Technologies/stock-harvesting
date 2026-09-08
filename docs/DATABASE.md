@@ -151,10 +151,10 @@ write that needs to succeed or fail as one unit:
   deactivate steps are currently row-by-row inside this transaction (not
   batched) — a real backend-hardening item, not fixed in this pass.
 - Drawing replace-all (`drawings.service.ts`) — delete + re-insert.
-- Refresh-token rotation (`auth.service.ts`) — `SELECT ... FOR UPDATE` plus
-  family-wide revocation on reuse detection.
+- Refresh-token rotation (`auth/session.service.ts`) — `SELECT ... FOR UPDATE`
+  plus family-wide revocation on reuse detection.
 - Weekly Strong backtest week persistence (`persistWeeklyStrongBacktestWeek`,
-  `weekly-strong-backtest.service.ts`) — upsert the run row (idempotent via
+  `weekly-strong-backtest.persistence.ts`) — upsert the run row (idempotent via
   `ON CONFLICT` on `(collectionId, weekEnding, membershipMode)`) + delete
   that run's previous members + re-insert the current ones, so a rerun
   never leaves stale members from a superseded generation. See
@@ -197,16 +197,47 @@ locking.
 
 ## TimescaleDB
 
-**Not installed.** No dependency, no `CREATE EXTENSION`, no hypertable,
-anywhere in this codebase. Candles are daily/weekly/monthly only — no
-intraday timeframe exists. Plain Postgres comfortably handles this; the
-trigger for revisiting TimescaleDB is adding intraday granularity (1-minute
-or tick data across thousands of instruments), not row count in the
-abstract. If/when that happens, native Postgres range partitioning on
-`candles.time` is the more likely first step given this codebase's existing
-style (chunked, idempotent, upsert-based patterns) — TimescaleDB only if
-partition-maintenance overhead becomes a real operational burden on top of
-that.
+**Installed.** `candles` is a TimescaleDB hypertable, partitioned on its
+`time` column (migration `0017_lowly_luckman.sql`:
+`CREATE EXTENSION IF NOT EXISTS timescaledb;` +
+`SELECT create_hypertable('candles', 'time', if_not_exists => TRUE, migrate_data => TRUE);`).
+Every other table (`users`, `instruments`, `market_collections` and its
+versioning tables, backtest runs/members, auth/admin data) stays a normal
+PostgreSQL table — only `candles` is genuinely time-series-shaped.
+
+**Primary key is composite `(id, time)`, not `id` alone** — TimescaleDB
+rejects `create_hypertable()` on a table whose primary key (or any unique
+constraint) excludes the partitioning column. `id` stays a random UUID and
+is never referenced by another table's foreign key (a leaf table), so this
+changed nothing observable in application code. The existing uniqueness
+constraint, `(exchange, symbol, timeframe, time)`, already included `time`
+and needed **no change** — `upsertCandles`'s `onConflictDoUpdate` target
+is untouched.
+
+**Verification SQL** (also see [DEPLOYMENT.md](./DEPLOYMENT.md)):
+```sql
+SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';
+SELECT hypertable_name, num_dimensions FROM timescaledb_information.hypertables WHERE hypertable_name = 'candles';
+```
+
+**Deliberately not added this phase, and why:**
+- **Continuous aggregates for weekly candles** — exact equivalence with the
+  existing app-level `aggregateWeeklyCandles` (canonical Friday
+  week-ending, trading-calendar holiday handling, OHLC/volume aggregation
+  order) has not been proven, so the current derive-on-read path stays
+  authoritative. A real future optimization, not implemented speculatively.
+- **Compression/columnstore policy** — Weekly Strong needs the full
+  historical window (`WEEKLY_STRONG_BACKTEST_FETCH_YEARS`) available
+  indefinitely; adding a policy before any real production monitoring
+  exists to size it safely risks compressing data the evaluator still
+  reads.
+- **Retention policy** — none added; nothing in this codebase should ever
+  automatically delete required historical candle history.
+- No Prometheus/Grafana client exists in this codebase — collection
+  preparation and candle-backfill paths log structured fields (duration,
+  symbols attempted/succeeded/failed, status transitions) via the existing
+  `logger` instead, so a future metrics/log-dashboard setup has the data
+  without this phase fabricating a new monitoring dependency.
 
 ## Migrations
 

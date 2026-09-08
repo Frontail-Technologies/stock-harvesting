@@ -105,6 +105,12 @@ other code imports its components).
   notifications).
 - **Main APIs**: `/api/price-alerts/*`, `/api/push-subscriptions/*`.
 - **Depends on**: PWA/Push for delivery.
+- **Shared domain types**: `PriceAlertCondition`/`PriceAlertStatus` live in
+  `price-alerts.types.ts`, not `price-alerts.service.ts` — this is what lets
+  `push-subscriptions.service.ts` depend only on that types file
+  (`PriceAlertCondition`, for `sendPriceAlertNotification`'s input) without
+  importing `price-alerts.service.ts` itself, avoiding a
+  price-alerts ↔ push-subscriptions service cycle.
 
 ## Drawings
 

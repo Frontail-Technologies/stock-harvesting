@@ -150,6 +150,34 @@ your load balancer / process manager's health check at this route, not just
 "is the process running" — a previous version of this route always
 returned `ok: true` regardless of database state.
 
+## Production bootstrap (fresh database)
+
+Production runs on PostgreSQL with TimescaleDB (see `docs/DATABASE.md`
+"TimescaleDB"). Sequence for a brand-new production database with no
+existing data:
+
+1. Provision PostgreSQL + TimescaleDB.
+2. Set `DATABASE_URL` (and `REDIS_URL` — required in production; without
+   it, collection preparation leaves newly-imported collections `pending`
+   indefinitely instead of running detached inside the API process, see
+   `docs/BACKTEST.md` "Collection data preparation").
+3. `cd backend && npm run db:migrate` — this both applies the normal
+   schema and enables/registers the `candles` hypertable.
+4. Verify (see `docs/DATABASE.md` for the exact SQL):
+   `SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';`
+   and `SELECT hypertable_name FROM timescaledb_information.hypertables WHERE hypertable_name = 'candles';`.
+5. Start the API and, separately, the worker process (`npm run worker`) —
+   both required; the worker is what actually executes queued
+   instrument-sync, backtest, and collection-preparation jobs.
+6. Run the GDF BSE instrument sync (Admin → Data Providers, or let the
+   scheduled job pick it up).
+7. Import BSE collections (Admin → Segments → Bulk Import).
+8. Each import automatically queues candle backfill + backtest generation
+   (`docs/BACKTEST.md`) — collections show "Preparing" until `Ready`/`Partial`.
+9. Existing scheduled jobs (instrument sync, latest-price refresh, Weekly
+   Strong incremental) continue running every 30 min per exchange as
+   already documented above, unchanged by any of this.
+
 ## Rollback
 
 This repo has no destructive migrations to roll back today (see

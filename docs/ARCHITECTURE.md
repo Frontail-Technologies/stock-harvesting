@@ -45,6 +45,40 @@ Express 5 + Drizzle ORM + Postgres (Neon), TypeScript, at `backend/`.
   [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md). Route mount list is in
   [ROUTES.md](./ROUTES.md)'s "BACKEND / API" table — that list is verbatim
   from `backend/src/app.ts`, trust it over memory.
+- **File-role convention within a module** (not every module needs every
+  file — add one only when something actually needs to live there):
+  - `*.routes.ts` — Express routing/wiring only.
+  - `*.schemas.ts` — Zod validation contracts.
+  - `*.types.ts` — exported TS types/interfaces that are a real
+    feature/domain contract used by more than one file (e.g.
+    `price-alerts.types.ts`, `data-provider.types.ts`). A type used only
+    inside the file that declares it stays there, `export` keyword or not —
+    exporting something nobody imports doesn't make it a contract.
+  - `*.constants.ts` — stable feature configuration/domain vocabulary (OTP
+    timing, membership-mode labels, freshness/retry-cooldown thresholds).
+    Not a home for a function-local `const` (chunk sizes, loop bounds) —
+    those stay next to the code that uses them.
+  - `*.service.ts` — behavior/orchestration; the implementation. A module
+    can own more than one, split by responsibility rather than kept as one
+    growing file — `auth/` is the first module refactored this way:
+    `password-auth.service.ts`, `registration.service.ts`,
+    `google-auth.service.ts`, and `session.service.ts` (session/token
+    lifecycle + the shared `evaluatePortalAccess` decision the other three
+    call before creating one), with `auth.helpers.ts` holding the one
+    mapper (`toAuthUser`) all four need. No single file plays "the auth
+    service" anymore — routes import each function from its owning file
+    directly.
+  - `shared/` — only for primitives genuinely used across unrelated
+    features (`writeAuditLog`, `candleTimeframeSchema`). A type or constant
+    that only two sibling files in the same module need belongs to that
+    module, not `shared/`.
+  - Never import a type or constant from another module's `*.service.ts`
+    file — that's what creates the accidental service↔service coupling
+    (and occasionally cycles) this file-role split exists to avoid; import
+    from that module's `*.types.ts`/`*.constants.ts` instead. A later pass
+    that splits a large `*.service.ts` into smaller files should preserve
+    these same boundaries rather than re-scatter contracts/config across
+    the new pieces.
 - **Shared**: `backend/src/shared/{env.ts, errors/, middleware/, constants/, http.ts, logger.ts, cache.ts, normalize.ts, validate.ts}`.
   `constants/` is a directory barrel-exported via `constants/index.ts`
   (`domain.ts`, `http.ts`, `jobs.ts`, `routes.ts`, `security.ts`).
@@ -175,6 +209,9 @@ two most important boundaries to internalize before making a change:
 | `backend/src/shared/errors/` | `AppError`, `ERROR_CODES`, `errorHandler`, `notFound` |
 | `backend/src/shared/middleware/index.ts` | Barrel: `asyncHandler`, `validate`, and the auth guards (`requireAuth`, `requireAdminAuth`, `requireAdmin`, `requireRole`) |
 | `backend/src/shared/cache.ts` | `getOrSetCache`/`invalidateCacheByPrefix` — small in-process cache, not Redis |
+| `backend/src/shared/metrics/` | Prometheus metrics (`prom-client`) — one canonical `Registry`, `GET /metrics` on the API and an optional private listener on the worker. See `docs/OBSERVABILITY.md` |
+| `backend/src/shared/audit/audit.service.ts` | `writeAuditLog({ actorUserId, action, targetType, targetId, metadata })` — the one place that writes to `audit_logs`. Previously reimplemented identically in `admin.service.ts`, `ai.service.ts`, `market-collections.service.ts`, `monetization.service.ts`, and inlined once more in `data-provider-settings.service.ts`; all five now call this instead |
+| `backend/src/shared/validation/market.schemas.ts` | `candleTimeframeSchema` (accepts `1d`/`1w`/`1m`/`1mo` aliases, normalizes to `1D`/`1W`/`1M`) — shared by `scanner.schemas.ts` and `market-data.schemas.ts`, which previously each defined their own identical copy |
 | `src/utils/seo.ts` | `getSiteUrl`, `getAdminHost`, `getAdminOrigin`, `adminPath` — every admin-host-aware link goes through `adminPath()` |
 | `src/utils/production-lockdown.ts` | `IS_PRODUCTION_LOCKDOWN` — gates Dashboard/Stocks/Profile in production. See [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) |
 | `src/utils/download-blob.ts` | Client-side blob download helper (used by chart snapshot export) |

@@ -88,6 +88,16 @@ max-connections calculation before raising `DB_POOL_MAX`).
 
 Without `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, price alerts still work but can't deliver browser push notifications.
 
+### Observability (Prometheus metrics)
+
+See `docs/OBSERVABILITY.md` for the full picture — endpoints, security, and available metric groups.
+
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `METRICS_ENABLED` | No | `false` | Enables `GET /metrics` on the API and, if `WORKER_METRICS_PORT` is also set, on the worker |
+| `METRICS_TOKEN` | No | — | If set, required as `Authorization: Bearer <token>` on `/metrics` — a fallback control; network-level restriction (private networking/Nginx) is the preferred primary control |
+| `WORKER_METRICS_PORT` | No | — | Port for the worker process's own private `/metrics` listener (binds `127.0.0.1` only). Unset means no listener at all |
+
 ## Backend backup/restore scripts (not validated by `env.ts` — read directly by the shell scripts)
 
 | Variable | Required by | Purpose |

@@ -33,6 +33,32 @@ function that takes a symbol also takes (or defaults) an `exchange`.
 `normalizeSymbol()` (`market-data.service.ts`) is applied to every incoming
 symbol before any DB read/write.
 
+## Instrument ensure flow
+
+```
+requested symbols → batched DB lookup → missing set → targeted provider search OR one full sync → batched re-query → existing fallback creation
+```
+
+`ensureInstrumentsForSymbols` (`market-data.instrument-sync.ts`) makes sure
+an `instruments` row exists for every requested symbol:
+
+1. One batched `getInstrumentsBySymbol` call finds which requested symbols
+   already have a row.
+2. If none are missing, it returns immediately — no provider call at all.
+3. Otherwise it checks the exchange's `instrument_search`-capable provider
+   **once**, then branches: if the provider supports targeted search, it
+   searches each missing symbol individually; if not (e.g. Zerodha has no
+   per-symbol search for NSE), it runs **one** full `syncProviderInstruments`
+   pull for the whole exchange, never one per missing symbol.
+4. A second batched lookup re-checks the originally-missing symbols.
+5. Whatever's still unresolved goes through the existing fallback-instrument
+   creation path, unchanged.
+
+Step 3 is the reason this flow is safe to call with many missing symbols at
+once: a provider without search capability is only ever asked for a full
+sync a single time per `ensureInstrumentsForSymbols` call, regardless of
+how many symbols triggered it.
+
 ## 1D freshness path — `getChartCandles`
 
 `backend/src/modules/market-data/market-data.service.ts`. On every chart
@@ -40,10 +66,16 @@ read:
 
 1. Read stored `1D` rows for `(exchange, symbol)` in the requested range.
 2. If **empty**, has a **likely split discontinuity**
-   (`hasLikelySplitDiscontinuity`), or is **missing older history** than an
-   explicitly requested `from` (`shouldBackfillRequestedHistory`) →
-   **full historical backfill** (`runChartBackfillOnce` →
-   `backfillDailyCandles`, a full-range provider fetch), then re-read.
+   (`hasLikelySplitDiscontinuity`), has a **suspicious history gap**
+   (`hasSuspiciousHistoryGap` — two adjacent stored rows more than
+   `MAX_EXPECTED_TRADING_GAP_DAYS` apart, comfortably wider than any real
+   weekend/holiday cluster; catches a hole left by a symbol rename, since
+   `getOrCreateInstrument` has no rename/alias resolution and a period
+   synced under an old symbol never lands in the new symbol's row), or is
+   **missing older history** than an explicitly requested `from`
+   (`shouldBackfillRequestedHistory`) → **full historical backfill**
+   (`runChartBackfillOnce` → `backfillDailyCandles`, a full-range provider
+   fetch), then re-read.
 3. **Else if** the latest stored row is older than
    `getLatestExpectedTradingDay(exchange)` (see below) →
    **`isLatestDailyCandleStale`** is true → **incremental refresh only**
@@ -73,6 +105,28 @@ Both are in-process `Map`s (module state) — correct for the current
 single-API-process topology (see `docs/DEPLOYMENT.md`); would need a
 distributed lock if the API is ever horizontally scaled.
 
+### History-gap retry cooldown
+
+A genuinely long trading suspension (regulatory action, a delisted-then-
+relisted instrument) can legitimately exceed `MAX_EXPECTED_TRADING_GAP_DAYS`
+too, so `hasSuspiciousHistoryGap` can fire on data the provider has no way
+to fill — an accepted false positive, not a correctness bug.
+`shouldRetryHistoryGapBackfill`/`markHistoryGapBackfillAttempted`
+(`HISTORY_GAP_BACKFILL_RETRY_COOLDOWN_MS`, keyed `exchange:symbol` only —
+deliberately not the date-range key the in-flight dedup above uses, since
+that key includes "today" and would never actually throttle a
+daily-repeating gap) bound the resulting cost to at most one full-history
+provider fetch per instrument per day even when the gap can never close.
+
+Constants for both of the above (`MAX_EXPECTED_TRADING_GAP_DAYS`,
+`HISTORY_GAP_BACKFILL_RETRY_COOLDOWN_MS`), plus the backfill/refresh
+in-flight cooldowns above (`COMPLETED_CHART_BACKFILL_COOLDOWN_MS`,
+`FAILED_LATEST_CANDLE_SYNC_COOLDOWN_MS`) and `SUPPORTED_EXCHANGES_CACHE_TTL_MS`,
+live in `market-data.constants.ts` — the freshness/retry/cache policy
+values for this module, kept separate from the orchestration functions
+that read them (still in `market-data.service.ts`/`market-data.candle-sync.ts`,
+unchanged this phase).
+
 ## "Latest expected trading day"
 
 `backend/src/modules/market-data/trading-calendar.ts` —
@@ -94,7 +148,52 @@ has nothing new. This does not cause a full backfill (staleness only ever
 triggers the incremental path, which is cheap and safe even when it finds
 nothing new) — it's a UX/perceived-freshness gap, not a data-corruption
 risk. See `docs/DATABASE.md`'s note on the same gap (there is no
-`exchanges` table modeling holidays anywhere).
+`exchanges` table modeling holidays anywhere). The same limitation applies
+to the week-ending helpers below: there is no holiday-aware distinction
+between a canonical `weekEnding` (always a Friday) and an actual
+`lastTradingDate` — if a market holiday ever fell on a Friday, this
+codebase does not model that separately, since no holiday calendar exists
+to derive it from.
+
+## Canonical weekly identity — `weekEnding` (Friday)
+
+Also in `trading-calendar.ts`, alongside `getLatestExpectedTradingDay`.
+These exist so that **every** feature with a weekly concept (Dashboard
+Harvest Results, Weekly Stock In/Out, Backtest) derives the same week
+label the same way, instead of each computing its own Monday/Friday
+conversion:
+
+- **`getIsoWeekRange(dateStr)`** — the Monday-Sunday (UTC) bounds of the
+  ISO week containing `dateStr`. Used to match a stored date that could
+  fall on any weekday against the week it belongs to (see "Why weekly
+  candles aren't Friday-keyed" below) — internal query-matching machinery,
+  never itself shown to a user.
+- **`getWeekEndingFriday(dateStr)`** — the canonical, product-facing label
+  for `dateStr`'s ISO week: that week's Friday. A pure relabel — does not
+  imply the week is complete (see `isCompletedTradingWeek` above for that).
+- **`resolveCompletedWeekEndingFromTradingDay(latestExpectedTradingDay)`** —
+  given an already-computed `getLatestExpectedTradingDay` result, returns
+  the Friday of the **latest fully completed** week, consistent with
+  `isCompletedTradingWeek`'s conservative rule (a week isn't "complete"
+  until evaluation has moved into the following ISO week — see above). Pure
+  and stateless: safe to apply to an **already-persisted** daily marker at
+  read time without ever claiming a more recent week than what the
+  original computation used (it reproduces exactly what a fresh
+  `resolveLatestCompletedWeekEnding` call would have returned at the time
+  that marker was written).
+- **`resolveLatestCompletedWeekEnding(exchange, at = new Date())`** —
+  convenience wrapper: `resolveCompletedWeekEndingFromTradingDay(getLatestExpectedTradingDay(exchange, at))`.
+
+### Why weekly candles aren't Friday-keyed
+
+`aggregateWeeklyCandles` (candle-aggregation) stores a weekly candle's
+`time` as the **first actual trading day of its ISO week** — normally
+Monday, but it shifts if Monday wasn't a trading day for that symbol. This
+is a deliberate aggregation convention, not a bug, and it is **not**
+changed by the helpers above. Anything that needs a user-facing week
+label converts that stored value through `getWeekEndingFriday` at the read
+boundary instead — see [BACKTEST.md](./BACKTEST.md) for where this
+matters for `weekly_strong_backtest_runs.weekEnding`.
 
 ## Provider fallback/resolution
 
@@ -114,6 +213,54 @@ in-memory latest price/candle display, they are not what keeps stored
 daily candles fresh (that's entirely the `getChartCandles` path above,
 which runs on every chart *load*, independent of whether a realtime
 connection is live).
+
+### Stream subscription instrument resolution
+
+```
+subscribe(symbols) → resolveInstrumentsForSymbols(symbols) → provider token/identifier mapping → subscribe
+```
+
+Both realtime providers that need a DB-side instrument lookup — Kite
+(`providers/kite-market-stream.provider.ts`, NSE only) and GlobalDataFeeds
+(`providers/global-datafeeds-market-stream.provider.ts`, BSE + BSE_IDX) —
+resolve their whole batch of subscribed symbols through one shared call,
+`resolveInstrumentsForSymbols` (`market-data.instruments.ts`): one query
+per distinct exchange in the batch, not one query per symbol. It groups
+the requested `(exchange, symbol)` pairs by exchange, runs the existing
+single-exchange batch lookup (`getInstrumentsBySymbol`) once per group,
+and returns a `Map` keyed `exchange:symbol` — the same key shape
+`market-stream.utils.ts`'s `streamSymbolKey` already uses. In practice
+this is one query for Kite (always NSE) and at most two for GlobalDataFeeds
+(BSE and/or BSE_IDX in the same batch).
+
+Provider responsibility stays provider-specific: Kite maps a resolved row
+to its numeric `instrumentToken` and skips (logs once, doesn't fail the
+batch) a symbol with no usable token; GlobalDataFeeds maps to its own
+`instrumentIdentifier` string and falls back to the raw symbol when no row
+resolves, matching each provider's existing behavior from before this
+change.
+
+## Collection preparation's candle coverage check
+
+`findSymbolsNeedingHistoryBackfill` (`market-data.candles.ts`) is a bulk,
+grouped-by-symbol variant of `readCandleHistoryRange`'s "earliest stored
+candle" read, used only by collection preparation
+(see [BACKTEST.md](./BACKTEST.md) "Collection data preparation") to decide
+which of a collection's members are worth attempting a backfill for. It
+answers "is a backfill attempt worth making," never "is this instrument's
+history complete" — that verdict is the evaluator's own
+`hasSufficientWeeklyStrongHistory`, not a calendar-age check.
+
+**`refreshAllLatestInstrumentPrices`'s universe is deliberately unchanged**
+by collection preparation — it still refreshes every active instrument per
+exchange, not a collection-member subset. `price-alerts.service.ts` and the
+general `/stocks` browse/search (`listStocks`) both depend on freshness for
+the *full* active universe, not just collection members; narrowing this
+job's scope would silently regress those two features. It already runs
+before `syncWeeklyStrongBacktestIncremental` inside the same scheduled
+`instrumentSync` job, so collection members are already fresh by the time
+that incremental step runs — no separate "collection instruments only"
+refresh was needed or added.
 
 ## Scheduled synchronization
 
