@@ -23,6 +23,8 @@ import type {
   AdminMonetizationConfig,
   AdminUserFilters,
   AdminUsersResponse,
+  BulkImportFileResult,
+  BulkImportPreviewResponse,
   MonetizationMode,
 } from "../types";
 
@@ -243,6 +245,24 @@ export function updateAdminMarketCollection(input: {
   });
 }
 
+export function deleteAdminMarketCollection(id: string) {
+  return adminApiFetch<{ deleted: boolean; id: string }>(API_ROUTES.admin.marketCollection(id), {
+    method: "DELETE",
+  });
+}
+
+export function bulkDeleteAdminMarketCollections(collectionIds: string[]) {
+  return adminApiFetch<{
+    requestedCount: number;
+    deletedCount: number;
+    missingCount: number;
+    missingIds: string[];
+  }>(API_ROUTES.admin.marketCollectionBulkDelete, {
+    method: "POST",
+    body: JSON.stringify({ collectionIds }),
+  });
+}
+
 export function getAdminMarketCollectionMembers(input: {
   id: string;
   page?: number;
@@ -288,6 +308,33 @@ export function importAdminCollectionCsv(input: {
       body: JSON.stringify(body),
     }
   );
+}
+
+export function previewAdminBulkImportFile(input: { exchange: "BSE"; filename: string; csvContent: string }) {
+  return adminApiFetch<BulkImportPreviewResponse>(API_ROUTES.admin.marketCollectionBulkImportPreview, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function importAdminBulkImportFile(input: {
+  exchange: "BSE";
+  filename: string;
+  csvContent: string;
+  sourceName?: string;
+  sourceDate?: string;
+  effectiveFrom: string;
+}) {
+  return adminApiFetch<{ report: BulkImportFileResult }>(API_ROUTES.admin.marketCollectionBulkImportFile, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function retryAdminCollectionPreparation(id: string) {
+  return adminApiFetch<{ collectionId: string }>(API_ROUTES.admin.marketCollectionPrepare(id), {
+    method: "POST",
+  });
 }
 
 export function getAdminCollectionVersions(id: string) {

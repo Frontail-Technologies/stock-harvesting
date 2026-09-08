@@ -17,9 +17,6 @@ export const API_ROUTES = {
     me: "/api/admin-auth/me",
     logout: "/api/admin-auth/logout",
   },
-  users: {
-    me: "/api/users/me",
-  },
   marketData: {
     stocks: "/api/market-data/stocks",
     stockSearch: "/api/market-data/stocks/search",
@@ -48,6 +45,8 @@ export const API_ROUTES = {
       `/api/weekly-strong-backtest/${encodeURIComponent(code)}`,
     weekDetail: (code: string, weekEnding: string) =>
       `/api/weekly-strong-backtest/${encodeURIComponent(code)}/${encodeURIComponent(weekEnding)}`,
+    membershipChanges: (code: string, weekEnding: string) =>
+      `/api/weekly-strong-backtest/${encodeURIComponent(code)}/membership-changes?weekEnding=${encodeURIComponent(weekEnding)}`,
   },
   scanner: {
     results: "/api/scanner/results",
@@ -103,6 +102,11 @@ export const API_ROUTES = {
       `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/generate`,
     marketCollectionWeeklyStrongBacktestRebuildHistorical: (id: string) =>
       `/api/admin/market-collections/${encodeURIComponent(id)}/weekly-strong-backtest/rebuild-historical`,
+    marketCollectionBulkImportPreview: "/api/admin/market-collections/bulk-import/preview",
+    marketCollectionBulkImportFile: "/api/admin/market-collections/bulk-import",
+    marketCollectionBulkDelete: "/api/admin/market-collections/bulk-delete",
+    marketCollectionPrepare: (id: string) =>
+      `/api/admin/market-collections/${encodeURIComponent(id)}/prepare`,
     monetization: "/api/admin/monetization",
     monetizationSettings: "/api/admin/monetization/settings",
     monetizationPlacement: (key: string) =>

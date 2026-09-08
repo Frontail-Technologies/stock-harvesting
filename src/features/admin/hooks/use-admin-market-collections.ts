@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useAdminSessionStore } from "@/features/auth";
 import {
+  bulkDeleteAdminMarketCollections,
   createAdminMarketCollection,
+  deleteAdminMarketCollection,
   generateAdminWeeklyStrongBacktest,
   getAdminCollectionVersionMembers,
   getAdminCollectionVersions,
@@ -13,10 +15,13 @@ import {
   getAdminMarketCollections,
   getAdminWeeklyStrongBacktestHistoricalStatus,
   getAdminWeeklyStrongBacktestStatus,
+  importAdminBulkImportFile,
   importAdminCollectionCsv,
+  previewAdminBulkImportFile,
   previewAdminCollectionImport,
   rebuildAdminWeeklyStrongBacktestHistorical,
   replaceAdminCollectionVersion,
+  retryAdminCollectionPreparation,
   updateAdminMarketCollection,
 } from "../api/admin-api";
 
@@ -131,6 +136,57 @@ export function useImportAdminCollectionCsv() {
         queryKey: queryKeys.marketCollections.admin.detail(variables.id),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.versions(variables.id) });
+    },
+  });
+}
+
+export function usePreviewAdminBulkImportFile() {
+  return useMutation({
+    mutationFn: previewAdminBulkImportFile,
+  });
+}
+
+export function useImportAdminBulkImportFile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: importAdminBulkImportFile,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.list });
+    },
+  });
+}
+
+export function useDeleteAdminMarketCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAdminMarketCollection,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.list });
+    },
+  });
+}
+
+export function useBulkDeleteAdminMarketCollections() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: bulkDeleteAdminMarketCollections,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.list });
+    },
+  });
+}
+
+export function useRetryAdminCollectionPreparation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: retryAdminCollectionPreparation,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.list });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketCollections.admin.detail(id) });
     },
   });
 }

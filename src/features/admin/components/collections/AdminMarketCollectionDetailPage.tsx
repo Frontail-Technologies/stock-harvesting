@@ -1,20 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { adminPath } from "@/utils/seo";
+import { cn } from "@/utils/cn";
 import { formatAdminDate } from "../../lib/admin-formatters";
-import { useAdminMarketCollection } from "../../hooks/use-admin-market-collections";
+import {
+  useAdminMarketCollection,
+  useRetryAdminCollectionPreparation,
+} from "../../hooks/use-admin-market-collections";
 import { AdminCollectionImportDialog } from "./AdminCollectionImportDialog";
 import { AdminCollectionMembersTable } from "./AdminCollectionMembersTable";
 import { AdminCollectionMetadataForm } from "./AdminCollectionMetadataForm";
 import { AdminCollectionVersionHistory } from "./AdminCollectionVersionHistory";
+import { AdminDeleteCollectionDialog } from "./AdminDeleteCollectionDialog";
 import { AdminWeeklyStrongBacktestStatus } from "./AdminWeeklyStrongBacktestStatus";
 
+const PREPARATION_STATUS_LABEL = {
+  pending: "Preparing",
+  syncing_candles: "Preparing",
+  building_backtest: "Preparing",
+  ready: "Ready",
+  partial: "Partial",
+  failed: "Failed",
+} as const;
+
 export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
+  const router = useRouter();
   const collectionQuery = useAdminMarketCollection(id);
+  const retryMutation = useRetryAdminCollectionPreparation();
   const collection = collectionQuery.data?.collection ?? null;
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (collectionQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading segment...</p>;
@@ -53,9 +73,61 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
           >
             {collection.active ? "Active" : "Inactive"}
           </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              "gap-1 border-transparent",
+              collection.preparationStatus === "ready" && "bg-success/10 text-success",
+              collection.preparationStatus === "partial" && "bg-warning/10 text-warning",
+              collection.preparationStatus === "failed" && "bg-danger/10 text-danger",
+              (collection.preparationStatus === "pending" ||
+                collection.preparationStatus === "syncing_candles" ||
+                collection.preparationStatus === "building_backtest") &&
+                "bg-muted text-muted-foreground"
+            )}
+          >
+            {(collection.preparationStatus === "pending" ||
+              collection.preparationStatus === "syncing_candles" ||
+              collection.preparationStatus === "building_backtest") && (
+              <Loader2 className="size-3 animate-spin" />
+            )}
+            {PREPARATION_STATUS_LABEL[collection.preparationStatus]}
+          </Badge>
+          {collection.preparationStatus === "failed" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 gap-1 px-2 text-xs"
+              disabled={retryMutation.isPending}
+              onClick={() => retryMutation.mutate(collection.id)}
+            >
+              <RotateCcw className="size-3" />
+              Retry
+            </Button>
+          )}
         </div>
-        <AdminCollectionImportDialog collectionId={collection.id} />
+        <div className="flex items-center gap-2">
+          <AdminCollectionImportDialog collectionId={collection.id} />
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        </div>
       </div>
+
+      <AdminDeleteCollectionDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        collection={collection}
+        onDeleted={() => router.push(adminPath("/admin/market-collections"))}
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-lg border border-border bg-card p-4 text-sm">
