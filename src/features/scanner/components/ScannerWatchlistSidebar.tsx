@@ -16,16 +16,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  chipColorForSymbol,
   CreateWatchlistDialog,
   DeleteWatchlistDialog,
   RenameWatchlistDialog,
   useWatchlist,
   useWatchlists,
   watchlistItemToStock,
+  watchlistTintStyleForSymbol,
   WatchlistStockSearchInput,
   type WatchlistSummary,
 } from "@/features/watchlists";
+import { useCollectionMembers } from "@/features/market-collections";
 import { cn } from "@/utils/cn";
 import { useIsDesktopViewport } from "../hooks/use-is-desktop-viewport";
 import {
@@ -80,10 +81,8 @@ function WatchlistRows({
             >
               <span
                 aria-hidden="true"
-                className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold tracking-tight",
-                  chipColorForSymbol(item.symbol)
-                )}
+                style={watchlistTintStyleForSymbol(item.symbol)}
+                className="flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold tracking-tight"
               >
                 {getInitials(item.symbol)}
               </span>
@@ -370,6 +369,77 @@ function ScannerWatchlistPanelBody({
   );
 }
 
+// A Segment's members, shown in the same quick-selection area as Watchlists (reuses WatchlistRows), for Widget -> Open in Charts on a Segment source.
+function ScannerSegmentPanelBody({
+  selectedSymbol,
+  selectedExchange,
+  onSelectStock,
+  onCollapse,
+  collapseLabel,
+}: {
+  selectedSymbol: string;
+  selectedExchange: string;
+  onSelectStock: (stock: Stock) => void;
+  onCollapse: () => void;
+  collapseLabel: string;
+}) {
+  const activeSegmentCode = useScannerUiStore((state) => state.activeSegmentCode);
+  const { items, isLoading, isError, data } = useCollectionMembers({
+    code: activeSegmentCode ?? "",
+    limit: 200,
+    sortBy: "symbol",
+    sortDirection: "asc",
+  });
+  const segmentName = data?.collection.name ?? activeSegmentCode ?? "Segment";
+  const rows: WatchlistItemRow[] = items.map((item) => ({
+    id: item.instrumentId,
+    symbol: item.tradingSymbol,
+    exchange: item.exchange,
+  }));
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-2.5 py-2">
+        <span className="min-w-0 flex-1 truncate text-xs font-bold tracking-wide text-foreground uppercase">
+          {segmentName}
+        </span>
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            onClick={onCollapse}
+            aria-label={collapseLabel}
+            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <PanelRightClose className="size-3.5" />
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="scanner-portal">
+            {collapseLabel}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {!activeSegmentCode ? (
+        <EmptyState size="compact" title="No segment selected." className="py-6" />
+      ) : isError ? (
+        <EmptyState size="compact" title="This segment couldn't be found." className="py-6" />
+      ) : isLoading ? (
+        <div className="flex justify-center py-6">
+          <Spinner size="sm" />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-1.5">
+          <WatchlistRows
+            items={rows}
+            selectedSymbol={selectedSymbol}
+            selectedExchange={selectedExchange}
+            onSelectStock={onSelectStock}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 type ScannerWatchlistSidebarProps = {
   selectedSymbol: string;
   selectedExchange: string;
@@ -383,6 +453,7 @@ export function ScannerWatchlistSidebar({
 }: ScannerWatchlistSidebarProps) {
   const isOpen = useScannerUiStore((state) => state.isWatchlistPanelOpen);
   const setOpen = useScannerUiStore((state) => state.setWatchlistPanelOpen);
+  const panelMode = useScannerUiStore((state) => state.panelMode);
   const storedWidth = useScannerUiStore((state) => state.watchlistPanelWidth);
   const setWatchlistPanelWidth = useScannerUiStore((state) => state.setWatchlistPanelWidth);
   const isDesktop = useIsDesktopViewport();
@@ -440,16 +511,25 @@ export function ScannerWatchlistSidebar({
   };
 
   const desktopBody = useMemo(
-    () => (
-      <ScannerWatchlistPanelBody
-        selectedSymbol={selectedSymbol}
-        selectedExchange={selectedExchange}
-        onSelectStock={onSelectStock}
-        onCollapse={() => setOpen(false)}
-        collapseLabel="Collapse watchlist panel"
-      />
-    ),
-    [selectedSymbol, selectedExchange, onSelectStock, setOpen]
+    () =>
+      panelMode === "segment" ? (
+        <ScannerSegmentPanelBody
+          selectedSymbol={selectedSymbol}
+          selectedExchange={selectedExchange}
+          onSelectStock={onSelectStock}
+          onCollapse={() => setOpen(false)}
+          collapseLabel="Collapse segment panel"
+        />
+      ) : (
+        <ScannerWatchlistPanelBody
+          selectedSymbol={selectedSymbol}
+          selectedExchange={selectedExchange}
+          onSelectStock={onSelectStock}
+          onCollapse={() => setOpen(false)}
+          collapseLabel="Collapse watchlist panel"
+        />
+      ),
+    [panelMode, selectedSymbol, selectedExchange, onSelectStock, setOpen]
   );
 
   if (!isDesktop) {
@@ -457,16 +537,26 @@ export function ScannerWatchlistSidebar({
       <Sheet open={isOpen} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="scanner-portal max-h-[85dvh] gap-0 p-0">
           <SheetHeader className="sr-only">
-            <SheetTitle>Watchlists</SheetTitle>
+            <SheetTitle>{panelMode === "segment" ? "Segment" : "Watchlists"}</SheetTitle>
           </SheetHeader>
           <div className="flex h-[70dvh] flex-col">
-            <ScannerWatchlistPanelBody
-              selectedSymbol={selectedSymbol}
-              selectedExchange={selectedExchange}
-              onSelectStock={onSelectStock}
-              onCollapse={() => setOpen(false)}
-              collapseLabel="Close watchlist panel"
-            />
+            {panelMode === "segment" ? (
+              <ScannerSegmentPanelBody
+                selectedSymbol={selectedSymbol}
+                selectedExchange={selectedExchange}
+                onSelectStock={onSelectStock}
+                onCollapse={() => setOpen(false)}
+                collapseLabel="Close segment panel"
+              />
+            ) : (
+              <ScannerWatchlistPanelBody
+                selectedSymbol={selectedSymbol}
+                selectedExchange={selectedExchange}
+                onSelectStock={onSelectStock}
+                onCollapse={() => setOpen(false)}
+                collapseLabel="Close watchlist panel"
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>

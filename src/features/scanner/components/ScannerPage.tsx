@@ -133,6 +133,8 @@ export function ScannerPage() {
   const toggleScannerHighlights = useScannerUiStore((state) => state.toggleScannerHighlights);
   const setActiveWatchlistId = useScannerUiStore((state) => state.setActiveWatchlistId);
   const setWatchlistPanelOpen = useScannerUiStore((state) => state.setWatchlistPanelOpen);
+  const setPanelMode = useScannerUiStore((state) => state.setPanelMode);
+  const setActiveSegmentCode = useScannerUiStore((state) => state.setActiveSegmentCode);
 
   
   
@@ -185,9 +187,25 @@ export function ScannerPage() {
     if (appliedWatchlistPanelKeyRef.current === key) return;
 
     appliedWatchlistPanelKeyRef.current = key;
+    setPanelMode("watchlist");
     if (watchlistIdFromUrl) setActiveWatchlistId(watchlistIdFromUrl);
     setWatchlistPanelOpen(true);
-  }, [searchParams, setActiveWatchlistId, setWatchlistPanelOpen]);
+  }, [searchParams, setActiveWatchlistId, setWatchlistPanelOpen, setPanelMode]);
+
+  // Same deterministic-URL pattern as the watchlist panel above, for a Widget's Segment context (?panel=segment&segment=<code>, built by buildSegmentChartsHref).
+  const appliedSegmentPanelKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (searchParams.get("panel") !== "segment") return;
+
+    const segmentCodeFromUrl = searchParams.get("segment");
+    const key = segmentCodeFromUrl ?? "";
+    if (appliedSegmentPanelKeyRef.current === key) return;
+
+    appliedSegmentPanelKeyRef.current = key;
+    setPanelMode("segment");
+    if (segmentCodeFromUrl) setActiveSegmentCode(segmentCodeFromUrl);
+    setWatchlistPanelOpen(true);
+  }, [searchParams, setActiveSegmentCode, setWatchlistPanelOpen, setPanelMode]);
 
   
   

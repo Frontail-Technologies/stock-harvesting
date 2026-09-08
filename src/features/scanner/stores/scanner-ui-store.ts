@@ -38,6 +38,8 @@ type ScannerUiState = {
 
   watchlistPanelWidth: number;
   activeWatchlistId: string | null;
+  panelMode: "watchlist" | "segment";
+  activeSegmentCode: string | null;
   setSelectedSymbol: (symbol: string) => void;
   setSelectedExchange: (exchange: MarketExchangeCode) => void;
   setSelectedStock: (stock: Stock) => void;
@@ -56,6 +58,8 @@ type ScannerUiState = {
   toggleWatchlistPanel: () => void;
   setWatchlistPanelWidth: (width: number) => void;
   setActiveWatchlistId: (id: string | null) => void;
+  setPanelMode: (mode: "watchlist" | "segment") => void;
+  setActiveSegmentCode: (code: string | null) => void;
 };
 
 export const SCANNER_WATCHLIST_PANEL_MIN_WIDTH = 240;
@@ -88,6 +92,8 @@ export const useScannerUiStore = create<ScannerUiState>()(
       isWatchlistPanelOpen: false,
       watchlistPanelWidth: SCANNER_WATCHLIST_PANEL_DEFAULT_WIDTH,
       activeWatchlistId: null,
+      panelMode: "watchlist",
+      activeSegmentCode: null,
       setSelectedSymbol: (selectedSymbol) => set({ selectedSymbol }),
       setSelectedExchange: (selectedExchange) => set({ selectedExchange }),
       setSelectedStock: (selectedStock) =>
@@ -125,6 +131,8 @@ export const useScannerUiStore = create<ScannerUiState>()(
       setWatchlistPanelWidth: (width) =>
         set({ watchlistPanelWidth: clampWatchlistPanelWidth(width) }),
       setActiveWatchlistId: (activeWatchlistId) => set({ activeWatchlistId }),
+      setPanelMode: (panelMode) => set({ panelMode }),
+      setActiveSegmentCode: (activeSegmentCode) => set({ activeSegmentCode }),
     }),
     {
       name: "stock-harvesting-scanner-ui",
@@ -141,6 +149,8 @@ export const useScannerUiStore = create<ScannerUiState>()(
         isWatchlistPanelOpen: state.isWatchlistPanelOpen,
         watchlistPanelWidth: state.watchlistPanelWidth,
         activeWatchlistId: state.activeWatchlistId,
+        panelMode: state.panelMode,
+        activeSegmentCode: state.activeSegmentCode,
       }),
     }
   )

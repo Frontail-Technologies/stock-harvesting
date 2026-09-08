@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ListX, MoreHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListX, MoreHorizontal, SquareArrowOutUpRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { colorForDashboardLabel, DashboardWidget, DashboardWidgetSkeleton } from "@/features/dashboard";
-import { useCollectionRelativeStrength } from "@/features/market-collections";
-import { useWatchlistRelativeStrength } from "@/features/watchlists";
+import { buildSegmentChartsHref, useCollectionRelativeStrength } from "@/features/market-collections";
+import { buildWatchlistChartsHref, useWatchlistRelativeStrength } from "@/features/watchlists";
 import type { DashboardCardData, DashboardItem } from "@/types/dashboard";
 import type { ResolvedWidgetSource } from "../types";
 
@@ -77,6 +77,15 @@ export function WidgetSourceCard({
     router.push(`/charts?symbol=${encodeURIComponent(item.label)}&exchange=${encodeURIComponent(item.exchange)}`);
   };
 
+  // Preserves the first ranked row as the initial chart, same convention the Watchlist widget's own "Open in Charts" action already uses.
+  const handleOpenInCharts = () => {
+    const firstMetric = metrics[0];
+    const href = isSegment
+      ? buildSegmentChartsHref({ segmentCode: source.code, symbol: firstMetric?.symbol, exchange: firstMetric?.exchange })
+      : buildWatchlistChartsHref({ watchlistId: source.id, symbol: firstMetric?.symbol, exchange: firstMetric?.exchange });
+    router.push(href);
+  };
+
   const card: DashboardCardData = useMemo(
     () => ({
       id: `${source.type}:${source.id}`,
@@ -131,6 +140,11 @@ export function WidgetSourceCard({
         <TooltipContent side="bottom">{source.name} options</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={handleOpenInCharts} className="gap-1.5">
+          <SquareArrowOutUpRight className="size-3.5" />
+          Open in Charts
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem disabled={!canMoveLeft} onClick={onMoveLeft} className="gap-1.5">
           <ChevronLeft className="size-3.5" />
           Move Left

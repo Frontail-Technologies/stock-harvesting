@@ -5,6 +5,7 @@ export {
   getCollectionWeeklyStrongStocks,
   getMarketCollections,
 } from "./api/market-collections-api";
+export { buildSegmentChartsHref } from "./lib/segment-chart-links";
 export {
   useCollectionMembers,
   useCollectionRelativeStrength,
