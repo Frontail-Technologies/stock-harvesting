@@ -1,4 +1,5 @@
 import type { UserPlan, UserRole } from "@/features/auth";
+import type { CollectionImportReport, CollectionImportResult } from "@/features/market-collections";
 
 export type AdminUserSortField = "name" | "email" | "role" | "plan" | "createdAt";
 export type AdminSortDirection = "asc" | "desc";
@@ -145,3 +146,12 @@ export type AdminDataProviderSettingsRow = {
 export type AdminDataProviderSettingsResponse = {
   providers: AdminDataProviderSettingsRow[];
 };
+
+export type BulkImportPreviewResponse = {
+  report: CollectionImportReport;
+  existingCollectionId: string | null;
+  name: string;
+  code: string;
+};
+
+export type BulkImportFileResult = CollectionImportResult & { created: boolean; name: string; code: string };

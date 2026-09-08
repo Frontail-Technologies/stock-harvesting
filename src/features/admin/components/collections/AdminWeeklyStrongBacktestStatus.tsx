@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatAdminDate } from "../../lib/admin-formatters";
 import {
   useAdminWeeklyStrongBacktestHistoricalStatus,
@@ -63,7 +64,7 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
             Generating - this runs in the background and can take a while for a large segment.
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">No backtest has been generated yet.</p>
+          <EmptyState size="compact" title="No backtest has been generated yet." className="items-start py-0 text-left" />
         )}
 
         <Button

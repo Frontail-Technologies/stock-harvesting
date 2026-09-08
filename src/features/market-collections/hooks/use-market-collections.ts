@@ -118,6 +118,6 @@ export function useCollectionWeeklyStrongStocks(input: { code: string }) {
     placeholderData: (previousData) => previousData,
   });
 
-  return { ...query, items: query.data?.items ?? [] };
+  return { ...query, items: query.data?.items ?? [], weekEnding: query.data?.weekEnding ?? null };
 }
 

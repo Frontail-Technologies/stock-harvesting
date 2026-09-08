@@ -21,6 +21,7 @@ export type {
   CollectionGroupRelativeStrengthRow,
   CollectionMembersInput,
   CollectionMembersResponse,
+  CollectionPreparationStatus,
   CollectionRelativeStrengthMetric,
   CollectionRelativeStrengthResponse,
   CollectionSectorIndustryTaxonomyResponse,

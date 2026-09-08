@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -29,6 +30,7 @@ export function AdminCollectionMembersTable({ collectionId }: { collectionId: st
   });
 
   const { items, pagination } = membersQuery;
+  const startIndex = (pagination.page - 1) * MEMBERS_PAGE_SIZE;
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
@@ -51,6 +53,9 @@ export function AdminCollectionMembersTable({ collectionId }: { collectionId: st
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-14 border-r border-border px-3 text-right text-xs font-semibold">
+                No.
+              </TableHead>
               <TableHead className="w-32 border-r border-border px-3 text-xs font-semibold">
                 Symbol
               </TableHead>
@@ -61,8 +66,11 @@ export function AdminCollectionMembersTable({ collectionId }: { collectionId: st
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
+            {items.map((item, index) => (
               <TableRow key={item.instrumentId} className="hover:bg-muted/30">
+                <TableCell className="border-r border-border px-3 text-right text-muted-foreground tabular-nums">
+                  {startIndex + index + 1}
+                </TableCell>
                 <TableCell className="border-r border-border px-3 font-medium text-foreground">
                   {item.tradingSymbol}
                 </TableCell>
@@ -75,14 +83,14 @@ export function AdminCollectionMembersTable({ collectionId }: { collectionId: st
 
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                   {membersQuery.isLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner size="sm" />
                       Loading constituents...
                     </span>
                   ) : (
-                    "No constituents found."
+                    <EmptyState size="compact" title="No constituents found." className="py-0" />
                   )}
                 </TableCell>
               </TableRow>

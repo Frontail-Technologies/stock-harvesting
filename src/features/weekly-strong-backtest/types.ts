@@ -38,3 +38,19 @@ export type WeeklyStrongBacktestStatus =
   | { state: "generating" }
   | { state: "ready"; weeksGenerated: number; latestWeek: string; lastGeneratedAt: string }
   | { state: "failed"; errorMessage: string | null };
+
+export type WeeklyStrongBacktestMembershipChangeMember = {
+  symbol: string;
+  name: string;
+  exchange: string;
+};
+
+export type WeeklyStrongBacktestMembershipChangesResponse = {
+  collection: { code: string; name: string };
+  membershipMode: WeeklyStrongBacktestMembershipMode;
+  available: boolean;
+  weekEnding: string | null;
+  previousWeekEnding: string | null;
+  enteredStocks: WeeklyStrongBacktestMembershipChangeMember[];
+  exitedStocks: WeeklyStrongBacktestMembershipChangeMember[];
+};

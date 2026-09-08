@@ -89,6 +89,8 @@ export const queryKeys = {
     stacked: (input: { code: string }) => ["weekly-strong-backtest", "stacked", input] as const,
     weekDetail: (input: { code: string; weekEnding: string }) =>
       ["weekly-strong-backtest", "week-detail", input] as const,
+    membershipChanges: (input: { code: string; weekEnding: string }) =>
+      ["weekly-strong-backtest", "membership-changes", input] as const,
   },
   scanner: {
     results: (input: {

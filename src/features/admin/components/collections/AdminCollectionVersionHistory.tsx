@@ -235,6 +235,7 @@ export function AdminCollectionVersionHistory({ collectionId }: { collectionId: 
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-14 text-right text-xs">No.</TableHead>
                 <TableHead className="text-xs">Effective From</TableHead>
                 <TableHead className="text-xs">Members</TableHead>
                 <TableHead className="text-xs">Source</TableHead>
@@ -244,8 +245,9 @@ export function AdminCollectionVersionHistory({ collectionId }: { collectionId: 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {versions.map((version) => (
+              {versions.map((version, index) => (
                 <TableRow key={version.id}>
+                  <TableCell className="text-right text-muted-foreground tabular-nums">{index + 1}</TableCell>
                   <TableCell className="font-medium text-foreground">{formatAdminDate(version.effectiveFrom)}</TableCell>
                   <TableCell>{version.memberCount}</TableCell>
                   <TableCell className="text-muted-foreground">{version.sourceName ?? "—"}</TableCell>

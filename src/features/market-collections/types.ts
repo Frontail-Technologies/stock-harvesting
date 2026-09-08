@@ -1,3 +1,11 @@
+export type CollectionPreparationStatus =
+  | "pending"
+  | "syncing_candles"
+  | "building_backtest"
+  | "ready"
+  | "partial"
+  | "failed";
+
 export type MarketCollection = {
   id: string;
   code: string;
@@ -5,6 +13,11 @@ export type MarketCollection = {
   exchange: string;
   countryCode: string;
   memberCount: number;
+  preparationStatus: CollectionPreparationStatus;
+  preparedAt: string | null;
+  preparationError: string | null;
+  membersWithRequiredHistory: number | null;
+  membersUnavailable: number | null;
 };
 
 export type CollectionMemberQuote = {
@@ -90,6 +103,10 @@ export type CollectionWeeklyStrongStock = {
   exchange: string;
   close: number;
   changePct: number;
+  // Performance since this stock's current Harvest-qualifying streak
+  // began, through today's latest close - distinct from changePct (which
+  // is just yesterday-to-today). Null when unavailable.
+  returnPct: number | null;
   volume: number;
   sector: string | null;
   industry: string | null;
@@ -98,6 +115,9 @@ export type CollectionWeeklyStrongStock = {
 export type CollectionWeeklyStrongStocksResponse = {
   collection: { code: string; name: string };
   items: CollectionWeeklyStrongStock[];
+  // The canonical week-ending Friday this Harvest result covers - not the
+  // latest daily candle date. See docs/BACKTEST.md.
+  weekEnding: string;
 };
 
 export type CollectionImportRow = { symbol: string; instrumentId: string; status?: string };
