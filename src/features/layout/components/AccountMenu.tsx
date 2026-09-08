@@ -172,6 +172,13 @@ export function AccountMenu({ className, portalClassName, extraLinks }: AccountM
             >
               Watchlists
             </DropdownMenuItem>
+            <DropdownMenuItem
+              render={
+                <Link href="/widget" className="h-9 cursor-pointer px-3" />
+              }
+            >
+              Widget
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {themeRow}
             <DropdownMenuSeparator />
