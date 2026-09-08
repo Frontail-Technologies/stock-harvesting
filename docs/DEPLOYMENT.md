@@ -14,6 +14,56 @@ The frontend (`src/`, Next.js) is a separate deployable, calling the API via
 `NEXT_PUBLIC_API_BASE_URL`. See `docs/ENVIRONMENT-VARIABLES.md` for the full
 variable list for both.
 
+**Local dev requires three things running at once, in three terminals: the
+API (`npm run dev`), the worker (`npm run dev:worker`, alias of `npm run
+worker`), and a real reachable Redis instance matching `REDIS_URL`** (e.g.
+`redis-server`, or `docker run -p 6379:6379 redis`). `REDIS_URL` being
+*set* in `.env` is not the same as Redis actually being *reachable* — if
+it's set but nothing is listening on that port, `getMarketDataQueue()`
+still returns a real queue (it only checks whether `REDIS_URL` is
+configured), so collection-preparation/backtest triggers attempt to
+enqueue against it.
+
+The API process's own Redis connection (`getProducerRedisConnectionOptions()`
+in `modules/jobs/queues.ts`) is deliberately **not** the same connection
+options the worker uses (`getRedisConnectionOptions()`) — the worker's
+blocking commands require `maxRetriesPerRequest: null` (BullMQ's own
+requirement), which would otherwise make an enqueue attempt from the API
+retry forever and hang when Redis is unreachable. The producer connection
+uses a finite retry count, a disabled offline command queue, and a bounded
+connect timeout, plus an outer timeout in `addJobWithTimeout()` as a second
+layer — so an enqueue attempt fails deterministically within a few
+seconds instead of hanging or silently succeeding later.
+
+What happens on enqueue failure depends on `NODE_ENV`:
+- **production**: the heavy job is never run inline inside the API
+  process. `triggerCollectionPreparation` persists `preparationStatus =
+  "failed"` with a safe `preparationError`; `triggerWeeklyStrongBacktestBackfill`/
+  `triggerWeeklyStrongBacktestHistoricalRebuild` persist their `syncJobs`
+  row as `"failed"` with a safe `errorMessage`. Either way the UI stops
+  showing a false "Preparing"/"Generating" and the admin Retry action
+  (`POST /api/admin/market-collections/:id/prepare`, or re-clicking
+  "Generate Backtest") is available once Redis recovers.
+- **outside production** (local dev only): falls back to running the
+  operation inline in the API process, purely for convenience when no
+  worker is running — always logged loudly so it's never mistaken for the
+  real queued path. This does **not** apply if the worker itself was
+  simply never started while the enqueue itself succeeded — that job sits
+  `waiting` in Redis with no consumer until a worker starts. Symptom
+  either way looks the same in the UI: a collection's status badge stuck
+  on "Preparing" and its backtest stuck on "Generating," not clearing on
+  refresh. Start all three processes for real local integration testing,
+  and use the admin Retry action to resume rather than editing the
+  database by hand.
+
+Both `collectionPrepare` and the two Weekly Strong backtest trigger jobs
+are enqueued with a deterministic `jobId` (`collectionId` +, for
+preparation, `membershipVersionId`), with `removeOnComplete`/`removeOnFail`
+set — a duplicate trigger for the same identity collapses into the
+existing in-flight job instead of running the same heavy work twice, and
+the identity frees up again once that job finishes so a later legitimate
+Retry isn't blocked by a stale completed/failed job occupying the same id.
+
 If the admin panel is split onto its own subdomain
 (`NEXT_PUBLIC_ADMIN_HOST`), that's routing handled by `src/proxy.ts` inside
 the same Next.js deployment — not a separate process.
