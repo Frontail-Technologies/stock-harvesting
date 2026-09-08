@@ -6,7 +6,7 @@ export { WatchlistStockSearchInput } from "./components/WatchlistStockSearchInpu
 export { WatchlistsPage } from "./components/WatchlistsPage";
 export { watchlistItemToStock } from "./lib/watchlist-item-to-stock";
 export { buildWatchlistChartsHref } from "./lib/watchlist-chart-links";
-export { chipColorForSymbol } from "./lib/watchlist-colors";
+export { watchlistTintStyleForSymbol } from "./lib/watchlist-colors";
 export {
   addWatchlistItem,
   createWatchlist,
