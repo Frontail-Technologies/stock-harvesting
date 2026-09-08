@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { Home, LogOut, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 import {
   Sidebar,
@@ -176,11 +177,12 @@ export function AdminSidebar({
                 variant="ghost"
                 size="icon-lg"
                 aria-label="Log out"
+                aria-busy={logout.isPending}
                 disabled={logout.isPending}
                 onClick={handleLogout}
                 className="rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
-                <LogOut className="size-4" />
+                {logout.isPending ? <Spinner size="sm" /> : <LogOut className="size-4" />}
               </Button>
             </AdminSidebarTooltip>
           </>
@@ -232,11 +234,12 @@ export function AdminSidebar({
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Log out"
+                aria-busy={logout.isPending}
                 disabled={logout.isPending}
                 onClick={handleLogout}
                 className="rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
-                <LogOut className="size-4" />
+                {logout.isPending ? <Spinner size="sm" /> : <LogOut className="size-4" />}
               </Button>
             </div>
           </>

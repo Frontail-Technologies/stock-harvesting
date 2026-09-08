@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ListPlus, Loader2, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import { useAddWatchlistItem, useCreateWatchlist, useWatchlists } from "../hooks/use-watchlists";
@@ -136,9 +138,7 @@ export function WatchlistQuickAddButton({
 
               <div className="max-h-48 overflow-y-auto">
                 {watchlists.length === 0 && (
-                  <p className="px-1.5 py-1.5 text-xs text-muted-foreground">
-                    No watchlists yet.
-                  </p>
+                  <EmptyState size="compact" title="No watchlists yet." className="px-1.5 py-1.5" />
                 )}
                 {watchlists.map((watchlist) => {
                   const isAdded = addedWatchlistId === watchlist.id;
@@ -149,11 +149,16 @@ export function WatchlistQuickAddButton({
                       key={watchlist.id}
                       type="button"
                       disabled={isAdded || isPendingForThis}
+                      aria-busy={isPendingForThis}
                       onClick={() => handleAddToExisting(watchlist.id)}
                       className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <span className="truncate">{watchlist.name}</span>
-                      {isAdded && <Check className="size-3.5 shrink-0 text-primary" />}
+                      {isPendingForThis ? (
+                        <Spinner size="sm" className="shrink-0" />
+                      ) : (
+                        isAdded && <Check className="size-3.5 shrink-0 text-primary" />
+                      )}
                     </button>
                   );
                 })}

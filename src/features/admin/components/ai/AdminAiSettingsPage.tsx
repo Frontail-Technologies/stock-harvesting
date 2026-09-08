@@ -33,7 +33,7 @@ export function AdminAiSettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">AI Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Manage scanner AI model selection and provider key access.
+          Manage the chart AI model selection and provider key access.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export function AdminAiSettingsPage() {
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">
-              Scanner AI model
+              Chart AI model
             </h2>
           </div>
 

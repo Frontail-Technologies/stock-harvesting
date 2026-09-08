@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { Stock } from "@/types/market";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,7 +30,7 @@ function WatchlistItemsList({
   onSelectStock: (stock: Stock) => void;
 }) {
   if (items.length === 0) {
-    return <p className="px-1.5 py-2 text-sm text-muted-foreground">No stocks in this watchlist.</p>;
+    return <EmptyState size="compact" title="No stocks in this watchlist." className="py-2" />;
   }
 
   return (

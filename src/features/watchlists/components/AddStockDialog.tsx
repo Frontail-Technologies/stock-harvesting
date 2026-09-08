@@ -31,9 +31,9 @@ export function AddStockDialog({ watchlistId, onClose }: AddStockDialogProps) {
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Add Stock
+            Manage Stocks
           </p>
-          <DialogTitle className="sr-only">Add stock to watchlist</DialogTitle>
+          <DialogTitle className="sr-only">Manage watchlist stocks</DialogTitle>
           <DialogDescription>
             Watchlist:{" "}
             <span className="font-medium text-foreground">{watchlist?.name ?? "..."}</span>

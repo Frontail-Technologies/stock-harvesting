@@ -1,4 +1,8 @@
+"use client";
+
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/utils/cn";
+import { DASHBOARD_WIDGET_GRID_CLASS, useDashboardUiStore } from "../stores/dashboard-ui-store";
 
 const skeletonCardTitles = [
   "Index Harvest",
@@ -10,9 +14,11 @@ const skeletonCardTitles = [
 const rowWidths = [72, 42, 36, 34, 28, 24, 22, 20, 18, 16, 15, 14];
 
 export function DashboardGridSkeleton() {
+  const widgetColumns = useDashboardUiStore((state) => state.widgetColumns);
+
   return (
     <div
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      className={cn("grid gap-4", DASHBOARD_WIDGET_GRID_CLASS[widgetColumns])}
       aria-label="Loading dashboard widgets"
       role="status"
     >

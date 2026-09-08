@@ -107,8 +107,8 @@ export function ChartScaleControls({
   onToggleScannerHighlights,
 }: ChartScaleControlsProps) {
   const scannerHighlightTitle = scannerHighlightsVisible
-    ? "Hide scanner highlights"
-    : "Show scanner highlights";
+    ? "Hide chart highlights"
+    : "Show chart highlights";
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">

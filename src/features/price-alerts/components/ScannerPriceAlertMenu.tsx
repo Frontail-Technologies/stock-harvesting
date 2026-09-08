@@ -6,6 +6,7 @@ import { Bell, Loader2, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrency } from "@/features/currency";
 import { searchStocksApi } from "@/features/market-data";
@@ -363,11 +364,16 @@ function PriceAlertFormBody({
                     <TooltipTrigger
                       type="button"
                       aria-label="Remove alert"
+                      aria-busy={deletingId === alert.id}
                       disabled={deletingId === alert.id}
                       onClick={() => onDeleteAlert(alert.id)}
                       className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <X className="size-3.5" />
+                      {deletingId === alert.id ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <X className="size-3.5" />
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="top" className="scanner-portal">
                       Remove alert

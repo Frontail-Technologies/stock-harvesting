@@ -2,19 +2,30 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search } from "lucide-react";
+import { Plus, Search, SearchX, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useChartEligibleBseStockSearch } from "@/features/market-data";
+import { StockSearchResultRow } from "@/features/stocks";
+import type { Stock } from "@/types/market";
 import { cn } from "@/utils/cn";
-import { useAddWatchlistItem } from "../hooks/use-watchlists";
+import { useAddWatchlistItem, useRemoveWatchlistItem } from "../hooks/use-watchlists";
+import type { WatchlistItem } from "../types";
 
 const MENU_VIEWPORT_MARGIN = 8;
 
 type WatchlistStockSearchInputProps = {
   watchlistId: string;
-  existingItems: Array<{ exchange: string; symbol: string }>;
+  existingItems: Array<Pick<WatchlistItem, "id" | "exchange" | "symbol">>;
   className?: string;
 };
+
+function itemKey(item: { exchange: string; symbol: string }) {
+  return `${item.exchange}:${item.symbol}`;
+}
 
 export function WatchlistStockSearchInput({
   watchlistId,
@@ -26,10 +37,17 @@ export function WatchlistStockSearchInput({
   const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(
     null
   );
-  const [addedKey, setAddedKey] = useState<string | null>(null);
+  // Only tracks which row's *remove* call is currently in flight - a real
+  // async pending flag, not a stand-in for membership. Add's own pending
+  // row is derived straight from addItem.variables; membership itself
+  // always comes from `existingItems` (the live watchlist detail query,
+  // already updated optimistically by useAddWatchlistItem/
+  // useRemoveWatchlistItem's onMutate) rather than any local click state.
+  const [pendingRemoveKey, setPendingRemoveKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const addItem = useAddWatchlistItem();
+  const removeItem = useRemoveWatchlistItem();
 
   const trimmedQuery = query.trim();
   const stockSearchQuery = useChartEligibleBseStockSearch(query, 8, {
@@ -37,13 +55,27 @@ export function WatchlistStockSearchInput({
     minLength: 2,
   });
   const results = trimmedQuery.length >= 2 ? stockSearchQuery.rows : [];
-  const existingKeys = useMemo(
-    () => new Set(existingItems.map((item) => `${item.exchange}:${item.symbol}`)),
+  const existingItemIdByKey = useMemo(
+    () => new Map(existingItems.map((item) => [itemKey(item), item.id])),
     [existingItems]
   );
 
-  const handleAdd = (stock: { exchange: string; symbol: string }) => {
-    const key = `${stock.exchange}:${stock.symbol}`;
+  const handleToggle = (stock: Pick<Stock, "exchange" | "symbol">) => {
+    const key = itemKey(stock);
+    const existingItemId = existingItemIdByKey.get(key);
+
+    if (existingItemId) {
+      if (removeItem.isPending && pendingRemoveKey === key) return;
+      setPendingRemoveKey(key);
+      removeItem.mutate(
+        { watchlistId, itemId: existingItemId },
+        {
+          onSettled: () => setPendingRemoveKey((current) => (current === key ? null : current)),
+        }
+      );
+      return;
+    }
+
     if (
       addItem.isPending &&
       addItem.variables?.exchange === stock.exchange &&
@@ -51,22 +83,13 @@ export function WatchlistStockSearchInput({
     ) {
       return;
     }
-
-    setAddedKey(key);
-    addItem.mutate(
-      { watchlistId, exchange: stock.exchange, symbol: stock.symbol },
-      {
-        onError: () => {
-          setAddedKey((current) => (current === key ? null : current));
-        },
-      }
-    );
+    addItem.mutate({ watchlistId, exchange: stock.exchange, symbol: stock.symbol });
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" && results[0]) {
       event.preventDefault();
-      handleAdd(results[0]);
+      handleToggle(results[0]);
     }
     if (event.key === "Escape") {
       setOpen(false);
@@ -135,7 +158,6 @@ export function WatchlistStockSearchInput({
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
-            setAddedKey(null);
           }}
           onFocus={() => {
             if (trimmedQuery.length >= 2) setOpen(true);
@@ -156,38 +178,66 @@ export function WatchlistStockSearchInput({
               {stockSearchQuery.isLoading ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground">Searching...</p>
               ) : results.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground">No stocks found.</p>
+                <EmptyState
+                  size="compact"
+                  illustration={<SearchX className="size-4 text-muted-foreground" />}
+                  title="No stocks found."
+                  className="px-3 py-2"
+                />
               ) : (
                 results.map((stock) => {
-                  const key = `${stock.exchange}:${stock.symbol}`;
-                  const alreadyAdded = existingKeys.has(key) || addedKey === key;
-                  const isPendingForThis =
+                  const key = itemKey(stock);
+                  const isMember = existingItemIdByKey.has(key);
+                  const isAddPendingForThis =
                     addItem.isPending &&
                     addItem.variables?.exchange === stock.exchange &&
                     addItem.variables?.symbol === stock.symbol;
+                  const isRemovePendingForThis = pendingRemoveKey === key;
+                  const isPendingForThis = isAddPendingForThis || isRemovePendingForThis;
+                  const actionLabel = isMember
+                    ? `Remove ${stock.symbol} from watchlist`
+                    : `Add ${stock.symbol} to watchlist`;
 
                   return (
-                    <button
+                    <StockSearchResultRow
                       key={key}
-                      type="button"
-                      disabled={alreadyAdded || isPendingForThis}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => handleAdd(stock)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed",
-                        alreadyAdded ? "opacity-60" : "cursor-pointer"
-                      )}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-foreground">
-                          {stock.symbol}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {stock.name} - {stock.exchange}
-                        </span>
-                      </span>
-                      {alreadyAdded && <Check className="size-3.5 shrink-0 text-primary" />}
-                    </button>
+                      stock={stock}
+                      onSelect={isMember ? undefined : () => handleToggle(stock)}
+                      action={
+                        isPendingForThis ? (
+                          <Spinner size="sm" className="shrink-0" />
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  type="button"
+                                  variant={isMember ? "ghost" : "outline"}
+                                  size="icon"
+                                  aria-label={actionLabel}
+                                  className={cn(
+                                    "shrink-0",
+                                    isMember &&
+                                      "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  )}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleToggle(stock);
+                                  }}
+                                />
+                              }
+                            >
+                              {isMember ? (
+                                <Trash2 className="size-4" />
+                              ) : (
+                                <Plus className="size-4" />
+                              )}
+                            </TooltipTrigger>
+                            <TooltipContent side="left">{actionLabel}</TooltipContent>
+                          </Tooltip>
+                        )
+                      }
+                    />
                   );
                 })
               )}

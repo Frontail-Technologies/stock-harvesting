@@ -37,13 +37,24 @@ const CHART_HEIGHT_PX = 340;
 const AXIS_WIDTH_PX = 34;
 
 const MOBILE_BREAKPOINT_PX = 480;
-const MAGNIFIER_SIZE_PX = 108;
+const TABLET_BREAKPOINT_PX = 768;
+
+// X-axis label density targets the *measured plot width*, not the raw
+// dataset length - the same 52-week ("1Y") dataset needs far fewer visible
+// labels squeezed into a ~300px mobile plot than into a wide desktop one.
+const MOBILE_X_AXIS_LABEL_COUNT = 5;
+const TABLET_X_AXIS_LABEL_COUNT = 8;
+const DESKTOP_X_AXIS_LABEL_COUNT = 14;
+
+// Chartlink-style lens diameter - big enough to feel like an inspection
+// tool, not a decorative bubble.
+const MAGNIFIER_SIZE_PX = 180;
 const MAGNIFIER_NEIGHBOR_RADIUS = 2;
 
 const MAGNIFIER_TARGET_BAR_WIDTH_PX = 14;
 const MAGNIFIER_MIN_ZOOM = 2;
 const MAGNIFIER_MAX_ZOOM = 30;
-const MAGNIFIER_GAP_FROM_POINTER_PX = 16;
+const ACTIVE_COLUMN_STROKE_WIDTH = 1.75;
 
 const TOOLTIP_MAGNIFIER_GAP_PX = 10;
 
@@ -94,8 +105,25 @@ type BarGeometry = {
   segments: SegmentGeometry[];
 };
 
-function formatWeekLabel(date: string) {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+function formatWeekLabel(date: string, compact: boolean) {
+  // Mobile (isCompact) is already locked to the "1Y" period elsewhere in
+  // this component, so it never spans more than one calendar year - the
+  // year suffix can drop there without becoming ambiguous, buying back a
+  // few more characters of breathing room per label. Desktop/tablet can
+  // show "3Y"/"All", which do cross year boundaries, so they keep it.
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString(
+    "en-IN",
+    compact ? { month: "short" } : { month: "short", year: "2-digit" }
+  );
+}
+
+// How many X-axis labels to target for the current plot width - fewer on
+// narrow screens, more where there's room, independent of how many weeks
+// are actually in the dataset.
+function targetXAxisLabelCount(plotWidthPx: number): number {
+  if (plotWidthPx <= MOBILE_BREAKPOINT_PX) return MOBILE_X_AXIS_LABEL_COUNT;
+  if (plotWidthPx <= TABLET_BREAKPOINT_PX) return TABLET_X_AXIS_LABEL_COUNT;
+  return DESKTOP_X_AXIS_LABEL_COUNT;
 }
 
 function formatWeekFull(date: string) {
@@ -127,28 +155,17 @@ function visibleSectorsFor(point: WeeklyStrongBacktestStackedPoint, hiddenSector
 
 type MagnifierBox = { left: number; top: number };
 
-function computeMagnifierBox(pointerX: number, pointerY: number, plotWidth: number): MagnifierBox {
-  const preferRight = pointerX + MAGNIFIER_GAP_FROM_POINTER_PX + MAGNIFIER_SIZE_PX <= plotWidth;
-  const left = Math.min(
-    Math.max(
-      preferRight
-        ? pointerX + MAGNIFIER_GAP_FROM_POINTER_PX
-        : pointerX - MAGNIFIER_GAP_FROM_POINTER_PX - MAGNIFIER_SIZE_PX,
-      0
-    ),
-    Math.max(plotWidth - MAGNIFIER_SIZE_PX, 0)
-  );
-  const preferAbove = pointerY - MAGNIFIER_GAP_FROM_POINTER_PX - MAGNIFIER_SIZE_PX >= 0;
-  const top = Math.min(
-    Math.max(
-      preferAbove
-        ? pointerY - MAGNIFIER_GAP_FROM_POINTER_PX - MAGNIFIER_SIZE_PX
-        : pointerY + MAGNIFIER_GAP_FROM_POINTER_PX,
-      0
-    ),
-    Math.max(CHART_HEIGHT_PX - MAGNIFIER_SIZE_PX, 0)
-  );
-  return { left, top };
+// Chartlink-style: the lens is centered exactly on the pointer, full stop -
+// no preferred side, no offset gap, no clamping to stay inside the plot.
+// The real system cursor renders above the lens on its own (the lens is
+// pointer-events: none), so it naturally appears inside the circle once
+// the box is centered here. Near an edge, the lens is deliberately allowed
+// to extend past the plot bounds rather than shift away from the cursor -
+// nothing in this component's ancestor chain clips overflow, so no portal
+// is needed for that to render correctly.
+function computeMagnifierBox(pointerX: number, pointerY: number): MagnifierBox {
+  const radius = MAGNIFIER_SIZE_PX / 2;
+  return { left: pointerX - radius, top: pointerY - radius };
 }
 
 function buildBarGeometry(
@@ -309,7 +326,10 @@ function BacktestTooltip({
 
 function BacktestMagnifier({
   geometry,
+  ticks,
+  niceMax,
   centerIndex,
+  activeSegment,
   pointerX,
   pointerY,
   slotWidthPx,
@@ -317,7 +337,13 @@ function BacktestMagnifier({
   box,
 }: {
   geometry: BarGeometry[];
+  ticks: number[];
+  niceMax: number;
   centerIndex: number;
+  // Resolved once, up in WeeklyStrongBacktestSection, from the SAME hover
+  // state the tooltip and the main-chart outline already use - never
+  // re-detected here, so the lens can't disagree with what's on screen.
+  activeSegment: SegmentGeometry | undefined;
   pointerX: number;
   pointerY: number;
   slotWidthPx: number;
@@ -330,6 +356,7 @@ function BacktestMagnifier({
   const start = Math.max(0, centerIndex - MAGNIFIER_NEIGHBOR_RADIUS);
   const end = Math.min(geometry.length - 1, centerIndex + MAGNIFIER_NEIGHBOR_RADIUS);
   const cluster = geometry.slice(start, end + 1);
+  const activeBar = geometry[centerIndex];
 
   const neighborSlots = MAGNIFIER_NEIGHBOR_RADIUS * 2 + 1;
   const zoomForReadability = MAGNIFIER_TARGET_BAR_WIDTH_PX / Math.max(barWidthPx, 0.5);
@@ -347,7 +374,7 @@ function BacktestMagnifier({
       className="pointer-events-none absolute z-30"
       style={{ left: box.left, top: box.top, width: MAGNIFIER_SIZE_PX, height: MAGNIFIER_SIZE_PX }}
     >
-      <svg width={MAGNIFIER_SIZE_PX} height={MAGNIFIER_SIZE_PX} className="overflow-visible drop-shadow-xl">
+      <svg width={MAGNIFIER_SIZE_PX} height={MAGNIFIER_SIZE_PX} className="overflow-visible drop-shadow-lg">
         <defs>
           <clipPath id={clipId}>
             <circle cx={radius} cy={radius} r={radius - 2} />
@@ -355,6 +382,21 @@ function BacktestMagnifier({
         </defs>
         <circle cx={radius} cy={radius} r={radius - 1} className="fill-card stroke-border" strokeWidth={2} />
         <g clipPath={`url(#${clipId})`}>
+          {ticks.map((tick) => {
+            const y = toLensY((1 - tick / niceMax) * CHART_HEIGHT_PX);
+            return (
+              <line
+                key={tick}
+                x1={0}
+                x2={MAGNIFIER_SIZE_PX}
+                y1={y}
+                y2={y}
+                className="stroke-border/50"
+                strokeWidth={1}
+              />
+            );
+          })}
+
           {cluster.map((bar) => (
             <g key={bar.weekEnding}>
               {bar.segments.map((segment) => (
@@ -369,11 +411,24 @@ function BacktestMagnifier({
               ))}
             </g>
           ))}
-        </g>
 
-        <circle cx={radius} cy={radius} r={5.5} fill="none" stroke="black" strokeOpacity={0.35} strokeWidth={3} />
-        <circle cx={radius} cy={radius} r={5.5} fill="none" stroke="white" strokeWidth={1.5} />
-        <circle cx={radius} cy={radius} r={1.5} fill="white" stroke="black" strokeOpacity={0.35} strokeWidth={0.5} />
+          {/* Same active-SEGMENT outline as the normal chart (not the
+              whole column), magnified along with everything else - the
+              stroke width is a raw SVG unit here (not multiplied by
+              zoom), so it stays a clean, constant line instead of
+              growing huge at high zoom. */}
+          {activeBar && activeSegment && (
+            <rect
+              x={toLensX(activeBar.barX)}
+              y={toLensY(activeSegment.y)}
+              width={activeBar.barWidth * zoom}
+              height={activeSegment.height * zoom}
+              fill="none"
+              className="stroke-foreground/70"
+              strokeWidth={ACTIVE_COLUMN_STROKE_WIDTH}
+            />
+          )}
+        </g>
       </svg>
     </div>
   );
@@ -464,7 +519,7 @@ function WeekResultsView({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <button
         type="button"
         onClick={onBack}
@@ -486,53 +541,107 @@ function WeekResultsView({
         )}
       </div>
 
-      <div className="max-h-128 overflow-y-auto rounded-lg border border-border">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-muted/95">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="h-9 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Symbol</TableHead>
-              <TableHead className="h-9 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Stock Name</TableHead>
-              <TableHead className="h-9 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Exchange</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-
-            {isLoading && members.length === 0
-              ? Array.from({ length: 6 }, (_, index) => (
-                  <TableRow key={`skeleton-${index}`} className="hover:bg-transparent">
-                    <TableCell className="h-11 px-4">
-                      <div className="h-3 w-16 animate-pulse rounded-full bg-muted" />
-                    </TableCell>
-                    <TableCell className="px-4">
-                      <div className="h-3 w-32 animate-pulse rounded-full bg-muted" />
-                    </TableCell>
-                    <TableCell className="px-4">
-                      <div className="h-3 w-10 animate-pulse rounded-full bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : members.map((member) => (
-                  <TableRow
-                    key={member.symbol}
-                    onClick={() => handleRowClick(member)}
-                    className="cursor-pointer border-border/60 hover:bg-primary/5"
-                  >
-                    <TableCell className="h-11 px-4 font-semibold text-primary">{member.symbol}</TableCell>
-                    <TableCell className="max-w-56 truncate px-4 text-foreground">{member.name}</TableCell>
-                    <TableCell className="px-4 font-mono text-[0.6875rem] text-muted-foreground uppercase">
-                      {member.exchange}
-                    </TableCell>
-                  </TableRow>
-                ))}
-            {!isLoading && members.length === 0 && (
+      <div className="max-h-128 overflow-y-auto rounded-lg">
+        {/* Desktop/tablet: unchanged full table. */}
+        <div className="hidden sm:block">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-foreground/5 backdrop-blur-sm">
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
-                  <EmptyState size="compact" title="No stocks passed in this week." className="py-0" />
-                </TableCell>
+                <TableHead className="h-9 w-14 px-4 text-right text-xs font-semibold text-muted-foreground">
+                  Sr. No.
+                </TableHead>
+                <TableHead className="h-9 px-4 text-xs font-semibold text-muted-foreground">Symbol</TableHead>
+                <TableHead className="h-9 px-4 text-xs font-semibold text-muted-foreground">Stock Name</TableHead>
+                <TableHead className="h-9 px-4 text-xs font-semibold text-muted-foreground">Exchange</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+
+              {isLoading && members.length === 0
+                ? Array.from({ length: 6 }, (_, index) => (
+                    <TableRow key={`skeleton-${index}`} className="hover:bg-transparent">
+                      <TableCell className="h-11 px-4">
+                        <div className="ml-auto h-3 w-4 animate-pulse rounded-full bg-muted" />
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <div className="h-3 w-16 animate-pulse rounded-full bg-muted" />
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <div className="h-3 w-32 animate-pulse rounded-full bg-muted" />
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <div className="h-3 w-10 animate-pulse rounded-full bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                : members.map((member, index) => (
+                    <TableRow
+                      key={member.symbol}
+                      onClick={() => handleRowClick(member)}
+                      className="cursor-pointer border-border/60 hover:bg-primary/5"
+                    >
+                      <TableCell className="h-11 px-4 text-right text-muted-foreground tabular-nums">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="h-11 px-4 font-semibold text-primary">{member.symbol}</TableCell>
+                      <TableCell className="max-w-56 truncate px-4 text-foreground">{member.name}</TableCell>
+                      <TableCell className="px-4 font-mono text-[0.6875rem] text-muted-foreground uppercase">
+                        {member.exchange}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              {!isLoading && members.length === 0 && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                    <EmptyState size="compact" title="No stocks passed in this week." className="py-0" />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile: compact stacked records instead of a squeezed table. */}
+        <div className="flex flex-col divide-y divide-border sm:hidden">
+          {isLoading && members.length === 0
+            ? Array.from({ length: 6 }, (_, index) => (
+                <div key={`skeleton-m-${index}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <div className="h-3 w-4 shrink-0 animate-pulse rounded-full bg-muted" />
+                    <div className="min-w-0">
+                      <div className="h-3 w-16 animate-pulse rounded-full bg-muted" />
+                      <div className="mt-1.5 h-3 w-32 animate-pulse rounded-full bg-muted" />
+                    </div>
+                  </div>
+                  <div className="h-3 w-8 shrink-0 animate-pulse rounded-full bg-muted" />
+                </div>
+              ))
+            : members.map((member, index) => (
+                <div
+                  key={member.symbol}
+                  onClick={() => handleRowClick(member)}
+                  className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-primary/5"
+                >
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-primary">{member.symbol}</p>
+                      <p className="truncate text-xs text-muted-foreground">{member.name}</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-mono text-[0.6875rem] text-muted-foreground uppercase">
+                    {member.exchange}
+                  </span>
+                </div>
+              ))}
+          {!isLoading && members.length === 0 && (
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+              <EmptyState size="compact" title="No stocks passed in this week." className="py-0" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -585,7 +694,10 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
   const desiredGapPx = slotCount > 150 ? 1 : slotCount > 60 ? 1.5 : 2;
   const gapPx = Math.min(desiredGapPx, slotWidthPx * 0.35);
   const barWidthPx = slotWidthPx > 0 ? Math.max(slotWidthPx - gapPx, 0.5) : 0;
-  const labelEveryNWeeks = slotCount <= 60 ? 4 : slotCount <= 170 ? 13 : 17;
+  const labelEveryNWeeks =
+    plotWidth > 0 && slotCount > 0
+      ? Math.max(1, Math.ceil(slotCount / targetXAxisLabelCount(plotWidth)))
+      : 1;
 
   const sectorLegend = useMemo(() => {
     const sectors = new Set<string>();
@@ -731,8 +843,13 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
 
   const handleBackToChart = useCallback(() => setIsResultsView(false), []);
 
-  const magnifierBox =
-    hover && !isCompact ? computeMagnifierBox(hover.pointerX, hover.pointerY, plotWidth) : null;
+  const magnifierBox = hover && !isCompact ? computeMagnifierBox(hover.pointerX, hover.pointerY) : null;
+  const hoveredBar = hover ? geometry[hover.index] : undefined;
+  // The exact stacked rectangle under the pointer (not the whole column) -
+  // resolved once here from hover.sector (already Y-position-detected in
+  // handlePlotPointerMove), then reused as-is by the main-chart outline,
+  // the lens outline, and the tooltip so all three can never disagree.
+  const activeSegment = hoveredBar?.segments.find((segment) => segment.sector === hover?.sector);
 
   return (
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-card p-5">
@@ -832,7 +949,10 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
               {hover && magnifierBox && (
                 <BacktestMagnifier
                   geometry={geometry}
+                  ticks={ticks}
+                  niceMax={niceMax}
                   centerIndex={hover.index}
+                  activeSegment={activeSegment}
                   pointerX={hover.pointerX}
                   pointerY={hover.pointerY}
                   slotWidthPx={slotWidthPx}
@@ -870,6 +990,29 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
                       plotWidth={plotWidth}
                       selectedIndex={selectedIndex}
                     />
+
+                    {/* Hover-active SEGMENT outline (not the whole
+                        column) - kept as its own tiny sibling rather than
+                        a prop on the memoized bars SVG above, so moving
+                        the mouse across hundreds of bars never forces
+                        that whole (much more expensive) SVG to
+                        re-render; only this one small box updates.
+                        Nothing renders when the pointer is between bars,
+                        above the stack, or over a zero-height segment -
+                        activeSegment is undefined in all those cases. */}
+                    {hoveredBar && activeSegment && (
+                      <div
+                        className="pointer-events-none absolute border-foreground/70"
+                        style={{
+                          left: hoveredBar.barX,
+                          top: activeSegment.y,
+                          width: hoveredBar.barWidth,
+                          height: activeSegment.height,
+                          borderWidth: ACTIVE_COLUMN_STROKE_WIDTH,
+                        }}
+                        aria-hidden
+                      />
+                    )}
                   </div>
 
                   <div className="relative mt-2 h-4 text-[0.6875rem] text-muted-foreground">
@@ -880,7 +1023,7 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
                           className="absolute -translate-x-1/2 whitespace-nowrap first:translate-x-0 last:-translate-x-full"
                           style={{ left: index * (barWidthPx + gapPx) + barWidthPx / 2 }}
                         >
-                          {formatWeekLabel(point.weekEnding)}
+                          {formatWeekLabel(point.weekEnding, isCompact)}
                         </span>
                       ) : null
                     )}

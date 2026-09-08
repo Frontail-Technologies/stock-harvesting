@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/utils/cn";
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
@@ -65,7 +66,7 @@ export function ScannerBacktestStatsContent({
   className?: string;
 }) {
   if (!stats) {
-    return <p className="text-sm text-muted-foreground">No performance data available.</p>;
+    return <EmptyState size="compact" title="No performance data available." className="py-0" />;
   }
 
   const { primaryRows, secondaryRows } = getStatsRows(stats);

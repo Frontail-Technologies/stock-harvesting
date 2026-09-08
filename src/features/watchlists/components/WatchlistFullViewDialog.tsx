@@ -32,6 +32,55 @@ type WatchlistFullViewDialogProps = {
   onAddStock: (watchlistId: string) => void;
 };
 
+// Shared between the desktop table's Actions cell and the mobile stacked
+// row's trailing menu, so the two layouts never drift apart.
+function WatchlistItemActionsMenu({
+  symbol,
+  exchange,
+  onOpenInCharts,
+  onRemove,
+}: {
+  symbol: string;
+  exchange: string;
+  onOpenInCharts: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <Tooltip>
+      <DropdownMenu>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`${symbol} actions`}
+                  className="ml-auto size-8 cursor-pointer text-muted-foreground hover:text-foreground"
+                />
+              }
+            />
+          }
+        >
+          <MoreHorizontal className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent side="top">{symbol} actions</TooltipContent>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onOpenInCharts}>Open in Chart</DropdownMenuItem>
+          <DropdownMenuItem render={<Link href={`/stocks/${exchange}/${symbol}`} target="_blank" />}>
+            Open Stock Details
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onClick={onRemove}>
+            Remove from Watchlist
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </Tooltip>
+  );
+}
+
 export function WatchlistFullViewDialog({
   watchlistId,
   onClose,
@@ -107,80 +156,79 @@ export function WatchlistFullViewDialog({
               />
             ) : (
               <div className="mt-2 min-h-0 flex-1 overflow-y-auto rounded-lg border border-border">
-                <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-foreground/5 backdrop-blur-sm">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="h-10 w-14 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        Sr.
-                      </TableHead>
-                      <TableHead className="h-10 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        Symbol
-                      </TableHead>
-                      <TableHead className="h-10 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        Exchange
-                      </TableHead>
-                      <TableHead className="h-10 px-4 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((item, index) => (
-                      <TableRow
-                        key={item.id}
-                        onClick={() => openInCharts(item.symbol, item.exchange)}
-                        className="cursor-pointer border-border/60 hover:bg-primary/5"
-                      >
-                        <TableCell className="h-12 px-4 text-muted-foreground tabular-nums">
-                          {String(index + 1).padStart(2, "0")}
-                        </TableCell>
-                        <TableCell className="px-4 font-semibold text-foreground">{item.symbol}</TableCell>
-                        <TableCell className="px-4 text-muted-foreground">{item.exchange}</TableCell>
-                        <TableCell className="px-4 text-right" onClick={(event) => event.stopPropagation()}>
-                          <Tooltip>
-                            <DropdownMenu>
-                              <TooltipTrigger
-                                render={
-                                  <DropdownMenuTrigger
-                                    render={
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={`${item.symbol} actions`}
-                                        className="ml-auto size-8 cursor-pointer text-muted-foreground hover:text-foreground"
-                                      />
-                                    }
-                                  />
-                                }
-                              >
-                                <MoreHorizontal className="size-4" />
-                              </TooltipTrigger>
-                              <TooltipContent side="top">{item.symbol} actions</TooltipContent>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={() => openInCharts(item.symbol, item.exchange)}>
-                                  Open in Chart
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  render={<Link href={`/stocks/${item.exchange}/${item.symbol}`} target="_blank" />}
-                                >
-                                  Open Stock Details
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onClick={() => removeItem.mutate({ watchlistId: watchlist.id, itemId: item.id })}
-                                >
-                                  Remove from Watchlist
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </Tooltip>
-                        </TableCell>
+                {/* Desktop/tablet: unchanged full table. */}
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-foreground/5 backdrop-blur-sm">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="h-10 w-14 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Sr.
+                        </TableHead>
+                        <TableHead className="h-10 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Symbol
+                        </TableHead>
+                        <TableHead className="h-10 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Exchange
+                        </TableHead>
+                        <TableHead className="h-10 px-4 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          Actions
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item, index) => (
+                        <TableRow
+                          key={item.id}
+                          onClick={() => openInCharts(item.symbol, item.exchange)}
+                          className="cursor-pointer border-border/60 hover:bg-primary/5"
+                        >
+                          <TableCell className="h-12 px-4 text-muted-foreground tabular-nums">
+                            {String(index + 1).padStart(2, "0")}
+                          </TableCell>
+                          <TableCell className="px-4 font-semibold text-foreground">{item.symbol}</TableCell>
+                          <TableCell className="px-4 text-muted-foreground">{item.exchange}</TableCell>
+                          <TableCell className="px-4 text-right" onClick={(event) => event.stopPropagation()}>
+                            <WatchlistItemActionsMenu
+                              symbol={item.symbol}
+                              exchange={item.exchange}
+                              onOpenInCharts={() => openInCharts(item.symbol, item.exchange)}
+                              onRemove={() => removeItem.mutate({ watchlistId: watchlist.id, itemId: item.id })}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile: compact stacked rows instead of a squeezed table. */}
+                <div className="flex flex-col divide-y divide-border sm:hidden">
+                  {items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      onClick={() => openInCharts(item.symbol, item.exchange)}
+                      className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-primary/5"
+                    >
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{item.symbol}</p>
+                          <p className="text-xs text-muted-foreground">{item.exchange}</p>
+                        </div>
+                      </div>
+                      <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+                        <WatchlistItemActionsMenu
+                          symbol={item.symbol}
+                          exchange={item.exchange}
+                          onOpenInCharts={() => openInCharts(item.symbol, item.exchange)}
+                          onRemove={() => removeItem.mutate({ watchlistId: watchlist.id, itemId: item.id })}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

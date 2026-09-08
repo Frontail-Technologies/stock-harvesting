@@ -146,6 +146,7 @@ export function WidgetPage() {
         onOpenChange={setSelectorOpen}
         sources={sources}
         onSelect={(source) => addSource(source)}
+        onRemove={(source) => removeSource(source)}
       />
     </>
   );

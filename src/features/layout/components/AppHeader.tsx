@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/ui/brand-logo";
-import { GlobalSearchMobileSheet } from "@/features/global-search/components/GlobalSearchMobileSheet";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { cn } from "@/utils/cn";
 import { AccountMenu } from "./AccountMenu";
@@ -25,8 +24,8 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/85">
-      <div className="flex h-full w-full items-center gap-3 px-3 sm:px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
+      <div className="flex h-full w-full items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:px-6">
+        <div className="flex shrink-0 items-center gap-2 lg:flex-none">
           <Link href="/charts" className="flex items-center gap-2">
             <BrandLogo size="sm" textClassName="hidden sm:inline-flex" />
           </Link>
@@ -55,9 +54,15 @@ export function AppHeader() {
           })}
         </nav>
 
-        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3 lg:gap-4">
-          <GlobalSearchMobileSheet className="xl:hidden" />
-          <AccountMenu />
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3 lg:flex-none lg:gap-4">
+          {/* Mobile/tablet (below xl): the real search field sits in this
+              same row, between the logo and the avatar, filling whatever
+              width is left - no second row, no icon-only collapse. At
+              xl+ this hides and the nav's own copy above takes over. */}
+          <div className="min-w-0 flex-1 xl:hidden">
+            <GlobalSearchNavbarField className="w-full" />
+          </div>
+          <AccountMenu className="shrink-0" />
         </div>
       </div>
     </header>

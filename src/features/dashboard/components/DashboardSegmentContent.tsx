@@ -20,10 +20,12 @@ import {
   type CrossFilterState,
   type SectorIndustryRelation,
 } from "../lib/dashboard-cross-filter";
+import { formatAsOfDate } from "../lib/format-as-of-date";
 import { colorForDashboardLabel } from "../lib/dashboard-widget-colors";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
 import { DashboardWidgetRow } from "./DashboardWidgetRow";
 import { WeeklyStrongBacktestSection } from "./WeeklyStrongBacktestSection";
+import { WeeklyStrongMembershipChanges } from "./WeeklyStrongMembershipChanges";
 import { WeeklyStrongStockTable } from "./WeeklyStrongStockTable";
 
 const GROUP_RANKING_LIMIT = 100;
@@ -133,6 +135,8 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
       <WeeklyStrongStockTable code={code} crossFilter={crossFilter} />
 
+      <WeeklyStrongMembershipChanges code={code} />
+
       <WeeklyStrongBacktestSection key={code} code={code} />
     </div>
   );
@@ -143,13 +147,6 @@ type StockChangeRow = {
   exchange: string;
   change55dPct: number;
 };
-
-function formatAsOfDate(asOfDate: string | null): string {
-  if (!asOfDate) return "";
-  const parsed = new Date(`${asOfDate}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return `As of ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(parsed)}`;
-}
 
 function buildCollectionCards(input: {
   indexMetrics: StockChangeRow[];

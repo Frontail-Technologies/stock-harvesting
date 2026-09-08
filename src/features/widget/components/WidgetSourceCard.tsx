@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ListX, MoreHorizontal } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { colorForDashboardLabel, DashboardWidget, DashboardWidgetSkeleton } from "@/features/dashboard";
 import { useCollectionRelativeStrength } from "@/features/market-collections";
@@ -100,20 +99,20 @@ export function WidgetSourceCard({
   );
 
   const emptyState = isEmptyWatchlist ? (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
-      <ListX className="size-5 text-muted-foreground/60" />
-      <p className="text-xs font-medium text-muted-foreground">No stocks in this Watchlist.</p>
-      <Link href="/watchlists" className={buttonVariants({ variant: "outline", size: "sm" })}>
-        Open Watchlist
-      </Link>
-    </div>
+    <EmptyState
+      size="compact"
+      illustration={<ListX className="size-5 text-muted-foreground/60" />}
+      title="No stocks in this Watchlist."
+      primaryAction={{ label: "Open Watchlist", href: "/watchlists" }}
+      className="flex-1 justify-center py-0"
+    />
   ) : (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
-      <ListX className="size-5 text-muted-foreground/60" />
-      <p className="text-xs font-medium text-muted-foreground">
-        {isSegment ? "No stocks in this Segment." : "No ranked results available for this Watchlist yet."}
-      </p>
-    </div>
+    <EmptyState
+      size="compact"
+      illustration={<ListX className="size-5 text-muted-foreground/60" />}
+      title={isSegment ? "No stocks in this Segment." : "No ranked results available for this Watchlist yet."}
+      className="flex-1 justify-center py-0"
+    />
   );
 
   const headerActions = (

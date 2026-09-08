@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LandingPage } from "@/features/landing";
 import { SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
 
-const LANDING_TITLE = "Stock Scanner & Chart Review Workspace";
+const LANDING_TITLE = "Stock Charting & Review Workspace";
 const LANDING_DESCRIPTION =
   "Stock Harvesting helps investors surface relevant market behaviour, review stocks in a focused chart workspace, save insights, and explore markets across global exchanges.";
 const SOCIAL_TITLE = `${LANDING_TITLE} | ${SITE_NAME}`;

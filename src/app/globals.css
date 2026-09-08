@@ -522,7 +522,13 @@
   display: grid;
   border: var(--app-loader-thickness, 4px) solid #0000;
   border-radius: 50%;
-  border-right-color: var(--brand-accent);
+  /* Inherits the surrounding text color rather than a fixed brand color -
+     a fixed --brand-accent here became invisible on any surface that's
+     already that same color (most notably the primary button, whose
+     background *is* --brand-accent in most themes). currentColor lets a
+     primary button's spinner pick up its own text-primary-foreground,
+     an outline/ghost button its own text-foreground, etc. */
+  border-right-color: currentColor;
   animation: app-loader-spin 1s infinite linear;
 }
 .app-loader::before,

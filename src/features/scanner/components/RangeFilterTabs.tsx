@@ -232,7 +232,7 @@ export function RangeFilterTabs({
                   onClick={onToggleScannerHighlights}
                   className="flex h-11 cursor-pointer items-center justify-between rounded-md border border-border bg-muted/50 px-3 text-sm font-semibold text-foreground"
                 >
-                  <span>Scanner highlights</span>
+                  <span>Chart highlights</span>
                   {scannerHighlightsVisible ? <Eye className="size-4 text-primary" /> : <EyeOff className="size-4 text-muted-foreground" />}
                 </button>
                 <button

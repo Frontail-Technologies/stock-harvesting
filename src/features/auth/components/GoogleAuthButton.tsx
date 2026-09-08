@@ -48,7 +48,7 @@ export function GoogleAuthButton({ pending, disabled, onClick }: GoogleAuthButto
       <Button
         type="button"
         variant="outline"
-        className="h-10 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-white text-[13px] font-semibold text-slate-950 shadow-sm hover:bg-neutral-50 disabled:cursor-not-allowed dark:bg-white dark:text-slate-950 dark:hover:bg-neutral-100"
+        className="h-10 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-bg text-[13px] font-semibold text-landing-fg shadow-sm hover:bg-landing-fg/5 disabled:cursor-not-allowed"
         onClick={onClick}
         disabled={disabled}
       >

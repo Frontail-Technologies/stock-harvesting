@@ -2,6 +2,7 @@
 
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -119,7 +120,7 @@ export function AdminUsersTable({
                 ) : error ? (
                   "Unable to load admin users."
                 ) : (
-                  "No users found."
+                  <EmptyState size="compact" title="No users found." className="py-0" />
                 )}
               </TableCell>
             </TableRow>

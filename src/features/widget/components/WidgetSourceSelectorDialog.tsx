@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Check, Search } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Plus, Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMarketCollections } from "@/features/market-collections";
 import { useWatchlists } from "@/features/watchlists";
 import { cn } from "@/utils/cn";
@@ -23,10 +25,95 @@ type WidgetSourceSelectorDialogProps = {
   onOpenChange: (open: boolean) => void;
   sources: WidgetSource[];
   onSelect: (source: WidgetSource) => void;
+  onRemove: (source: WidgetSource) => void;
 };
 
 function isSelected(sources: WidgetSource[], candidate: WidgetSource) {
   return sources.some((source) => source.type === candidate.type && source.id === candidate.id);
+}
+
+// Shared row for both the Segments and Watchlists tabs, so the two never
+// drift onto different interaction patterns. Not selected: the whole row
+// adds it (matches the previous behavior, which was also click-anywhere-
+// to-add) plus an explicit Plus button. Already selected: the row itself
+// is inert (it never toggled on click before this change either - only
+// this dedicated Trash2 button removes it), and stays fully readable
+// rather than dimmed, since it's still an active source.
+function SourceRow({
+  label,
+  meta,
+  selected,
+  onAdd,
+  onRemove,
+}: {
+  label: string;
+  meta: ReactNode;
+  selected: boolean;
+  onAdd: () => void;
+  onRemove: () => void;
+}) {
+  const actionLabel = selected ? `Remove ${label} widget` : `Add ${label} widget`;
+
+  const action = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant={selected ? "ghost" : "outline"}
+            size="icon"
+            aria-label={actionLabel}
+            className={cn(
+              "shrink-0",
+              selected && "text-destructive hover:bg-destructive/10 hover:text-destructive"
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (selected) onRemove();
+              else onAdd();
+            }}
+          />
+        }
+      >
+        {selected ? <Trash2 className="size-4" /> : <Plus className="size-4" />}
+      </TooltipTrigger>
+      <TooltipContent side="left">{actionLabel}</TooltipContent>
+    </Tooltip>
+  );
+
+  const nameBlock = (
+    <span className="min-w-0 flex-1 truncate">
+      <span className="block truncate font-medium text-foreground">{label}</span>
+      <span className="block truncate text-xs text-muted-foreground">{meta}</span>
+    </span>
+  );
+
+  if (selected) {
+    return (
+      <div className="flex w-full items-center justify-between gap-3 px-2 py-2.5 text-sm">
+        {nameBlock}
+        {action}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onAdd}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onAdd();
+        }
+      }}
+      className="flex w-full cursor-pointer items-center justify-between gap-3 px-2 py-2.5 text-left text-sm transition-colors hover:bg-muted/60"
+    >
+      {nameBlock}
+      {action}
+    </div>
+  );
 }
 
 export function WidgetSourceSelectorDialog({
@@ -34,6 +121,7 @@ export function WidgetSourceSelectorDialog({
   onOpenChange,
   sources,
   onSelect,
+  onRemove,
 }: WidgetSourceSelectorDialogProps) {
   const [tab, setTab] = useState<SourceTab>("segment");
   const [query, setQuery] = useState("");
@@ -119,52 +207,38 @@ export function WidgetSourceSelectorDialog({
           ) : tab === "segment" ? (
             <div className="flex flex-col divide-y divide-border">
               {filteredCollections.map((collection) => {
-                const selected = isSelected(sources, { type: "segment", id: collection.id });
+                const source: WidgetSource = { type: "segment", id: collection.id };
+                const selected = isSelected(sources, source);
                 return (
-                  <button
+                  <SourceRow
                     key={collection.id}
-                    type="button"
-                    disabled={selected}
-                    onClick={() => onSelect({ type: "segment", id: collection.id })}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-3 px-2 py-2.5 text-left text-sm transition-colors",
-                      selected ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/60"
-                    )}
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="block truncate font-medium text-foreground">{collection.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                    label={collection.name}
+                    meta={
+                      <>
                         {collection.exchange} &middot; {collection.memberCount} stocks
-                      </span>
-                    </span>
-                    {selected && <Check className="size-4 shrink-0 text-primary" />}
-                  </button>
+                      </>
+                    }
+                    selected={selected}
+                    onAdd={() => onSelect(source)}
+                    onRemove={() => onRemove(source)}
+                  />
                 );
               })}
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {filteredWatchlists.map((watchlist) => {
-                const selected = isSelected(sources, { type: "watchlist", id: watchlist.id });
+                const source: WidgetSource = { type: "watchlist", id: watchlist.id };
+                const selected = isSelected(sources, source);
                 return (
-                  <button
+                  <SourceRow
                     key={watchlist.id}
-                    type="button"
-                    disabled={selected}
-                    onClick={() => onSelect({ type: "watchlist", id: watchlist.id })}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-3 px-2 py-2.5 text-left text-sm transition-colors",
-                      selected ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/60"
-                    )}
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      <span className="block truncate font-medium text-foreground">{watchlist.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {watchlist.itemCount} {watchlist.itemCount === 1 ? "stock" : "stocks"}
-                      </span>
-                    </span>
-                    {selected && <Check className="size-4 shrink-0 text-primary" />}
-                  </button>
+                    label={watchlist.name}
+                    meta={`${watchlist.itemCount} ${watchlist.itemCount === 1 ? "stock" : "stocks"}`}
+                    selected={selected}
+                    onAdd={() => onSelect(source)}
+                    onRemove={() => onRemove(source)}
+                  />
                 );
               })}
             </div>
