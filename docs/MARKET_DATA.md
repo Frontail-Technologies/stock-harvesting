@@ -166,6 +166,47 @@ values for this module, kept separate from the orchestration functions
 that read them (still in `market-data.service.ts`/`market-data.candle-sync.ts`,
 unchanged this phase).
 
+## Supported exchange discovery — `listSupportedExchanges`
+
+`backend/src/modules/market-data/market-data.service.ts`. NSE and BSE are
+only ever advertised (in `GET /api/market-data/exchanges`, which drives
+every exchange picker including the global stock search modal) when they
+are genuinely usable, not merely "not explicitly disabled":
+
+- **NSE**: `isProviderEnabled(zerodha)` **and** Zerodha actually connected
+  (`getProviderStatus(zerodha).connected` — the same canonical
+  connection-state check the admin Data Providers page itself uses, not a
+  duplicated OAuth check) **and** at least one active `provider = 'zerodha'`
+  instrument row exists for `NSE`.
+- **BSE**: `isProviderEnabled(global-datafeeds)` **and** at least one
+  active `provider = 'global-datafeeds'` instrument row exists for `BSE`.
+  No connection check — GlobalDataFeeds is a server-side API-key provider
+  (`requiresConnection: false`), not OAuth.
+- `BSE_IDX` is intentionally **not** gated by this — it's index data with
+  its own, separately-audited population semantics, out of scope here.
+
+`isProviderEnabled` defaults to `true` when an admin has never touched the
+provider's settings row — it says nothing about whether the provider was
+ever actually connected or synced. Before this existed, `listSupportedExchanges`
+advertised NSE whenever Zerodha was merely enabled (the default), even in
+an environment where Zerodha was never connected and zero NSE instruments
+existed — production offered NSE in every exchange picker while
+`/stocks/search?exchange=NSE` silently returned nothing. The global search
+modal (`GlobalStockSearchModal.tsx`) defaults its India-exchange filter to
+`indiaExchanges[0].code`, and NSE was always listed before BSE, so this
+also meant the search modal silently defaulted to a dead exchange in that
+environment — fixed here with no frontend change needed, since the
+frontend already just defers to whatever this function reports.
+
+Any failure to determine Zerodha's connection state (the `getProviderStatus`
+call throws) is treated as "not connected" — ambiguous must never advertise
+a possibly-empty exchange. The instrument-existence check
+(`hasActiveInstruments`, `market-data.instruments.ts`) is deliberately a
+plain existence check, not routed through `buildStockFilters`/`countStockRows`
+— those apply search-listing shaping (price > 0 unless `includeUnpriced`,
+move filters) that would under-report availability for a freshly-synced,
+not-yet-priced instrument.
+
 ## "Latest expected trading day"
 
 `backend/src/modules/market-data/trading-calendar.ts` —
