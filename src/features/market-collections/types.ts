@@ -107,6 +107,9 @@ export type CollectionWeeklyStrongStock = {
   // began, through today's latest close - distinct from changePct (which
   // is just yesterday-to-today). Null when unavailable.
   returnPct: number | null;
+  // Date since this stock has continuously remained in the current Harvest
+  // result. Null when there's no currently-open qualifying streak.
+  inSince: string | null;
   volume: number;
   sector: string | null;
   industry: string | null;

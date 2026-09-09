@@ -142,6 +142,12 @@ from the already-persisted daily marker at the read boundary, so no new
 column or migration was needed, and it can never claim a more recent week
 than what the underlying computation actually used.
 
+Same conversion applies to each row's own `inSince` field (Harvest Results
+table, "In Since" column) - the canonical week-ending Friday of the entry
+week `findCurrentStreakEntryIndex` resolves for that stock's current
+qualifying streak, the same entry point `returnPct` is computed from; never
+a raw persisted candle date.
+
 `WeeklyStrongMembershipChanges.tsx` ("Stocks In This Week" / "Stocks Out
 This Week") compares this same canonical `weekEnding` against the
 Backtest's `previousWeekEnding` for the "vs {date}" line — both resolved

@@ -36,9 +36,9 @@ import {
   exportWeeklyStrongStocksToCsv,
   exportWeeklyStrongStocksToXlsx,
 } from "../lib/export-weekly-strong-stocks";
-import { formatWeekEnding } from "../lib/format-as-of-date";
+import { formatMediumDate, formatWeekEnding } from "../lib/format-as-of-date";
 
-type SortKey = "symbol" | "name" | "close" | "changePct" | "returnPct" | "volume";
+type SortKey = "symbol" | "name" | "close" | "changePct" | "returnPct" | "inSince" | "volume";
 type SortDirection = "asc" | "desc";
 
 const SORTABLE_COLUMNS: Array<{ key: SortKey; label: string; align?: "right" }> = [
@@ -47,21 +47,22 @@ const SORTABLE_COLUMNS: Array<{ key: SortKey; label: string; align?: "right" }> 
   { key: "close", label: "Close", align: "right" },
   { key: "changePct", label: "% Change", align: "right" },
   { key: "returnPct", label: "Return", align: "right" },
+  { key: "inSince", label: "In Since", align: "right" },
   { key: "volume", label: "Volume", align: "right" },
 ];
 
 function compareRows(a: CollectionWeeklyStrongStock, b: CollectionWeeklyStrongStock, key: SortKey) {
   const av = a[key];
   const bv = b[key];
-  // returnPct can be null (no currently-open qualifying streak) - treated
-  // as the lowest possible value so it settles to one end of the sort
-  // rather than throwing off a numeric comparison against real values.
-  if (typeof av === "number" || typeof bv === "number" || av === null || bv === null) {
-    const an = typeof av === "number" ? av : -Infinity;
-    const bn = typeof bv === "number" ? bv : -Infinity;
-    return an - bn;
+  // returnPct/inSince can be null (no currently-open qualifying streak) -
+  // treated as the lowest possible value so it settles to one end of the
+  // sort rather than throwing off a comparison against real values.
+  if (av === null || bv === null) {
+    if (av === bv) return 0;
+    return av === null ? -1 : 1;
   }
-  return String(av ?? "").localeCompare(String(bv ?? ""));
+  if (typeof av === "number" && typeof bv === "number") return av - bv;
+  return String(av).localeCompare(String(bv));
 }
 
 export function WeeklyStrongStockTable({
@@ -343,6 +344,9 @@ export function WeeklyStrongStockTable({
                     )}
                   </TableCell>
                   <TableCell className="px-4 text-right text-muted-foreground tabular-nums">
+                    {item.inSince ? formatMediumDate(item.inSince) : "—"}
+                  </TableCell>
+                  <TableCell className="px-4 text-right text-muted-foreground tabular-nums">
                     {formatCompactVolume(item.volume)}
                   </TableCell>
                 </TableRow>
@@ -452,6 +456,12 @@ export function WeeklyStrongStockTable({
                         {typeof item.returnPct !== "number"
                           ? "—"
                           : `${item.returnPct >= 0 ? "+" : ""}${item.returnPct.toFixed(2)}%`}
+                      </dd>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <dt className="text-[0.6875rem] text-muted-foreground">In Since</dt>
+                      <dd className="text-xs font-medium tabular-nums text-foreground">
+                        {item.inSince ? formatMediumDate(item.inSince) : "—"}
                       </dd>
                     </div>
                     <div className="flex items-center gap-1.5">
