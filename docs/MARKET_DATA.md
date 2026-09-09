@@ -78,10 +78,20 @@ read:
    fetch), then re-read.
 3. **Else if** the latest stored row is older than
    `getLatestExpectedTradingDay(exchange)` (see below) →
-   **`isLatestDailyCandleStale`** is true → **incremental refresh only**
-   (`runLatestCandleRefreshOnce` → `syncLatestDailyCandlesForSymbols`, a
-   ~14-day provider window via the `latest_daily_candles` capability), then
-   re-read.
+   **`isLatestDailyCandleStale`** is true → **incremental refresh,
+   fire-and-forget** (`runLatestCandleRefreshOnce` →
+   `syncLatestDailyCandlesForSymbols`, a ~14-day provider window via the
+   `latest_daily_candles` capability) — the currently-persisted rows are
+   returned **immediately, without awaiting or re-reading**. The refresh
+   still runs (self-healing is not removed) and lands for the *next* read of
+   that symbol; `runLatestCandleRefreshOnce`'s own in-flight-promise map
+   still dedupes concurrent refreshes the same as before, and
+   `safeProviderAction` already swallows/logs any failure internally, so
+   this can't produce an unhandled rejection. This is deliberately
+   asymmetric with step 2: a stale-by-a-day symbol is still fully usable
+   from stored data, so the request must not pay for a provider round-trip
+   just to serve it; missing/discontinuous history is not usable, so step 2
+   stays synchronous.
 4. **Else** (fresh) → **no provider call at all**, serve straight from the
    DB.
 
@@ -92,6 +102,35 @@ read path had no freshness check at all — once a symbol had *any* history
 it was served forever, stale or not, until something else happened to
 refresh it. Do not reintroduce a "check freshness → full backfill" branch;
 staleness must route to the incremental path only.
+
+**Step 3 was synchronous (`await`ed) until a production incident: opening
+an already-fully-bootstrapped chart could take ~8.5s TTFB with zero backend
+issue other than this — the request was blocking on a real GlobalDataFeeds
+round-trip for a single day's candle every time `isLatestDailyCandleStale`
+was true, measured at 8.0–8.6s locally against the same 9s
+`GLOBAL_DATAFEEDS_HISTORY_REQUEST_TIMEOUT_MS` this provider call uses.
+Persisted candles are authoritative; a stale-by-a-day read should never
+wait on a provider. Do not re-`await` this call — see the function's own
+comment for why.**
+
+## Stock search — zero-local-match provider fallback
+
+`backend/src/modules/market-data/market-data.stocks.ts`, `listStocksUncached`.
+When a search query (`q`) matches nothing locally, the code falls back to
+`syncProviderInstrumentSearch` (GDF's `fetchInstruments` — the full exchange
+instrument list, cached in-process for 30 minutes) to discover a
+genuinely-new-but-not-yet-synced symbol. This fallback is **fire-and-forget**
+for the same reason as the freshness refresh above: a local miss is the
+*common* case for interactive search (typos, partial input, symbols that
+don't exist) and must not block the response — an empty result now is
+accurate, and a real discovery lands in the background for the *next*
+search of the same term. This was also `await`ed until a production
+incident: with a cold provider-instrument cache, this call has no bound
+short of the GDF client's own default 30s timeout, and was measured hanging
+the public search endpoint for 15s+. Do not re-`await` this call, and do
+not add a synchronous price-hydration step after it — the next search that
+finds the newly-discovered row already goes through the normal
+`rowsMissingPrices` hydration path further down this same function.
 
 ### In-flight dedup
 
