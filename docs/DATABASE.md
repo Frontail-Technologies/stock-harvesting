@@ -239,6 +239,35 @@ SELECT hypertable_name, num_dimensions FROM timescaledb_information.hypertables 
   `logger` instead, so a future metrics/log-dashboard setup has the data
   without this phase fabricating a new monitoring dependency.
 
+**Chunk interval is 7 days** (`timescaledb_information.dimensions`), which
+means a query spanning `candles`' full ~30-year history fans out into one
+scan node per chunk — roughly 1,500+ nodes for the full range. This is fine
+for the narrow, recent-date-range reads every real query path already uses
+(charts, latest-price refresh), but it makes any *wide-range* aggregate
+query (e.g. `GROUP BY symbol` across decades) expensive regardless of how
+few symbols are involved — this is what caused the `bootstrap-bse-candles`
+coverage-check timeout (see below), not raw row volume. No migration
+changes this today: `set_chunk_time_interval` only affects chunks created
+after it runs, so it wouldn't fix the ~1,500 chunks already on disk, and
+every real query path is already narrow-range and unaffected. Worth
+revisiting if a future feature needs efficient wide-range aggregates.
+
+### Candle bootstrap checkpoints
+
+`candle_bootstrap_checkpoints` (migration `0019_first_ravenous.sql`) is a
+small, plain (non-hypertable) table, one row per
+`(exchange, symbol, timeframe, kind)`, that `bootstrap-bse-candles.ts` (and
+any future bulk historical-backfill script) uses to decide whether a symbol
+still needs a provider fetch on resume. It is **not** derived from
+`candles.MIN(time)` — an instrument's earliest stored candle reflects its
+listing date, not whether a bootstrap run already completed for it, so a
+company that listed decades after the requested `from` date would otherwise
+look "not yet covered" forever. `status` is `success | partial | failed`
+(only `success` suppresses reprocessing); `bootstrapVersion` lets a future
+change to bootstrap semantics deliberately invalidate old checkpoints. See
+`market-data.candle-bootstrap-checkpoints.ts` and the script's own comments
+for the full resume-decision logic.
+
 ## Migrations
 
 File-based via `drizzle-kit generate` / `drizzle-kit migrate` (npm scripts
