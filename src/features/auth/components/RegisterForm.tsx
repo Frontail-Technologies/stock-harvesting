@@ -45,7 +45,13 @@ export function RegisterForm({
 
   return (
     <>
-      <form className="mt-4 space-y-2.5" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <GoogleAuthButton
+        pending={isGoogleSubmitting}
+        disabled={pending || turnstileMissing}
+        onClick={onGoogleClick}
+      />
+
+      <form className="space-y-2.5" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
           <Input
             type="text"
@@ -97,12 +103,6 @@ export function RegisterForm({
           Create account
         </Button>
       </form>
-
-      <GoogleAuthButton
-        pending={isGoogleSubmitting}
-        disabled={pending || turnstileMissing}
-        onClick={onGoogleClick}
-      />
 
       <p className="mt-4 text-center text-[13px] text-landing-text-secondary">
         Already have an account?{" "}

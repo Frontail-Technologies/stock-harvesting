@@ -33,28 +33,30 @@ type GoogleAuthButtonProps = {
 };
 
 /**
- * The "OR" divider + Continue with Google control shared by the login and
- * register cards, so the markup and loading state exist in exactly one place.
+ * The Continue with Google control + "OR" divider shared by the login and
+ * register cards, so the markup and loading state exist in exactly one
+ * place. Renders as Google button first, divider after - it's meant to sit
+ * above the email/password form, with the divider separating the two.
  */
 export function GoogleAuthButton({ pending, disabled, onClick }: GoogleAuthButtonProps) {
   return (
     <>
-      <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-landing-text-subtle">
-        <span className="h-px flex-1 bg-landing-border" />
-        OR
-        <span className="h-px flex-1 bg-landing-border" />
-      </div>
-
       <Button
         type="button"
         variant="outline"
-        className="h-10 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-bg text-[13px] font-semibold text-landing-fg shadow-sm hover:bg-landing-fg/5 disabled:cursor-not-allowed"
+        className="mt-4 h-10 w-full cursor-pointer gap-3 rounded-lg border-landing-border-strong bg-landing-bg text-[13px] font-semibold text-landing-fg shadow-sm hover:bg-landing-fg/5 disabled:cursor-not-allowed"
         onClick={onClick}
         disabled={disabled}
       >
         {pending ? <Spinner size="sm" /> : <GoogleIcon className="size-5" />}
         {pending ? "Connecting..." : "Continue with Google"}
       </Button>
+
+      <div className="my-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-landing-text-subtle">
+        <span className="h-px flex-1 bg-landing-border" />
+        OR
+        <span className="h-px flex-1 bg-landing-border" />
+      </div>
     </>
   );
 }

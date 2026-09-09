@@ -30,6 +30,14 @@ function readErrorMessage(error: unknown, fallback: string) {
 export function LoginScreen() {
   const router = useRouter();
   const flow = useAuthFlow();
+  // Google is now the first/primary control on this screen (see LoginForm/
+  // RegisterForm), so the widget defaults to solving for that action - a
+  // fresh page load's most likely first click is now "Continue with
+  // Google", and the widget must already be verified for THAT action by
+  // then, not "user-password-login". The email/password path stays covered
+  // by activateLoginField/activateRegisterField below, which re-bind the
+  // widget to the right action the moment a form field is focused - well
+  // before the user reaches the submit button.
   const {
     ref: turnstileRef,
     action: turnstileAction,
@@ -39,7 +47,7 @@ export function LoginScreen() {
     reset: resetTurnstile,
     activate: activateTurnstile,
     ensureReady: ensureTurnstileReady,
-  } = useAuthTurnstile("user-password-login");
+  } = useAuthTurnstile("user-google-login");
 
   const googleLogin = useGoogleLogin();
   const passwordLogin = usePasswordLogin();
