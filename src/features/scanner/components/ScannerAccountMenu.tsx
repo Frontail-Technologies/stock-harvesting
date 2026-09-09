@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, LineChart, ListChecks, LogOut } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, LineChart, ListChecks, LogOut } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -103,6 +103,12 @@ export function ScannerAccountMenu() {
         >
           <LineChart className="size-4" />
           Charts
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          render={<Link href="/widget" className="h-9 cursor-pointer px-3" />}
+        >
+          <LayoutGrid className="size-4" />
+          Widget
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
