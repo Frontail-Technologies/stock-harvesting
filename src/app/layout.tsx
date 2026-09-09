@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Geist, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
+import { GoogleAnalyticsScript } from "@/features/analytics";
 import { AuthBootstrap } from "@/features/auth";
 import { QueryProvider } from "@/features/api";
 import { GlobalStockSearchModal } from "@/features/global-search/components/GlobalStockSearchModal";
@@ -148,6 +149,7 @@ export default async function RootLayout({
         className="min-h-full flex flex-col bg-background text-foreground"
         suppressHydrationWarning
       >
+        <GoogleAnalyticsScript />
         <PwaProvider />
         <QueryProvider>
 

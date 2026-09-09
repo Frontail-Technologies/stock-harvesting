@@ -117,6 +117,7 @@ See `docs/OBSERVABILITY.md` for the full picture — endpoints, security, and av
 | `NEXT_PUBLIC_DEV_MOCK_FALLBACK` | No | `"true"` enables mock-data fallbacks in dev when the backend is unavailable |
 | `NEXT_PUBLIC_DEBUG_MARKET_STREAM` | No | Verbose console logging for the live market-data WebSocket stream |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Required in production auth protection | Public Cloudflare Turnstile site key for login challenges |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | No | Google Analytics (gtag.js) measurement ID, e.g. `G-XXXXXXXXXX`. Unset renders no analytics script at all — see `GoogleAnalyticsScript` (`src/features/analytics`), mounted site-wide in `src/app/layout.tsx` |
 
 AdSense is no longer environment-configured. Mode (off/preview/live), the
 AdSense publisher ID, and each placement's enabled/slot-ID are all runtime
