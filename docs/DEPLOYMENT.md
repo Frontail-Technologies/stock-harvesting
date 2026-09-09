@@ -216,17 +216,26 @@ existing data:
 4. Verify (see `docs/DATABASE.md` for the exact SQL):
    `SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';`
    and `SELECT hypertable_name FROM timescaledb_information.hypertables WHERE hypertable_name = 'candles';`.
-5. Start the API and, separately, the worker process (`npm run worker`) —
+5. `npm run db:seed:admin -- --email=<address> --password=<value>` — a
+   fresh database has no users at all, and the admin API itself requires
+   an existing admin session to call it, so this is the only way to create
+   the first one. Credentials can also come from `ADMIN_SEED_EMAIL`/
+   `ADMIN_SEED_PASSWORD`/`ADMIN_SEED_NAME` env vars instead of flags (e.g.
+   for a one-shot deploy step); the script never logs the password.
+   Idempotent — re-running against an existing admin makes no changes
+   unless `--force-password` is also passed. See
+   `backend/src/scripts/seed-admin.ts`.
+6. Start the API and, separately, the worker process (`npm run worker`) —
    both required; the worker is what actually executes queued
    instrument-sync, backtest, and collection-preparation jobs.
-6. Run the GDF BSE instrument sync (Admin → Data Providers, or let the
+7. Run the GDF BSE instrument sync (Admin → Data Providers, or let the
    scheduled job pick it up).
-7. Import BSE collections (Admin → Segments → Bulk Import).
-8. Each import automatically queues candle backfill + backtest generation
+8. Import BSE collections (Admin → Segments → Bulk Import).
+9. Each import automatically queues candle backfill + backtest generation
    (`docs/BACKTEST.md`) — collections show "Preparing" until `Ready`/`Partial`.
-9. Existing scheduled jobs (instrument sync, latest-price refresh, Weekly
-   Strong incremental) continue running every 30 min per exchange as
-   already documented above, unchanged by any of this.
+10. Existing scheduled jobs (instrument sync, latest-price refresh, Weekly
+    Strong incremental) continue running every 30 min per exchange as
+    already documented above, unchanged by any of this.
 
 ## Rollback
 

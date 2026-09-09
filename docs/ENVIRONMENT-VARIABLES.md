@@ -107,6 +107,14 @@ See `docs/OBSERVABILITY.md` for the full picture — endpoints, security, and av
 | `SCRATCH_DATABASE_URL` | `restore-test.sh` | **Required.** Throwaway database for restore testing — must differ from `DATABASE_URL`, checked explicitly |
 | `VERIFY_TABLES` | `restore-test.sh` | Space-separated table list to row-count after restore (default: `instruments candles users market_collections sync_jobs`) |
 
+## Backend admin-seed script (not validated by `env.ts` — read directly by `seed-admin.ts`)
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `ADMIN_SEED_EMAIL` | No (or pass `--email=`) | Email for the admin account `npm run db:seed:admin` creates/promotes |
+| `ADMIN_SEED_PASSWORD` | No (or pass `--password=`) | Password for that account (min 8 chars). Never logged |
+| `ADMIN_SEED_NAME` | No (or pass `--name=`) | Display name (default `Admin`) |
+
 ## Frontend (`.env.local`)
 
 | Variable | Required | Purpose |
