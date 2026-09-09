@@ -11,6 +11,8 @@ type CountryMarker = Marker & {
   label: string;
   tier: "primary" | "secondary" | "expanding";
   labelSide: "left" | "right";
+  dx?: number;
+  dy?: number;
 };
 
 const COUNTRY_MARKERS: CountryMarker[] = [
@@ -18,10 +20,10 @@ const COUNTRY_MARKERS: CountryMarker[] = [
   { code: "US", lat: 39.8, lng: -98.6, size: 0, label: "United States", tier: "primary", labelSide: "right" },
   { code: "JP", lat: 36.2, lng: 138.3, size: 0, label: "Japan", tier: "secondary", labelSide: "left" },
   { code: "AU", lat: -25.3, lng: 133.8, size: 0, label: "Australia", tier: "secondary", labelSide: "left" },
-  { code: "GB", lat: 54, lng: -2.5, size: 0, label: "United Kingdom", tier: "secondary", labelSide: "right" },
+  { code: "GB", lat: 54, lng: -2.5, size: 0, label: "United Kingdom", tier: "secondary", labelSide: "left", dx: -3, dy: -2 },
   { code: "CA", lat: 56.1, lng: -106, size: 0, label: "Canada", tier: "secondary", labelSide: "right" },
   { code: "SG", lat: 1.35, lng: 103.8, size: 0, label: "Singapore", tier: "secondary", labelSide: "left" },
-  { code: "EU", lat: 50, lng: 9, size: 0, label: "Europe", tier: "expanding", labelSide: "left" },
+  { code: "EU", lat: 50, lng: 9, size: 0, label: "Europe", tier: "expanding", labelSide: "right", dx: 3, dy: 2 },
 ];
 
 export function HeroWorldMap() {
@@ -38,8 +40,10 @@ export function HeroWorldMap() {
           const primary = marker.tier === "primary";
           const fw = primary ? 8 : 6.8;
           const fh = fw * (2 / 3);
+          const mx = x + (marker.dx ?? 0);
+          const my = y + (marker.dy ?? 0);
           const anchor = marker.labelSide === "left" ? "end" : "start";
-          const labelX = marker.labelSide === "left" ? x - fw / 2 - 1.6 : x + fw / 2 + 1.6;
+          const labelX = marker.labelSide === "left" ? mx - fw / 2 - 1.6 : mx + fw / 2 + 1.6;
 
           return (
             <g
@@ -48,15 +52,15 @@ export function HeroWorldMap() {
             >
               <image
                 href={flagUri(marker.code)}
-                x={x - fw / 2}
-                y={y - fh / 2}
+                x={mx - fw / 2}
+                y={my - fh / 2}
                 width={fw}
                 height={fh}
                 preserveAspectRatio="xMidYMid slice"
               />
               <rect
-                x={x - fw / 2}
-                y={y - fh / 2}
+                x={mx - fw / 2}
+                y={my - fh / 2}
                 width={fw}
                 height={fh}
                 fill="none"
@@ -65,7 +69,7 @@ export function HeroWorldMap() {
               />
               <text
                 x={labelX}
-                y={y + 0.9}
+                y={my + 0.9}
                 textAnchor={anchor}
                 fontSize={primary ? 2.4 : 2}
                 className={cn(
