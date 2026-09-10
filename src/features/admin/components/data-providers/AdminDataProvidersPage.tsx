@@ -243,22 +243,6 @@ export function AdminDataProvidersPage() {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={sectorClassificationMutation.isPending}
-              onClick={handleSectorClassificationSync}
-              title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE/BSE instruments - independent of the Zerodha connection above"
-            >
-              {sectorClassificationMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync Sector Data
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
               disabled={!zerodhaConnection?.connected || indexSyncMutation.isPending}
               onClick={handleIndexSync}
               title="Sync NSE indices (NIFTY AUTO, BANKNIFTY, NIFTY IT, ...) as instruments, filtered out of the regular equity sync - run this before Backfill Index History"
@@ -472,6 +456,33 @@ export function AdminDataProvidersPage() {
           </div>
         </div>
 
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/50 px-3 py-3">
+          <div className="min-w-55 flex-1">
+            <p className="text-sm font-medium text-foreground">Sector &amp; industry classification</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Powered by GlobalDataFeeds Fundamentals. One pass classifies both NSE and BSE
+              instruments and repopulates the &quot;BSE - Classified Universe&quot; dashboard
+              segment. Not tied to any single exchange feed.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={sectorClassificationMutation.isPending}
+            onClick={handleSectorClassificationSync}
+            title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE and BSE instruments"
+          >
+            {sectorClassificationMutation.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="size-3.5" />
+            )}
+            Sync Sector Data
+          </Button>
+        </div>
+
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <StatusRow
             label="Provider config"
@@ -493,15 +504,20 @@ export function AdminDataProvidersPage() {
           />
         </div>
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          Sector/industry classification (which also auto-populates the &quot;BSE - Classified
-          Universe&quot; dashboard segment) is synced from the &quot;Sync Sector Data&quot;
-          button above - it covers both NSE and BSE in one pass.
-        </p>
-
         {globalDatafeedsStatus?.errorMessage ? (
           <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
             {globalDatafeedsStatus.errorMessage}
+          </div>
+        ) : null}
+        {sectorClassificationMutation.isSuccess ? (
+          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            Sector data sync started. It classifies NSE and BSE instruments in one pass - check
+            Jobs for progress.
+          </div>
+        ) : null}
+        {sectorClassificationMutation.isError ? (
+          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+            Sector data sync failed to start. Check the backend log for the provider message.
           </div>
         ) : null}
         {bseSyncMutation.isSuccess ? (
