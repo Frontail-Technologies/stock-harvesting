@@ -21,9 +21,16 @@ the top 4 Dashboard widgets — do not conflate them).
 - **`weekly_strong_backtest_members`** — the passing stocks for one run.
   Denormalized `symbol`/`name`/`exchange`/`sector`/`industry` snapshot
   **at generation time** (not a live join) — a later sector/industry
-  reclassification does not retroactively change an old run's display
+  *reclassification* does not retroactively change an old run's display
   values. FK `runId` → runs (cascade), `instrumentId` → instruments
-  (cascade).
+  (cascade). Read paths (`getWeeklyStrongBacktestStacked`,
+  `getWeeklyStrongBacktestWeekDetail`) resolve the display sector/industry
+  as `COALESCE(frozen, instruments.<current>)` — the frozen value always
+  wins when it exists (so a reclassification still can't rewrite a past
+  week), but a run generated *before* any classification data existed
+  (every member frozen as `NULL`) heals to the current classification
+  instead of collapsing the whole chart into "Unclassified". Both `NULL`
+  → genuinely "Unclassified".
 
 ## Membership mode — do not blend
 
@@ -248,6 +255,34 @@ a dev/test convenience) — in production with no queue, the row is simply
 left `pending` and an admin can retry via `POST /api/admin/market-collections/:id/prepare`
 once the queue is available, rather than ever running a potentially
 10-year backfill detached inside the API process.
+
+**Bulk candle-read safety.** Every multi-symbol `candles` read this step
+makes goes through `market-data.candles.ts`'s batched primitives:
+`findSymbolsNeedingHistoryBackfill` (coverage) scans symbols
+`CANDLE_COVERAGE_SYMBOL_BATCH_SIZE` at a time, `readMetricCandles` (the
+history read behind `computeWeeklyStrongBacktestMembers` /
+`computeAvailabilityCounts`) `CANDLE_READ_SYMBOL_BATCH_SIZE` at a time,
+sequentially (never raising DB concurrency), and `readMetricCandles` also
+bounds the query `time <= today` instead of the open-ended `time >= from`
+it used before. `candles` is a 7-day-interval TimescaleDB hypertable, so a
+single `symbol IN (...)` scan over a 10-year range fans out across hundreds
+of per-chunk index scans; a ~250-symbol collection ("BSE 250 MICROCAP") was
+hitting the 30s DB statement timeout on both queries. Batching keeps each
+query well under the timeout; the merged result set and its `(symbol,
+time)` ordering are byte-identical to the old single query, and coverage
+detection still **fails closed** — a batch error aborts preparation, it is
+never read as "every symbol needs backfill".
+
+**Failure observability.** On failure the catch block records which stage
+was running (`coverage_detection` / `candle_backfill` /
+`current_membership_backtest` / `historical_membership_backtest` /
+`availability`) in both the structured `logger.error` (alongside
+`membershipVersionId`, `symbolCount`, `errorCode`, `durationMs`) and, in
+compact form, in `market_collections.preparation_error` — e.g.
+`current_membership_backtest: [57014] canceling statement due to statement
+timeout`. It never persists the failing SQL text, a parameter dump, or a
+stack trace. Admin surfaces this string under the "Failed" badge on the
+collection detail page and in the Retry tooltip on the list.
 
 ## Collection deletion (hard delete)
 

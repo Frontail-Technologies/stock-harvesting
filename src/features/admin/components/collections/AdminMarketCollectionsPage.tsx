@@ -223,7 +223,18 @@ export function AdminMarketCollectionsPage() {
                         >
                           <RotateCcw className="size-3.5" />
                         </TooltipTrigger>
-                        <TooltipContent>Retry</TooltipContent>
+                        <TooltipContent className="max-w-xs">
+                          {collection.preparationError ? (
+                            <span className="block">
+                              <span className="font-semibold">Preparation failed.</span> Click to retry.
+                              <span className="mt-1 block break-words font-mono text-[11px] opacity-90">
+                                {collection.preparationError}
+                              </span>
+                            </span>
+                          ) : (
+                            "Retry data preparation"
+                          )}
+                        </TooltipContent>
                       </Tooltip>
                     )}
                   </div>

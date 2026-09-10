@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { adminPath } from "@/utils/seo";
@@ -121,6 +121,18 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
           </Button>
         </div>
       </div>
+
+      {collection.preparationStatus === "failed" && collection.preparationError && (
+        <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Data preparation failed</p>
+            <p className="mt-0.5 break-words font-mono text-[11px] leading-relaxed text-danger/90">
+              {collection.preparationError}
+            </p>
+          </div>
+        </div>
+      )}
 
       <AdminDeleteCollectionDialog
         open={deleteOpen}

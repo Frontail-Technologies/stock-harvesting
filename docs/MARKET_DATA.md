@@ -331,6 +331,22 @@ answers "is a backfill attempt worth making," never "is this instrument's
 history complete" — that verdict is the evaluator's own
 `hasSufficientWeeklyStrongHistory`, not a calendar-age check.
 
+Its query is an unbounded `min(time)` GROUP BY (no time filter — that's
+semantically required: the `earliest > requiredFromDate` check needs the
+true earliest, not a windowed one), so it scans every hypertable chunk a
+symbol has data in. It runs in sequential batches of
+`CANDLE_COVERAGE_SYMBOL_BATCH_SIZE` symbols and **fails closed** — any
+batch error propagates, it is never read as "no symbol has history"
+(indistinguishable from "every symbol needs backfill"). The larger
+`readMetricCandles` history read (behind `readDailyAndWeeklyMetricCandles`
+→ `computeWeeklyStrongBacktestMembers` / RS metrics) batches at
+`CANDLE_READ_SYMBOL_BATCH_SIZE` and adds a `time <= today` upper bound so
+the planner isn't left with an open-ended range. Both changes came from a
+production incident where a ~250-symbol collection ("BSE 250 MICROCAP")
+hit the 30s DB statement timeout on both queries; batching bounds each
+query's cost, and the merged rows plus their `(symbol, time)` order are
+identical to the pre-batch single query.
+
 **`refreshAllLatestInstrumentPrices`'s universe is deliberately unchanged**
 by collection preparation — it still refreshes every active instrument per
 exchange, not a collection-member subset. `price-alerts.service.ts` and the
