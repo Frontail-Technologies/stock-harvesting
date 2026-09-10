@@ -17,6 +17,7 @@ import type {
   AdminAiSettingsResponse,
   AdminDataProviderConnectResponse,
   AdminDataProviderConnectUrlResponse,
+  AdminDataProviderHealthResult,
   AdminDataProviderSettingsResponse,
   AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
@@ -157,12 +158,31 @@ export function updateAdminDataProviderSettings(input: {
   });
 }
 
+// The status endpoints are local/DB-only server-side (no external provider
+// call), so a short client ceiling is enough - anything slower is the backend
+// itself being unreachable, which should fail the query rather than hang it.
+const LOCAL_STATUS_REQUEST_TIMEOUT_MS = 8_000;
+// The health endpoint runs the bounded external check server-side (capped at
+// 6s per provider). Give the round trip comfortable headroom above that.
+const HEALTH_REQUEST_TIMEOUT_MS = 12_000;
+
 export function getAdminDataProviderStatus() {
-  return adminApiFetch<AdminDataProviderStatus>(API_ROUTES.admin.dataProviderStatus);
+  return adminApiFetch<AdminDataProviderStatus>(API_ROUTES.admin.dataProviderStatus, {
+    signal: AbortSignal.timeout(LOCAL_STATUS_REQUEST_TIMEOUT_MS),
+  });
 }
 
 export function getAdminDataProviderStatuses() {
-  return adminApiFetch<AdminDataProviderStatusesResponse>(API_ROUTES.admin.dataProviderStatuses);
+  return adminApiFetch<AdminDataProviderStatusesResponse>(API_ROUTES.admin.dataProviderStatuses, {
+    signal: AbortSignal.timeout(LOCAL_STATUS_REQUEST_TIMEOUT_MS),
+  });
+}
+
+export function getAdminDataProviderHealth(provider: string) {
+  return adminApiFetch<AdminDataProviderHealthResult>(
+    API_ROUTES.admin.dataProviderHealth(provider),
+    { signal: AbortSignal.timeout(HEALTH_REQUEST_TIMEOUT_MS) }
+  );
 }
 
 export function getAdminDataProviderConnectUrl() {

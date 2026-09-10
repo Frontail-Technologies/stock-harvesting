@@ -12,6 +12,7 @@ export {
   useUpdateAdminAiSettings,
 } from "./hooks/use-admin-ai-settings";
 export {
+  useAdminDataProviderHealth,
   useAdminDataProviderStatus,
   useAdminDataProviderStatuses,
   useConnectAdminDataProvider,
@@ -45,6 +46,7 @@ export type {
   AdminDataProviderConnectResponse,
   AdminDataProviderConnectUrlResponse,
   AdminDataProviderHealth,
+  AdminDataProviderHealthResult,
   AdminDataProviderSettingsResponse,
   AdminDataProviderSettingsRow,
   AdminDataProviderStatus,

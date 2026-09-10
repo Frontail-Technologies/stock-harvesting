@@ -64,6 +64,33 @@ Admin → Data Providers (`/admin/data-providers`).
 - **Realtime WS disconnect**: see [CHARTS.md](./CHARTS.md) — the frontend
   `useMarketStream` hook auto-reconnects after 2.5s indefinitely; already-
   rendered chart data is never cleared on disconnect.
+- **Admin "Data Providers" page — local status vs. external health are two
+  separate request paths, by design:**
+  - **Local status** — `GET /api/admin/data-provider/statuses` →
+    `getAllProviderLocalStatuses` → `getProviderStatus`. Env- and DB-derived
+    only, **zero external provider calls**, so it resolves in a few ms.
+    Returns per provider: `providerConfigured` (`adapter.isConfigured()`),
+    `enabled`, `priority`, `requiresConnection`, `connected` / `status`
+    (DB-derived for OAuth Zerodha via its stored connection row + token
+    expiry; mirrors `providerConfigured` for non-OAuth providers, which
+    have no connection concept), `lastSyncedAt`, `errorMessage` (stored
+    connection error). The singular `GET /api/admin/data-provider/status`
+    is the same, scoped to Zerodha. Frontend: `useAdminDataProviderStatus`
+    / `useAdminDataProviderStatuses`, `retry: 1`, `AbortSignal.timeout` 8s.
+  - **External health** — `GET /api/admin/data-provider/health/:provider` →
+    `getProviderHealth` → `checkConnectionWithTimeout(adapter)`. This is the
+    only path that runs `adapter.checkConnection()` (GDF WS `GetInstruments`
+    ping, EODHD sample-candle fetch), bounded by
+    `PROVIDER_HEALTH_CHECK_TIMEOUT_MS` (6s) with a swallowed rejection, so a
+    slow/dead provider resolves to `status: "error"`, never hangs. One
+    endpoint **per provider** so a GlobalDataFeeds timeout can't delay
+    EODHD's card and vice versa. Frontend: `useAdminDataProviderHealth(provider)`,
+    one independent React Query per card, `retry: 1`, `AbortSignal.timeout` 12s.
+  - The page renders "Provider config" from the local query only ("Checking…"
+    while it is pending, "Unable to check" only if that request itself
+    fails), and a separate "Health" row + connection badge from the health
+    query ("Checking…" → Healthy / Error / Unknown). A slow external health
+    check never puts "Provider config" into "Checking…".
 
 ## BSE instrument persistence universe
 

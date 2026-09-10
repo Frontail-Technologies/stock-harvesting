@@ -69,6 +69,8 @@ export const API_ROUTES = {
     branding: "/api/admin/branding",
     dataProviderStatus: "/api/admin/data-provider/status",
     dataProviderStatuses: "/api/admin/data-provider/statuses",
+    dataProviderHealth: (provider: string) =>
+      `/api/admin/data-provider/health/${encodeURIComponent(provider)}`,
     dataProviderConnectUrl: "/api/admin/data-provider/connect-url",
     dataProviderConnect: "/api/admin/data-provider/connect",
     dataProviderSync: "/api/admin/data-provider/sync",

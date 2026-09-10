@@ -120,6 +120,8 @@ export const queryKeys = {
     branding: ["admin", "branding"] as const,
     dataProviderStatus: ["admin", "data-provider-status"] as const,
     dataProviderStatuses: ["admin", "data-provider-statuses"] as const,
+    dataProviderHealth: (provider: string) =>
+      ["admin", "data-provider-health", provider] as const,
     dataProviderConnect: ["admin", "data-provider-connect"] as const,
     aiSettings: ["admin", "ai-settings"] as const,
     aiSettingsKey: ["admin", "ai-settings", "key"] as const,

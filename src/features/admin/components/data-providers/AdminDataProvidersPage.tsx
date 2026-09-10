@@ -32,10 +32,12 @@ import {
 } from "@/components/ui/table";
 import type {
   AdminDataProviderHealth,
+  AdminDataProviderHealthResult,
   AdminDataProviderSettingsRow,
   AdminDataProviderStatusEntry,
 } from "../../types";
 import {
+  useAdminDataProviderHealth,
   useAdminDataProviderStatus,
   useAdminDataProviderStatuses,
   useBackfillAdminIndexCandles,
@@ -109,6 +111,7 @@ export function AdminDataProvidersPage() {
   const globalDatafeedsStatus = statusesQuery.data?.providers.find(
     (entry) => entry.provider === "global-datafeeds"
   );
+  const globalDatafeedsHealthQuery = useAdminDataProviderHealth("global-datafeeds");
 
   const zerodhaConnection = zerodhaConnectionQuery.data;
   const callbackUrl = useMemo(() => {
@@ -294,22 +297,22 @@ export function AdminDataProvidersPage() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <StatusRow
             label="Provider config"
-            value={
-              zerodhaConnectionQuery.isLoading
-                ? "Checking..."
-                : zerodhaConnection?.providerConfigured
-                  ? "Configured"
-                  : "Missing env keys"
-            }
+            value={providerConfigValue({
+              isLoading: zerodhaConnectionQuery.isLoading,
+              isError: zerodhaConnectionQuery.isError,
+              providerConfigured: zerodhaConnection?.providerConfigured,
+            })}
           />
           <StatusRow
             label="Connection"
             value={
               zerodhaConnectionQuery.isLoading
                 ? "Checking..."
-                : zerodhaConnection?.connected
-                  ? "Connected"
-                  : "Not connected"
+                : zerodhaConnectionQuery.isError && !zerodhaConnection
+                  ? "Unable to check"
+                  : zerodhaConnection?.connected
+                    ? "Connected"
+                    : "Not connected"
             }
           />
           <StatusRow
@@ -373,13 +376,12 @@ export function AdminDataProvidersPage() {
                 <h2 className="text-base font-semibold text-foreground">
                   GlobalDataFeeds (BSE)
                 </h2>
-                {globalDatafeedsStatus ? (
-                  <ConnectionBadge
-                    loading={statusesQuery.isLoading}
-                    connected={globalDatafeedsStatus.connected}
-                    status={globalDatafeedsStatus.status}
-                  />
-                ) : null}
+                <ConnectionBadge
+                  loading={globalDatafeedsHealthQuery.isLoading}
+                  isError={globalDatafeedsHealthQuery.isError}
+                  connected={globalDatafeedsHealthQuery.data?.connected ?? false}
+                  status={globalDatafeedsHealthQuery.data?.status}
+                />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 BSE market data and indices use this connection. No OAuth required - just the
@@ -486,13 +488,15 @@ export function AdminDataProvidersPage() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <StatusRow
             label="Provider config"
-            value={
-              statusesQuery.isLoading
-                ? "Checking..."
-                : globalDatafeedsStatus?.providerConfigured
-                  ? "Configured"
-                  : "Missing env keys"
-            }
+            value={providerConfigValue({
+              isLoading: statusesQuery.isLoading,
+              isError: statusesQuery.isError,
+              providerConfigured: globalDatafeedsStatus?.providerConfigured,
+            })}
+          />
+          <StatusRow
+            label="Health"
+            value={providerHealthValue(globalDatafeedsHealthQuery)}
           />
           <StatusRow
             label="Last synced"
@@ -504,9 +508,9 @@ export function AdminDataProvidersPage() {
           />
         </div>
 
-        {globalDatafeedsStatus?.errorMessage ? (
+        {globalDatafeedsHealthQuery.data?.errorMessage ? (
           <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {globalDatafeedsStatus.errorMessage}
+            {globalDatafeedsHealthQuery.data.errorMessage}
           </div>
         ) : null}
         {sectorClassificationMutation.isSuccess ? (
@@ -563,7 +567,11 @@ export function AdminDataProvidersPage() {
         ) : null}
       </section>
 
-      <EodhdSection status={eodhdStatus} loading={statusesQuery.isLoading} />
+      <EodhdSection
+        status={eodhdStatus}
+        loading={statusesQuery.isLoading}
+        isError={statusesQuery.isError}
+      />
     </div>
   );
 }
@@ -571,10 +579,16 @@ export function AdminDataProvidersPage() {
 function EodhdSection({
   status,
   loading,
+  isError,
 }: {
   status: AdminDataProviderStatusEntry | undefined;
   loading: boolean;
+  isError: boolean;
 }) {
+  // External health loads independently of the local status props above, so a
+  // slow/failing EODHD check never delays "Provider config" / "Last synced".
+  const healthQuery = useAdminDataProviderHealth("eodhd");
+
   return (
     <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-sm">
       <div className="flex items-start gap-3">
@@ -584,9 +598,12 @@ function EodhdSection({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold text-foreground">EODHD</h2>
-            {status ? (
-              <ConnectionBadge loading={loading} connected={status.connected} status={status.status} />
-            ) : null}
+            <ConnectionBadge
+              loading={healthQuery.isLoading}
+              isError={healthQuery.isError}
+              connected={healthQuery.data?.connected ?? false}
+              status={healthQuery.data?.status}
+            />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Default fallback for exchanges outside NSE/BSE - used automatically, no manual
@@ -598,17 +615,22 @@ function EodhdSection({
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <StatusRow
           label="Provider config"
-          value={loading ? "Checking..." : status?.providerConfigured ? "Configured" : "Missing env keys"}
+          value={providerConfigValue({
+            isLoading: loading,
+            isError,
+            providerConfigured: status?.providerConfigured,
+          })}
         />
+        <StatusRow label="Health" value={providerHealthValue(healthQuery)} />
         <StatusRow
           label="Last synced"
           value={status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "Not synced yet"}
         />
       </div>
 
-      {status?.errorMessage ? (
+      {healthQuery.data?.errorMessage ? (
         <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {status.errorMessage}
+          {healthQuery.data.errorMessage}
         </div>
       ) : null}
     </section>
@@ -753,15 +775,25 @@ function ConnectionBadge({
   loading,
   connected,
   status,
+  isError = false,
 }: {
   loading: boolean;
   connected: boolean;
   status?: string;
+  isError?: boolean;
 }) {
   if (loading) {
     return (
       <Badge variant="outline" className="bg-card text-xs">
         Checking
+      </Badge>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Badge variant="outline" className="border-border bg-card text-xs text-foreground">
+        Unknown
       </Badge>
     );
   }
@@ -779,6 +811,43 @@ function ConnectionBadge({
       {status ?? "disconnected"}
     </Badge>
   );
+}
+
+// "Provider config" reflects local backend env/config presence only. It must
+// resolve to a deterministic string: "Checking..." only while the very first
+// request is in flight, "Unable to check" once that request has failed (so the
+// row never sits on "Checking..." forever), otherwise Configured / Missing.
+// Stale data from an earlier successful fetch still wins over "Unable to check".
+function providerConfigValue({
+  isLoading,
+  isError,
+  providerConfigured,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  providerConfigured: boolean | undefined;
+}) {
+  if (providerConfigured === undefined) {
+    if (isError) return "Unable to check";
+    if (isLoading) return "Checking...";
+    return "Unknown";
+  }
+  return providerConfigured ? "Configured" : "Missing env keys";
+}
+
+// The independent external-health query for a provider card. "Checking..."
+// only while that background request is in flight; a failed request (or an
+// adapter check that timed out server-side) resolves to a deterministic
+// non-pending label so the row never sticks.
+function providerHealthValue(query: {
+  isLoading: boolean;
+  isError: boolean;
+  data: AdminDataProviderHealthResult | undefined;
+}) {
+  if (query.isLoading) return "Checking...";
+  if (query.isError || !query.data) return "Unknown";
+  if (query.data.status === "error") return "Error";
+  return query.data.connected ? "Healthy" : "Unknown";
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {

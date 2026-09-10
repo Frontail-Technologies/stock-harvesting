@@ -77,12 +77,27 @@ export type AdminDataProviderStatus = {
   errorMessage: string | null;
 };
 
+// Local/DB-derived status entry from GET /api/admin/data-provider/statuses -
+// resolves with no external provider call. External reachability is a
+// separate per-provider query (AdminDataProviderHealth).
 export type AdminDataProviderStatusEntry = AdminDataProviderStatus & {
   provider: string;
+  enabled: boolean;
+  priority: number;
+  requiresConnection: boolean;
 };
 
 export type AdminDataProviderStatusesResponse = {
   providers: AdminDataProviderStatusEntry[];
+};
+
+// Result of GET /api/admin/data-provider/health/:provider - the bounded
+// external connectivity check, loaded independently per provider.
+export type AdminDataProviderHealthResult = {
+  provider: string;
+  connected: boolean;
+  status: AdminDataProviderStatusValue;
+  errorMessage: string | null;
 };
 
 export type AdminDataProviderConnectUrlResponse = {
