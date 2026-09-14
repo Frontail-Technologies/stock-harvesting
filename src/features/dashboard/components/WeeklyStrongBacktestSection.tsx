@@ -155,17 +155,18 @@ function visibleSectorsFor(point: WeeklyStrongBacktestStackedPoint, hiddenSector
 
 type MagnifierBox = { left: number; top: number };
 
-// Chartlink-style: the lens is centered exactly on the pointer, full stop -
-// no preferred side, no offset gap, no clamping to stay inside the plot.
-// The real system cursor renders above the lens on its own (the lens is
-// pointer-events: none), so it naturally appears inside the circle once
-// the box is centered here. Near an edge, the lens is deliberately allowed
-// to extend past the plot bounds rather than shift away from the cursor -
-// nothing in this component's ancestor chain clips overflow, so no portal
-// is needed for that to render correctly.
-function computeMagnifierBox(pointerX: number, pointerY: number): MagnifierBox {
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function computeMagnifierBox(pointerX: number, pointerY: number, plotWidth: number): MagnifierBox {
   const radius = MAGNIFIER_SIZE_PX / 2;
-  return { left: pointerX - radius, top: pointerY - radius };
+  const maxLeft = Math.max(plotWidth - MAGNIFIER_SIZE_PX, 0);
+  const maxTop = Math.max(CHART_HEIGHT_PX - MAGNIFIER_SIZE_PX, 0);
+  return {
+    left: clamp(pointerX - radius, 0, maxLeft),
+    top: clamp(pointerY - radius, 0, maxTop),
+  };
 }
 
 function buildBarGeometry(
@@ -850,7 +851,7 @@ export function WeeklyStrongBacktestSection({
 
   const handleBackToChart = useCallback(() => setIsResultsView(false), []);
 
-  const magnifierBox = hover && !isCompact ? computeMagnifierBox(hover.pointerX, hover.pointerY) : null;
+  const magnifierBox = hover && !isCompact ? computeMagnifierBox(hover.pointerX, hover.pointerY, plotWidth) : null;
   const hoveredBar = hover ? geometry[hover.index] : undefined;
   // The exact stacked rectangle under the pointer (not the whole column) -
   // resolved once here from hover.sector (already Y-position-detected in

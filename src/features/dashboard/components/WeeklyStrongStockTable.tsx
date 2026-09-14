@@ -27,6 +27,7 @@ import {
   type CollectionWeeklyStrongStock,
 } from "@/features/market-collections";
 import { useScannerUiStore } from "@/features/scanner";
+import { SCANNER_LOOKBACK_OPTIONS, type ScannerLookbackMultiplier } from "@/features/scanner/types";
 import { StockQuickChartPreview } from "@/features/stocks";
 import { cn } from "@/utils/cn";
 import { formatCompactVolume } from "@/utils/formatters";
@@ -35,7 +36,7 @@ import {
   exportWeeklyStrongStocksToCsv,
   exportWeeklyStrongStocksToXlsx,
 } from "../lib/export-weekly-strong-stocks";
-import { formatMediumDate } from "../lib/format-as-of-date";
+import { formatAnalysisWeek, formatMediumDate } from "../lib/format-as-of-date";
 import { openChartInNewTab } from "../lib/open-chart-in-new-tab";
 
 type SortKey = "symbol" | "name" | "close" | "changePct" | "returnPct" | "inSince" | "volume";
@@ -68,13 +69,17 @@ function compareRows(a: CollectionWeeklyStrongStock, b: CollectionWeeklyStrongSt
 export function WeeklyStrongStockTable({
   code,
   crossFilter,
+  lookback,
+  onLookbackChange,
 }: {
   code: string;
   crossFilter?: CrossFilterState;
+  lookback: ScannerLookbackMultiplier;
+  onLookbackChange: (lookback: ScannerLookbackMultiplier) => void;
 }) {
   const setScannerStock = useScannerUiStore((state) => state.setSelectedStock);
   const { formatStockCurrency } = useCurrency();
-  const { items, isLoading, isError } = useCollectionWeeklyStrongStocks({ code });
+  const { items, weekEnding, isLoading, isFetching, isError } = useCollectionWeeklyStrongStocks({ code, lookback });
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "changePct",
@@ -163,6 +168,7 @@ export function WeeklyStrongStockTable({
   };
 
   const previewItem = preview ? filteredItems.find((item) => item.symbol === preview.symbol) : undefined;
+  const analysisWeekLabel = formatAnalysisWeek(weekEnding);
 
   const handleStockClick = (item: CollectionWeeklyStrongStock) => {
     setScannerStock({
@@ -175,7 +181,7 @@ export function WeeklyStrongStockTable({
       hasMarketData: true,
     });
 
-    openChartInNewTab(item.symbol, item.exchange);
+    openChartInNewTab(item.symbol, item.exchange, lookback);
   };
 
   // Exports exactly the currently visible rows (current search + sort),
@@ -199,13 +205,39 @@ export function WeeklyStrongStockTable({
 
   return (
     <section className="relative flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold text-foreground">Harvest Results</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Qualified stocks for this segment</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span>Qualified stocks for this segment</span>
+            {analysisWeekLabel && <span className="font-medium text-foreground">{analysisWeekLabel}</span>}
+            {isFetching && !isLoading && (
+              <span className="inline-flex items-center gap-1 text-primary">
+                <Spinner size="sm" />
+                Refreshing
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-56">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
+            {SCANNER_LOOKBACK_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onLookbackChange(option.value)}
+                className={cn(
+                  "h-8 cursor-pointer rounded-md px-2.5 text-xs font-semibold transition-colors",
+                  lookback === option.value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative w-44 max-w-full sm:w-52">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
@@ -224,7 +256,7 @@ export function WeeklyStrongStockTable({
                   size="sm"
                   disabled={filteredItems.length === 0 || isExportingXlsx}
                   aria-busy={isExportingXlsx}
-                  className="h-9 gap-1.5"
+                  className="h-9 shrink-0 gap-1.5"
                 />
               }
             >

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,6 +40,8 @@ export function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const [isManualRefresh, setIsManualRefresh] = useState(false);
 
   const countryParam = searchParams.get("country");
   const segmentParam = searchParams.get("segment");
@@ -121,6 +124,22 @@ export function DashboardPage() {
         timeStyle: "short",
       }).format(collectionsQuery.dataUpdatedAt)
     : null;
+
+  const handleRefresh = async () => {
+    setIsManualRefresh(true);
+    try {
+      await Promise.all([
+        collectionsQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ["market-collections"] }),
+        queryClient.invalidateQueries({ queryKey: ["weekly-strong-backtest"] }),
+        queryClient.invalidateQueries({ queryKey: ["market-data", "index-relative-strength"] }),
+      ]);
+    } finally {
+      setIsManualRefresh(false);
+    }
+  };
+
+  const isRefreshing = isManualRefresh || collectionsQuery.isFetching;
 
   return (
     <div className="flex flex-col gap-5 sm:gap-7">
@@ -235,10 +254,11 @@ export function DashboardPage() {
             variant="outline"
             size="sm"
             className="h-9 w-full gap-1.5 sm:ml-auto sm:w-auto"
-            onClick={() => collectionsQuery.refetch()}
+            disabled={isRefreshing}
+            onClick={() => void handleRefresh()}
           >
-            <RefreshCw className="size-3.5" />
-            Refresh
+            <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />
+            {isRefreshing ? "Refreshing" : "Refresh"}
           </Button>
         </div>
       </div>

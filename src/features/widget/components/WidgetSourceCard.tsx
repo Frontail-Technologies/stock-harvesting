@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ListX, MoreHorizontal, SquareArrowOutUpRight } from "lucide-react";
 import {
   Dialog,
@@ -54,7 +53,6 @@ export function WidgetSourceCard({
   onMoveRight,
   onRemove,
 }: WidgetSourceCardProps) {
-  const router = useRouter();
   const [fullViewOpen, setFullViewOpen] = useState(false);
   const isSegment = source.type === "segment";
   const isEmptyWatchlist = !isSegment && source.itemCount === 0;
@@ -74,7 +72,8 @@ export function WidgetSourceCard({
 
   const handleItemClick = (item: DashboardItem) => {
     if (!item.exchange) return;
-    router.push(`/charts?symbol=${encodeURIComponent(item.label)}&exchange=${encodeURIComponent(item.exchange)}`);
+    const params = new URLSearchParams({ symbol: item.label, exchange: item.exchange });
+    window.open(`/charts?${params.toString()}`, "_blank", "noopener,noreferrer");
   };
 
   // Preserves the first ranked row as the initial chart, same convention the Watchlist widget's own "Open in Charts" action already uses.
@@ -83,7 +82,7 @@ export function WidgetSourceCard({
     const href = isSegment
       ? buildSegmentChartsHref({ segmentCode: source.code, symbol: firstMetric?.symbol, exchange: firstMetric?.exchange })
       : buildWatchlistChartsHref({ watchlistId: source.id, symbol: firstMetric?.symbol, exchange: firstMetric?.exchange });
-    router.push(href);
+    window.open(href, "_blank", "noopener,noreferrer");
   };
 
   const card: DashboardCardData = useMemo(

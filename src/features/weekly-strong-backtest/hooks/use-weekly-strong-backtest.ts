@@ -56,15 +56,21 @@ export function useWeeklyStrongBacktestWeekDetail(input: { code: string; weekEnd
 export function useWeeklyStrongBacktestMembershipChanges(input: {
   code: string;
   weekEnding: string | null;
+  lookback?: string;
 }) {
   const authStatus = useSessionStore((state) => state.status);
   const query = useQuery({
     queryKey: queryKeys.weeklyStrongBacktest.membershipChanges({
       code: input.code,
       weekEnding: input.weekEnding ?? "",
+      lookback: input.lookback,
     }),
     queryFn: () =>
-      getWeeklyStrongBacktestMembershipChanges({ code: input.code, weekEnding: input.weekEnding as string }),
+      getWeeklyStrongBacktestMembershipChanges({
+        code: input.code,
+        weekEnding: input.weekEnding as string,
+        lookback: input.lookback,
+      }),
     enabled: authStatus !== "unknown" && Boolean(input.code) && Boolean(input.weekEnding),
     retry: false,
     staleTime: BACKTEST_STALE_TIME_MS,

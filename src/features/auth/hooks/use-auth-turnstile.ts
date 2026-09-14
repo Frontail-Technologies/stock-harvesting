@@ -8,6 +8,7 @@ export type AuthTurnstileAction =
   | "user-password-login"
   | "user-google-login"
   | "user-register"
+  | "user-password-reset-request"
   | "admin-password-login";
 
 const VERIFY_FIRST_MESSAGE = "Please complete browser verification first.";

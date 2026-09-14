@@ -56,17 +56,17 @@ export function WatchlistsPage() {
           </p>
         </div>
         {hasWatchlists && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
             <Select
               value={viewMode}
               onValueChange={(value) => setViewMode(value as WatchlistViewMode)}
               options={VIEW_MODE_OPTIONS}
-              triggerClassName="h-9 w-44"
+              triggerClassName="h-9 min-w-0 flex-1 sm:w-44 sm:flex-none"
             />
             <Button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="gap-1.5"
+              className="shrink-0 gap-1.5"
             >
               <Plus className="size-4" />
               New Watchlist

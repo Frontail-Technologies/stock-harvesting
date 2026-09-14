@@ -11,8 +11,18 @@ import { GlobalStockSearchModal } from "@/features/global-search/components/Glob
 import { ThemeProvider } from "@/features/theme/components/ThemeProvider";
 import { THEME_STORAGE_KEY } from "@/features/theme/constants";
 import { PwaProvider } from "@/features/pwa";
-import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl, getSiteUrl, getAdminHost } from "@/utils/seo";
-import { RESOLVED_PATHNAME_HEADER, normalizeHost, resolveRequestHost } from "@/utils/hostname";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  absoluteUrl,
+  getSiteUrl,
+  getAdminHost,
+} from "@/utils/seo";
+import {
+  RESOLVED_PATHNAME_HEADER,
+  normalizeHost,
+  resolveRequestHost,
+} from "@/utils/hostname";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,7 +55,9 @@ export const metadata: Metadata = {
       { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   openGraph: {
     type: "website",
@@ -55,7 +67,7 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: absoluteUrl("/images/logo.png"),
+        url: absoluteUrl("/images/logo-light.png"),
         width: 1200,
         height: 630,
         alt: SITE_NAME,
@@ -66,7 +78,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/images/logo.png")],
+    images: [absoluteUrl("/images/logo-light.png")],
   },
   robots: {
     index: true,
@@ -125,13 +137,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   const adminHost = getAdminHost();
   if (adminHost) {
     const headersList = await headers();
     const requestHost = resolveRequestHost(headersList);
     const resolvedPathname = headersList.get(RESOLVED_PATHNAME_HEADER) ?? "";
-    if (requestHost === normalizeHost(adminHost) && !resolvedPathname.startsWith("/admin")) {
+    if (
+      requestHost === normalizeHost(adminHost) &&
+      !resolvedPathname.startsWith("/admin")
+    ) {
       redirect("/admin/login");
     }
   }
@@ -152,12 +166,10 @@ export default async function RootLayout({
         <GoogleAnalyticsScript />
         <PwaProvider />
         <QueryProvider>
-
           <AuthBootstrap />
 
           <ThemeProvider>
             <TooltipProvider>
-
               <GlobalStockSearchModal />
               {children}
               <Toaster />

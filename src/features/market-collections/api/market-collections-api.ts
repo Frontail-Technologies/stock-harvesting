@@ -59,8 +59,10 @@ export function getCollectionSectorIndustryTaxonomy(input: { code: string }) {
   );
 }
 
-export function getCollectionWeeklyStrongStocks(input: { code: string }) {
+export function getCollectionWeeklyStrongStocks(input: { code: string; lookback?: string }) {
   return apiFetch<CollectionWeeklyStrongStocksResponse>(
-    API_ROUTES.marketCollections.weeklyStrongStocks(input.code),
+    withQuery(API_ROUTES.marketCollections.weeklyStrongStocks(input.code), {
+      lookback: input.lookback,
+    }),
   );
 }

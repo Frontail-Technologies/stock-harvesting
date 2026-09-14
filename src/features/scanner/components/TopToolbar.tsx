@@ -187,14 +187,14 @@ export function TopToolbar({
       </div>
 
       <div className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex">
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <ChartSnapshotMenu stock={stock} disabled={!hasStock} />
           <ShareMenu stock={stock} disabled={!hasStock} />
         </div>
 
         <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <ScannerWatchlistToggle />
           <ScannerPriceAlertMenu
             key={`${stock.exchange}:${stock.symbol}`}
@@ -210,7 +210,7 @@ export function TopToolbar({
         <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
 
         <div className="flex min-w-0 items-center gap-1.5">
-          <div className="w-56 lg:w-72">
+          <div className="w-40 max-w-[30vw] md:w-56 lg:w-72">
             <GlobalSearchNavbarField />
           </div>
           <ScannerAccountMenu />

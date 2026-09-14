@@ -106,7 +106,7 @@ export function useCollectionSectorIndustryTaxonomy(input: { code: string }) {
   return { ...query, sectors: query.data?.sectors ?? [] };
 }
 
-export function useCollectionWeeklyStrongStocks(input: { code: string }) {
+export function useCollectionWeeklyStrongStocks(input: { code: string; lookback?: string }) {
   const authStatus = useSessionStore((state) => state.status);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.weeklyStrongStocks(input),

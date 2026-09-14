@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,7 +85,6 @@ export function WatchlistFullViewDialog({
   onClose,
   onAddStock,
 }: WatchlistFullViewDialogProps) {
-  const router = useRouter();
   const { watchlist, isLoading } = useWatchlist(watchlistId);
   const removeItem = useRemoveWatchlistItem();
   const [query, setQuery] = useState("");
@@ -100,7 +98,7 @@ export function WatchlistFullViewDialog({
 
   const openInCharts = (symbol: string, exchange: string) => {
     if (!watchlistId) return;
-    router.push(buildWatchlistChartsHref({ watchlistId, symbol, exchange }));
+    window.open(buildWatchlistChartsHref({ watchlistId, symbol, exchange }), "_blank", "noopener,noreferrer");
   };
 
   return (

@@ -39,6 +39,7 @@ import type {
   ScannerTheme,
   Timeframe,
 } from "../types";
+import { SCANNER_LOOKBACK_OPTIONS } from "../types";
 import { ChartsEmptyIllustration } from "./ChartsEmptyIllustration";
 import { ChartToolsBar } from "./ChartToolsBar";
 import { RangeFilterTabs } from "./RangeFilterTabs";
@@ -50,6 +51,9 @@ const SCANNER_ANALYSIS_TIMEFRAME: Timeframe = "1W";
 
 const SCANNER_GUTTER = "gap-0.5 sm:gap-[3px] lg:gap-1";
 const SCANNER_GUTTER_B = "mb-0.5 sm:mb-[3px] lg:mb-1";
+const SCANNER_LOOKBACK_VALUES = new Set<string>(
+  SCANNER_LOOKBACK_OPTIONS.map((option) => option.value)
+);
 
 
 
@@ -142,6 +146,7 @@ export function ScannerPage() {
   
   const symbolParam = searchParams.get("symbol")?.trim().toUpperCase() ?? "";
   const exchangeParam = searchParams.get("exchange")?.trim().toUpperCase() ?? "";
+  const lookbackParam = searchParams.get("lookback")?.trim();
   const hasStockInUrl = Boolean(symbolParam) && Boolean(exchangeParam);
 
   const selectedStock = useMemo<Stock | null>(() => {
@@ -206,6 +211,12 @@ export function ScannerPage() {
     if (segmentCodeFromUrl) setActiveSegmentCode(segmentCodeFromUrl);
     setWatchlistPanelOpen(true);
   }, [searchParams, setActiveSegmentCode, setWatchlistPanelOpen, setPanelMode]);
+
+  useEffect(() => {
+    if (!lookbackParam || !SCANNER_LOOKBACK_VALUES.has(lookbackParam)) return;
+    if (lookbackParam === lookbackMultiplier) return;
+    setLookbackMultiplier(lookbackParam as ScannerLookbackMultiplier);
+  }, [lookbackParam, lookbackMultiplier, setLookbackMultiplier]);
 
   
   

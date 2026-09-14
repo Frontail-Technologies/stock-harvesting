@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Maximize2, MoreHorizontal, SquareArrowOutUpRight } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,7 +36,6 @@ export function WatchlistWidget({
   onAddStock,
   onFullView,
 }: WatchlistWidgetProps) {
-  const router = useRouter();
   const { watchlist: detail, isLoading } = useWatchlist(watchlist.id);
 
   const items = [...(detail?.items ?? [])].sort(
@@ -46,12 +44,14 @@ export function WatchlistWidget({
   const firstItem: WatchlistItem | undefined = items[0];
 
   const openInCharts = (item: WatchlistItem) => {
-    router.push(
+    window.open(
       buildWatchlistChartsHref({
         watchlistId: watchlist.id,
         symbol: item.symbol,
         exchange: item.exchange,
       }),
+      "_blank",
+      "noopener,noreferrer",
     );
   };
 

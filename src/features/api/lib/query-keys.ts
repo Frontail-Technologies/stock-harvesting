@@ -63,7 +63,7 @@ export const queryKeys = {
     }) => ["market-collections", "relative-strength", input] as const,
     sectorIndustryTaxonomy: (input: { code: string }) =>
       ["market-collections", "sector-industry-taxonomy", input] as const,
-    weeklyStrongStocks: (input: { code: string }) =>
+    weeklyStrongStocks: (input: { code: string; lookback?: string }) =>
       ["market-collections", "weekly-strong-stocks", input] as const,
     admin: {
       list: ["admin", "market-collections"] as const,
@@ -89,7 +89,7 @@ export const queryKeys = {
     stacked: (input: { code: string }) => ["weekly-strong-backtest", "stacked", input] as const,
     weekDetail: (input: { code: string; weekEnding: string }) =>
       ["weekly-strong-backtest", "week-detail", input] as const,
-    membershipChanges: (input: { code: string; weekEnding: string }) =>
+    membershipChanges: (input: { code: string; weekEnding: string; lookback?: string }) =>
       ["weekly-strong-backtest", "membership-changes", input] as const,
   },
   scanner: {

@@ -9,6 +9,7 @@ import {
   type CollectionRelativeStrengthMetric,
 } from "@/features/market-collections";
 import { useIndexRelativeStrength } from "@/features/market-data";
+import { DEFAULT_SCANNER_LOOKBACK, type ScannerLookbackMultiplier } from "@/features/scanner/types";
 import type { DashboardCardData } from "@/types/dashboard";
 import {
   buildSectorIndustryRelation,
@@ -56,8 +57,13 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
   const indexExchange = INDEX_EXCHANGE_BY_EQUITY_EXCHANGE[exchange] ?? "NSE_IDX";
   const indexQuery = useIndexRelativeStrength(150, indexExchange);
+  const [harvestLookback, setHarvestLookback] =
+    useState<ScannerLookbackMultiplier>(DEFAULT_SCANNER_LOOKBACK);
 
-  const { weekEnding: canonicalWeekEnding } = useCollectionWeeklyStrongStocks({ code });
+  const { weekEnding: canonicalWeekEnding } = useCollectionWeeklyStrongStocks({
+    code,
+    lookback: harvestLookback,
+  });
 
   const [crossFilter, setCrossFilter] = useState<CrossFilterState>(EMPTY_CROSS_FILTER);
 
@@ -78,8 +84,8 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
   const handleStockClick = useCallback((item: { label: string; exchange?: string }) => {
     if (!item.exchange) return;
-    openChartInNewTab(item.label, item.exchange);
-  }, []);
+    openChartInNewTab(item.label, item.exchange, harvestLookback);
+  }, [harvestLookback]);
 
   const filteredStockStrengthMetrics = useMemo(
     () => filterWeeklyStrongByCrossFilter(rsQuery.metrics, crossFilter),
@@ -125,9 +131,14 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
         </div>
       )}
 
-      <WeeklyStrongStockTable code={code} crossFilter={crossFilter} />
+      <WeeklyStrongStockTable
+        code={code}
+        crossFilter={crossFilter}
+        lookback={harvestLookback}
+        onLookbackChange={setHarvestLookback}
+      />
 
-      <WeeklyStrongMembershipChanges code={code} />
+      <WeeklyStrongMembershipChanges code={code} lookback={harvestLookback} />
 
       <WeeklyStrongBacktestSection key={code} code={code} canonicalWeekEnding={canonicalWeekEnding} />
     </div>
