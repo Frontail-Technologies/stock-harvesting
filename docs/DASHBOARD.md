@@ -143,17 +143,49 @@ column or migration was needed, and it can never claim a more recent week
 than what the underlying computation actually used.
 
 Same conversion applies to each row's own `inSince` field (Harvest Results
-table, "In Since" column) - the canonical week-ending Friday of the entry
-week `findCurrentStreakEntryIndexGapAware` (`market-data.metrics.ts`)
-resolves for that stock's current qualifying streak, the same entry point
-`returnPct` is computed from; never a raw persisted candle date.
-`findCurrentStreakEntryIndexGapAware` wraps the evaluator's own
-`findCurrentStreakEntryIndex` with a real calendar-adjacency check
+table, "In Since" column) - always a canonical week-ending Friday, never a
+raw persisted candle date.
+
+**`inSince` tracks the Scanner signal (the chart's yellow band), not
+Weekly Strong's own streak — a deliberate product requirement, not an
+oversight.** `resolveScannerInSince` (`market-data.metrics.ts`) reuses the
+exact same evaluator chain the Charts page's live per-symbol Scanner
+endpoint calls (`calculateCurrentNear250WeekHighResult` →
+`deriveScannerWeeklyCloses` → `excludeIncompleteTradingWeek` →
+`classifyScannerWeeklySeries` → `calculateNear250WeekHighScan`,
+`modules/scanner/*`), fed from the daily rows already fetched for this
+row rather than a second per-symbol DB round trip — zero reimplementation
+of the Scanner formula, only a different data-fetch entrypoint into the
+identical chain. Fixed at the 5x/250-week tier
+(`SCANNER_LOOKBACK_WEEKS["5x"]`) since Harvest Results has no
+per-collection tier setting (the Charts page's own 1x/3x/5x selector is a
+per-view UI choice, not a stored property) and 250 weeks is this system's
+own `DEFAULT_SCANNER_LOOKBACK`. The current streak's first passing week is
+found by walking `scan.highlightTimes` backward with the same
+`isConsecutiveIsoWeek` gap-adjacency check `findCurrentStreakEntryIndexGapAware`
+(below) uses, so a real calendar gap in the underlying candle history can't
+be silently bridged into a longer streak than the data supports either.
+`resolveScannerInSince` also guards a real Scanner-side edge case:
+`calculateNear250WeekHighScan`'s own `matched` can fall back to a smaller
+lookback tier when the latest segment is short
+(`getEffectiveScannerLookbackWeeks`), but its `highlightTimes` always
+evaluates every segment at the full requested (250-week) lookback
+unreduced — when the latest segment is too short for that, its own
+passing weeks never reach `highlightTimes` even though `matched` is true.
+Returns `null` in that case rather than reporting an unrelated older
+segment's trailing date.
+
+Harvest Results **inclusion** and `returnPct` are unaffected by this — they
+still come from Weekly Strong's own evaluator (below); only the `inSince`
+date label switched source. `findCurrentStreakEntryIndexGapAware`
+(`market-data.metrics.ts`) wraps the evaluator's own
+`findCurrentStreakEntryIndex` with the same real calendar-adjacency check
 (`isConsecutiveIsoWeek`, `trading-calendar.ts`) so a week structurally
 missing from a symbol's series (a candle-history gap, not an explicit
 evaluator fail) can never be silently bridged into a longer streak than the
 data actually supports — it changes only how far back "continuous" is
 allowed to reach, never which weeks the evaluator itself passes or fails.
+It still powers `returnPct`'s own entry point.
 
 **One authoritative completed-week series decides both membership and In
 Since.** `computeWeeklyStrongStocks` used to gate Harvest Results
