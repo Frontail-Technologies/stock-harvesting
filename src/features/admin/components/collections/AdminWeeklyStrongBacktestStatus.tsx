@@ -31,6 +31,10 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
   const isBusy = status?.state === "generating" || generate.isPending;
   const isHistoricalBusy = historicalStatus?.state === "generating" || rebuildHistorical.isPending;
   const canRebuildHistorical = status?.state === "ready";
+  const isHistoricalPartial =
+    status?.state === "ready" &&
+    historicalStatus?.state === "ready" &&
+    historicalStatus.weeksGenerated < status.weeksGenerated;
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-sm">
@@ -83,7 +87,7 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
       <div className="flex flex-col gap-2 border-t border-border/60 pt-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Historical-Membership Backtest</h2>
-          <StatusBadge state={historicalStatus?.state} />
+          <StatusBadge state={isHistoricalPartial ? "partial" : historicalStatus?.state} />
         </div>
 
         {!canRebuildHistorical ? (
@@ -93,20 +97,27 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
         ) : historicalStatusQuery.isLoading ? (
           <p className="text-xs text-muted-foreground">Loading status...</p>
         ) : historicalStatus?.state === "ready" ? (
-          <dl className="flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Weeks generated</dt>
-              <dd className="font-medium text-foreground">{historicalStatus.weeksGenerated}</dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Latest week</dt>
-              <dd className="font-medium text-foreground">{formatAdminDate(historicalStatus.latestWeek)}</dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Last generated at</dt>
-              <dd className="font-medium text-foreground">{formatAdminDate(historicalStatus.lastGeneratedAt)}</dd>
-            </div>
-          </dl>
+          <div className="flex flex-col gap-2">
+            <dl className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Weeks generated</dt>
+                <dd className="font-medium text-foreground">{historicalStatus.weeksGenerated}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Latest week</dt>
+                <dd className="font-medium text-foreground">{formatAdminDate(historicalStatus.latestWeek)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Last generated at</dt>
+                <dd className="font-medium text-foreground">{formatAdminDate(historicalStatus.lastGeneratedAt)}</dd>
+              </div>
+            </dl>
+            {isHistoricalPartial && (
+              <p className="text-xs text-muted-foreground">
+                Historical coverage is partial. Dashboard will use current-membership history until this catches up.
+              </p>
+            )}
+          </div>
         ) : historicalStatus?.state === "failed" ? (
           <p className="text-xs text-danger">{historicalStatus.errorMessage ?? "The last run failed."}</p>
         ) : historicalStatus?.state === "generating" ? (
@@ -136,7 +147,7 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
   );
 }
 
-function StatusBadge({ state }: { state?: "not_generated" | "generating" | "ready" | "failed" }) {
+function StatusBadge({ state }: { state?: "not_generated" | "generating" | "ready" | "partial" | "failed" }) {
   if (!state || state === "not_generated") {
     return (
       <Badge variant="outline" className="bg-muted text-muted-foreground">
@@ -155,6 +166,13 @@ function StatusBadge({ state }: { state?: "not_generated" | "generating" | "read
     return (
       <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
         Ready
+      </Badge>
+    );
+  }
+  if (state === "partial") {
+    return (
+      <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+        Partial
       </Badge>
     );
   }

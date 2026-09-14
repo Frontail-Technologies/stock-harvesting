@@ -66,13 +66,6 @@ async function selectPreferredRuns(collectionId: string, limit: number = DASHBOA
     .orderBy(desc(weeklyStrongBacktestRuns.weekEnding))
     .limit(limit);
 
-  if (historicalRuns.length > 0) {
-    return {
-      mode: HISTORICAL_MEMBERSHIP as WeeklyStrongBacktestMembershipMode,
-      runs: historicalRuns,
-    };
-  }
-
   const currentRuns = await db
     .select({
       id: weeklyStrongBacktestRuns.id,
@@ -88,6 +81,16 @@ async function selectPreferredRuns(collectionId: string, limit: number = DASHBOA
     )
     .orderBy(desc(weeklyStrongBacktestRuns.weekEnding))
     .limit(limit);
+
+  if (
+    historicalRuns.length > 0 &&
+    (currentRuns.length === 0 || historicalRuns.length >= currentRuns.length)
+  ) {
+    return {
+      mode: HISTORICAL_MEMBERSHIP as WeeklyStrongBacktestMembershipMode,
+      runs: historicalRuns,
+    };
+  }
 
   return {
     mode: CURRENT_MEMBERSHIP as WeeklyStrongBacktestMembershipMode,
