@@ -10,7 +10,6 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Info } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/select";
@@ -32,6 +31,7 @@ import {
 import { cn } from "@/utils/cn";
 import { colorForDashboardLabel } from "../lib/dashboard-widget-colors";
 import { computeNiceTicks } from "../lib/nice-ticks";
+import { openChartInNewTab } from "../lib/open-chart-in-new-tab";
 
 const CHART_HEIGHT_PX = 340;
 const AXIS_WIDTH_PX = 34;
@@ -509,13 +509,10 @@ function WeekResultsView({
   weekEnding: string;
   onBack: () => void;
 }) {
-  const router = useRouter();
   const { members, isLoading } = useWeeklyStrongBacktestWeekDetail({ code, weekEnding });
 
   const handleRowClick = (member: { symbol: string; exchange: string }) => {
-    router.push(
-      `/charts?symbol=${encodeURIComponent(member.symbol)}&exchange=${encodeURIComponent(member.exchange)}`
-    );
+    openChartInNewTab(member.symbol, member.exchange);
   };
 
   return (

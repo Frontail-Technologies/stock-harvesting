@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,6 +16,7 @@ import { useWeeklyStrongBacktestMembershipChanges } from "@/features/weekly-stro
 import type { WeeklyStrongBacktestMembershipChangeMember } from "@/features/weekly-strong-backtest";
 import { cn } from "@/utils/cn";
 import { formatMediumDate } from "../lib/format-as-of-date";
+import { openChartInNewTab } from "../lib/open-chart-in-new-tab";
 
 function MembershipChangeTable({
   title,
@@ -121,7 +121,6 @@ function MembershipChangeTable({
 }
 
 export function WeeklyStrongMembershipChanges({ code }: { code: string }) {
-  const router = useRouter();
   const { weekEnding, isLoading: isHarvestResultLoading } = useCollectionWeeklyStrongStocks({ code });
   const {
     available,
@@ -135,9 +134,7 @@ export function WeeklyStrongMembershipChanges({ code }: { code: string }) {
   const isLoading = isHarvestResultLoading || isChangesLoading;
 
   const handleRowClick = (member: WeeklyStrongBacktestMembershipChangeMember) => {
-    router.push(
-      `/charts?symbol=${encodeURIComponent(member.symbol)}&exchange=${encodeURIComponent(member.exchange)}`
-    );
+    openChartInNewTab(member.symbol, member.exchange);
   };
 
   const previousWeekLabel = !isLoading ? formatMediumDate(previousWeekEnding) : "";

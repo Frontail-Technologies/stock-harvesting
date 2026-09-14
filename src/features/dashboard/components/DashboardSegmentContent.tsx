@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   useCollectionRelativeStrength,
   useCollectionSectorIndustryTaxonomy,
@@ -22,6 +21,7 @@ import {
   type SectorIndustryRelation,
 } from "../lib/dashboard-cross-filter";
 import { colorForDashboardLabel } from "../lib/dashboard-widget-colors";
+import { openChartInNewTab } from "../lib/open-chart-in-new-tab";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
 import { DashboardWidgetRow } from "./DashboardWidgetRow";
 import { WeeklyStrongBacktestSection } from "./WeeklyStrongBacktestSection";
@@ -36,7 +36,6 @@ const INDEX_EXCHANGE_BY_EQUITY_EXCHANGE: Record<string, string> = {
 };
 
 export function DashboardSegmentContent({ code, exchange }: { code: string; exchange: string }) {
-  const router = useRouter();
 
   const rsQuery = useCollectionRelativeStrength({ code, limit: 200 });
   // Sector<->industry pairs must come from the complete membership
@@ -77,15 +76,10 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
   );
   const clearCrossFilters = useCallback(() => setCrossFilter(EMPTY_CROSS_FILTER), []);
 
-  const handleStockClick = useCallback(
-    (item: { label: string; exchange?: string }) => {
-      if (!item.exchange) return;
-      router.push(
-        `/charts?symbol=${encodeURIComponent(item.label)}&exchange=${encodeURIComponent(item.exchange)}`
-      );
-    },
-    [router]
-  );
+  const handleStockClick = useCallback((item: { label: string; exchange?: string }) => {
+    if (!item.exchange) return;
+    openChartInNewTab(item.label, item.exchange);
+  }, []);
 
   const filteredStockStrengthMetrics = useMemo(
     () => filterWeeklyStrongByCrossFilter(rsQuery.metrics, crossFilter),

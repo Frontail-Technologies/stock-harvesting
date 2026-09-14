@@ -155,6 +155,35 @@ evaluator fail) can never be silently bridged into a longer streak than the
 data actually supports — it changes only how far back "continuous" is
 allowed to reach, never which weeks the evaluator itself passes or fails.
 
+**One authoritative completed-week series decides both membership and In
+Since.** `computeWeeklyStrongStocks` used to gate Harvest Results
+inclusion with a separate `evaluateWeeklyStrongLatest` call against
+today's freshest daily close, while `inSince` came from
+`evaluateWeeklyStrongSeries`'s own last entry — the two could disagree
+(today's still-open daily movement passing while the latest COMPLETED
+week itself did not), producing a row that appeared "qualified" with
+`inSince: null`. Harvest Results is a completed-week dashboard, so
+inclusion is now decided from `evaluateWeeklyStrongSeries`'s own last
+entry (the latest completed week) directly — the same series `inSince`
+walks backward through — making that combination structurally
+impossible. `evaluateWeeklyStrongLatest` still exists (its own tests
+still cover it) but is no longer called from this path; today's
+still-forming daily movement never adds a stock to this dashboard.
+Weekly Strong's qualification conditions/thresholds themselves are
+unchanged — only which pre-computed series decides "is this the
+current signal."
+
+**Weekly Strong's analytical value is always the weekly CLOSE, never the
+weekly high.** `MetricCandle` (the shared candle-fetch shape) carries a
+full OHLC row including `.high`, but every weekly evaluator path —
+`evaluateWeeklyStrongSeries`/`evaluateWeeklyStrongLatest`
+(`weekly-strong-evaluator.ts`, operating on `WeeklyStrongCandle =
+{time, close}`) and Scanner's own independent rule
+(`evaluateScannerWeeklySeries`, `scanner-weekly-rule.ts`, operating on
+`ScannerWeeklyCandle = {time, close}`) — only ever consumes `.close`.
+`.high` is present on the candle for chart/OHLC display purposes only
+and is never read analytically.
+
 `WeeklyStrongMembershipChanges.tsx` ("Stocks In This Week" / "Stocks Out
 This Week") compares this same canonical `weekEnding` against the
 Backtest's `previousWeekEnding` for the "vs {date}" line — both resolved
@@ -193,3 +222,17 @@ remounted per segment (its own period/sector-filter/selected-week state
 resets on segment change — a **separate** state system from the top-widget
 cross-filter above; they never read from or write to each other). See
 [BACKTEST.md](./BACKTEST.md) for the full architecture.
+
+## Stock row → Charts navigation
+
+Every dashboard place that opens the Charts page for a clicked stock —
+the top 4 widgets (`DashboardSegmentContent.tsx`), Harvest Results
+(`WeeklyStrongStockTable.tsx`), Stocks In/Out
+(`WeeklyStrongMembershipChanges.tsx`), and the Backtest week-detail table
+(`WeeklyStrongBacktestSection.tsx`) — opens `/charts?symbol=...&exchange=...`
+in a **new browser tab** via the shared `openChartInNewTab`
+(`src/features/dashboard/lib/open-chart-in-new-tab.ts`,
+`window.open(url, "_blank", "noopener,noreferrer")`) rather than
+navigating the dashboard tab away. All four previously used
+`router.push` (a same-tab SPA navigation); that import/usage was removed
+from each component along with it.

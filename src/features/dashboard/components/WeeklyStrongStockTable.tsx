@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState, type PointerEvent } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, FileSpreadsheet, FileText, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +36,7 @@ import {
   exportWeeklyStrongStocksToXlsx,
 } from "../lib/export-weekly-strong-stocks";
 import { formatMediumDate } from "../lib/format-as-of-date";
+import { openChartInNewTab } from "../lib/open-chart-in-new-tab";
 
 type SortKey = "symbol" | "name" | "close" | "changePct" | "returnPct" | "inSince" | "volume";
 type SortDirection = "asc" | "desc";
@@ -72,7 +72,6 @@ export function WeeklyStrongStockTable({
   code: string;
   crossFilter?: CrossFilterState;
 }) {
-  const router = useRouter();
   const setScannerStock = useScannerUiStore((state) => state.setSelectedStock);
   const { formatStockCurrency } = useCurrency();
   const { items, isLoading, isError } = useCollectionWeeklyStrongStocks({ code });
@@ -176,9 +175,7 @@ export function WeeklyStrongStockTable({
       hasMarketData: true,
     });
 
-    router.push(
-      `/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange)}`
-    );
+    openChartInNewTab(item.symbol, item.exchange);
   };
 
   // Exports exactly the currently visible rows (current search + sort),
