@@ -572,3 +572,13 @@ Each entry stays until explicitly superseded by a new dated entry.
   `resolveCompletedWeekEndingFromTradingDay`), not just the dashboard
   label, since Scanner's weekly candle series and the Weekly Strong
   evaluator both depend on the same function.
+- 2026-09-14 — Auth email delivery (`auth-email.service.ts`) switched from
+  a generic outbound webhook (`AUTH_OTP_EMAIL_WEBHOOK_URL`/`_TOKEN`) to
+  direct SMTP via `nodemailer`, per explicit request - the user has a
+  mailbox app password to send from directly, no middleman webhook
+  service exists. New env vars: `SMTP_HOST` (default `smtp.gmail.com`),
+  `SMTP_PORT` (default 587), `SMTP_SECURE` (default false), `SMTP_USER`,
+  `SMTP_PASSWORD`, `SMTP_FROM` (defaults to `SMTP_USER`). Same
+  unconfigured-in-dev-is-a-no-op / required-in-production behavior as the
+  webhook it replaced. One shared `sendEmail` helper now backs both
+  `sendRegistrationOtpEmail` and `sendPasswordResetEmail`.
