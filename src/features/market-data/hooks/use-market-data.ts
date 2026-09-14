@@ -322,7 +322,7 @@ export function useCandles(
     queryKey: queryKeys.marketData.candles(input),
     queryFn: async () => {
       if (ensureFresh && input.exchange === "BSE") {
-        await ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
+        void ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
       }
       const response = await getCandles(input);
       return response.candles;
