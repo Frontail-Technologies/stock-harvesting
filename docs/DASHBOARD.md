@@ -144,9 +144,16 @@ than what the underlying computation actually used.
 
 Same conversion applies to each row's own `inSince` field (Harvest Results
 table, "In Since" column) - the canonical week-ending Friday of the entry
-week `findCurrentStreakEntryIndex` resolves for that stock's current
-qualifying streak, the same entry point `returnPct` is computed from; never
-a raw persisted candle date.
+week `findCurrentStreakEntryIndexGapAware` (`market-data.metrics.ts`)
+resolves for that stock's current qualifying streak, the same entry point
+`returnPct` is computed from; never a raw persisted candle date.
+`findCurrentStreakEntryIndexGapAware` wraps the evaluator's own
+`findCurrentStreakEntryIndex` with a real calendar-adjacency check
+(`isConsecutiveIsoWeek`, `trading-calendar.ts`) so a week structurally
+missing from a symbol's series (a candle-history gap, not an explicit
+evaluator fail) can never be silently bridged into a longer streak than the
+data actually supports — it changes only how far back "continuous" is
+allowed to reach, never which weeks the evaluator itself passes or fails.
 
 `WeeklyStrongMembershipChanges.tsx` ("Stocks In This Week" / "Stocks Out
 This Week") compares this same canonical `weekEnding` against the

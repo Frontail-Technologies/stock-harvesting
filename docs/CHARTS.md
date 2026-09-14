@@ -67,6 +67,13 @@ daily rows at all (pre-dates the derive-on-read change). See
 [REGRESSION_RULES.md](./REGRESSION_RULES.md): 1W/1M must not independently
 trigger a years-of-history provider fetch.
 
+A 1W candle's displayed `time` is that week's **Friday** (both the
+derived and legacy-fallback paths — see
+[MARKET_DATA.md](./MARKET_DATA.md) "Why weekly candles aren't
+Friday-keyed"), not the internal Monday bucket identity. OHLC/volume are
+unaffected — only the display label. 1D stays real trading dates; 1M is
+unaffected.
+
 ## Drawings
 
 Per `(userId, exchange, symbol, timeframe)`, table `scanner_drawings`.

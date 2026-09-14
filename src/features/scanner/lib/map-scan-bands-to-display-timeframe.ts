@@ -15,32 +15,51 @@ export function mapScanBandsToDisplayTimeframe(
   const currentWeekKey = getIsoWeekKey(displayCandles[displayCandles.length - 1].time);
 
   if (displayTimeframe === "1W") {
-    // The rendered weekly candles already include one bar for the current,
-    // still-forming week (aggregateWeeklyCandles produces it from whatever
-    // daily bars exist so far - it's a real, already-displayed candle, not
-    // something invented here). The evaluator never scores that week
-    // (excludeIncompleteTradingWeek, unchanged), so a band's highlightTimes
-    // can only ever reach as far as the latest COMPLETED week
-    // (band.endTime). If that latest completed week was a confirmed PASS,
-    // carry it forward onto that one current-week candle only - never onto
-    // anything past it, since no later real weekly candle can exist yet.
-    // A FAIL (or unknown) leaves the current week untouched, same as today.
+    // Band timestamps (startTime/endTime/highlightTimes) arrive from the
+    // Scanner's own signal series Monday-anchored - its internal weekly
+    // bucket identity, unchanged by this mapping. The rendered 1W chart
+    // candles are labeled by that same week's Friday (getChartCandles /
+    // getWeekEndingFriday on the backend), so every band time must be
+    // converted to its week-ending Friday before it can exact-match a real
+    // chart bar's time (ScanBandPrimitive looks candles up by exact time -
+    // see scan-band-primitive.ts). This relabeling changes no timeframe
+    // bucketing/grouping, only which day names an already-decided week.
+    const toWeekEndingFridayDisplayTime = (time: string) => toWeekEndingFriday(time);
+
     return bands.map((band) => {
-      if (band.latestMatched !== true) return band;
+      const sourceHighlightTimes =
+        band.highlightTimes && band.highlightTimes.length > 0
+          ? band.highlightTimes
+          : [band.startTime, band.endTime];
+      const highlightTimes = [...new Set(sourceHighlightTimes.map(toWeekEndingFridayDisplayTime))];
+      let endTime = toWeekEndingFridayDisplayTime(band.endTime);
+      const startTime = toWeekEndingFridayDisplayTime(band.startTime);
 
-      const latestCompletedWeekKey = getIsoWeekKey(band.endTime);
-      if (latestCompletedWeekKey === currentWeekKey) return band; // already the latest completed week itself - nothing newer to extend onto
-
-      const latestDisplayCandle = displayCandles[displayCandles.length - 1];
-      const highlightTimes =
-        band.highlightTimes && band.highlightTimes.length > 0 ? [...band.highlightTimes] : [band.endTime];
-      if (!highlightTimes.includes(latestDisplayCandle.time)) {
-        highlightTimes.push(latestDisplayCandle.time);
+      // The rendered weekly candles already include one bar for the current,
+      // still-forming week (aggregateWeeklyCandles produces it from whatever
+      // daily bars exist so far - it's a real, already-displayed candle, not
+      // something invented here). The evaluator never scores that week
+      // (excludeIncompleteTradingWeek, unchanged), so a band's highlightTimes
+      // can only ever reach as far as the latest COMPLETED week
+      // (band.endTime). If that latest completed week was a confirmed PASS,
+      // carry it forward onto that one current-week candle only - never onto
+      // anything past it, since no later real weekly candle can exist yet.
+      // A FAIL (or unknown) leaves the current week untouched, same as today.
+      if (band.latestMatched === true) {
+        const latestCompletedWeekKey = getIsoWeekKey(band.endTime);
+        if (latestCompletedWeekKey !== currentWeekKey) {
+          const latestDisplayCandle = displayCandles[displayCandles.length - 1];
+          if (!highlightTimes.includes(latestDisplayCandle.time)) {
+            highlightTimes.push(latestDisplayCandle.time);
+          }
+          endTime = latestDisplayCandle.time;
+        }
       }
 
       return {
         ...band,
-        endTime: latestDisplayCandle.time,
+        startTime,
+        endTime,
         highlightTimes,
       };
     });
@@ -97,6 +116,20 @@ function getDisplayBucketKey(time: string, displayTimeframe: Timeframe) {
   if (displayTimeframe === "1D") return getIsoWeekKey(time);
   if (displayTimeframe === "1M") return time.slice(0, 7);
   return time.slice(0, 10);
+}
+
+// Pure calendar arithmetic (Monday + 4 days), mirroring the backend's
+// getWeekEndingFriday (trading-calendar.ts) - not a proprietary calculation,
+// just the same non-proprietary week-labeling convention already duplicated
+// client-side in getIsoWeekKey below.
+function toWeekEndingFriday(time: string): string {
+  const date = new Date(`${time.slice(0, 10)}T00:00:00.000Z`);
+  const day = date.getUTCDay() || 7;
+  const monday = new Date(date);
+  monday.setUTCDate(date.getUTCDate() - (day - 1));
+  const friday = new Date(monday);
+  friday.setUTCDate(monday.getUTCDate() + 4);
+  return friday.toISOString().slice(0, 10);
 }
 
 function getIsoWeekKey(time: string) {

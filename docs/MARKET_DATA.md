@@ -266,14 +266,31 @@ conversion:
 
 ### Why weekly candles aren't Friday-keyed
 
-`aggregateWeeklyCandles` (candle-aggregation) stores a weekly candle's
-`time` as the **first actual trading day of its ISO week** — normally
-Monday, but it shifts if Monday wasn't a trading day for that symbol. This
-is a deliberate aggregation convention, not a bug, and it is **not**
-changed by the helpers above. Anything that needs a user-facing week
-label converts that stored value through `getWeekEndingFriday` at the read
-boundary instead — see [BACKTEST.md](./BACKTEST.md) for where this
-matters for `weekly_strong_backtest_runs.weekEnding`.
+`aggregateWeeklyCandles` (candle-aggregation) stores/groups a weekly
+candle's **internal bucket identity** as the **first actual trading day of
+its ISO week** — normally Monday, but it shifts if Monday wasn't a trading
+day for that symbol. This is a deliberate aggregation convention, not a
+bug, and it is **not** changed by the helpers above; OHLC/volume are
+computed exactly the same way regardless of which day labels the bucket.
+Anything that needs a user-facing week label converts that value through
+`getWeekEndingFriday` at the read/response boundary instead — see
+[BACKTEST.md](./BACKTEST.md) for where this matters for
+`weekly_strong_backtest_runs.weekEnding`.
+
+This includes the **Charts page's 1W candles**: `getChartCandles`
+(`market-data.service.ts`) applies `getWeekEndingFriday` to the `time` of
+every weekly candle it returns — both the 1D-derived path
+(`deriveChartCandlesFromDailyRows` → `aggregateWeeklyCandles`, Monday
+bucket) and the legacy stored-1W fallback row (whatever day it happened to
+be stored under) — so the chart always shows a week's Friday, never its
+internal Monday identity, from either path. 1D candle timestamps are
+unaffected (real trading dates); 1M is unaffected. Because of this, the
+Scanner's yellow signal bands (`mapScanBandsToDisplayTimeframe`,
+`src/features/scanner/lib/`) must independently convert the Scanner's own
+Monday-anchored band timestamps to the same week-ending Friday before
+matching them against the chart's now-Friday-labeled candles — the Scanner
+qualification rule itself stays Monday-anchored internally and is
+untouched; only the frontend's display-time alignment changed.
 
 ## Provider fallback/resolution
 
