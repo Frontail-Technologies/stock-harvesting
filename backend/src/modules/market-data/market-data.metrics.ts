@@ -8,15 +8,18 @@ import {
 } from "./market-data.candles";
 import { getDateDaysAgo, getDateYearsAgo } from "./market-data.dates";
 import { getWeekEndingFriday } from "./trading-calendar";
-import {
-  evaluateWeeklyStrongLatest,
-  evaluateWeeklyStrongSeries,
-  excludeIncompleteTradingWeek,
-  findCurrentStreakEntryIndex,
-  hasSufficientWeeklyStrongHistory,
-} from "./weekly-strong-evaluator";
+import { evaluateWeeklyStrongSeries, excludeIncompleteTradingWeek, hasSufficientWeeklyStrongHistory } from "./weekly-strong-evaluator";
+import { resolveScannerSignalFromDailyCloses } from "../scanner/scanner-current-signal";
+import { DEFAULT_SCANNER_LOOKBACK, SCANNER_LOOKBACK_WEEKS, type ScannerLookbackMultiplier } from "../scanner/scanner.constants";
 
-// Analytical data preparation/orchestration for Relative Strength and Weekly Strong: fetches/prepares candle series, then composes them with the canonical decision logic in weekly-strong-evaluator.ts - never duplicates or inlines evaluator rules here, only calls them.
+// Analytical data preparation/orchestration for Relative Strength, Weekly
+// Strong (Backtest chart only - see computeWeeklyStrongBacktestMembers) and
+// Stock Harvest (see computeWeeklyStrongStocks - Scanner-driven, not Weekly
+// Strong, despite the legacy "WeeklyStrong" naming kept for now to avoid an
+// unrelated rename across the codebase): fetches/prepares candle series,
+// then composes them with the canonical decision logic owned by
+// weekly-strong-evaluator.ts or the scanner module respectively - never
+// duplicates or inlines either evaluator's rules here, only calls them.
 
 export type { MetricCandle };
 
@@ -215,7 +218,14 @@ export function deriveSectorIndustryTaxonomy(
     .sort((a, b) => a.sector.localeCompare(b.sector));
 }
 
-// The Weekly Strong breakout screen. Unlike the relative-strength metrics above (which rank everything), this filters down to only the stocks that pass the qualification rule - see weekly-strong-evaluator.ts for the actual decision logic and constants, not restated here.
+// Stock Harvest: driven entirely by the Scanner rule - the same evaluator
+// chain that produces the Charts page's yellow signal bands
+// (deriveScannerWeeklyCloses -> excludeIncompleteTradingWeek ->
+// classifyScannerWeeklySeries -> resolveCurrentScannerSignal, the same
+// functions/tier fallback the live per-symbol scanner endpoint uses). Weekly
+// Strong plays no part in membership, In Since, or Return here - see
+// computeWeeklyStrongBacktestMembers below for the separate, still
+// Weekly-Strong-driven Harvest Backtest chart.
 
 export type WeeklyStrongStockRow = {
   symbol: string;
@@ -223,9 +233,9 @@ export type WeeklyStrongStockRow = {
   exchange: string;
   close: number;
   changePct: number;
-  // Performance from when this stock's *current* qualifying streak began (same entry concept computeSymbolBreakoutBacktest uses for a closed trade, here for a still-open streak) through today's latest close - not the same as changePct (yesterday-to-today); null when no reference point exists rather than a misleading 0%.
+  // Performance from the current Scanner streak's entry close (resolveCurrentScannerSignal.entryClose) through the current completed week's close - null when the stock isn't currently Scanner-matched (never reachable here) or has no valid entry close.
   returnPct: number | null;
-  // The canonical week-ending Friday this streak's entry week resolves to - same entryIndex as returnPct above, never a second streak lookup; null exactly when returnPct is null.
+  // The canonical week-ending Friday of the current Scanner streak's first passing week (resolveCurrentScannerSignal.entryTime) - the same date the chart's own yellow band starts at.
   inSince: string | null;
   volume: number;
   sector: string | null;
@@ -241,40 +251,31 @@ export async function computeWeeklyStrongStocks(
     sector?: string | null;
     industry?: string | null;
   }>,
-  exchange: string
+  exchange: string,
+  lookback: ScannerLookbackMultiplier = DEFAULT_SCANNER_LOOKBACK
 ): Promise<WeeklyStrongStockRow[]> {
   if (instrumentRows.length === 0) return [];
 
-  const { dailyCandles, weeklyCandles } = await readDailyAndWeeklyMetricCandles({
-    exchange,
+  const dailyCandles = await readMetricCandles({
     instruments: instrumentRows.map((row) => ({ instrumentId: row.instrumentId, symbol: row.symbol })),
-    dailyFrom: getDateYearsAgo(5),
-    weeklyFrom: getDateYearsAgo(5),
+    timeframe: CANDLE_TIMEFRAME.day,
+    from: getDateYearsAgo(WEEKLY_STRONG_BACKTEST_FETCH_YEARS),
   });
   const dailyCandlesBySymbol = groupMetricCandlesBySymbol(dailyCandles);
-  const weeklyCandlesBySymbol = groupMetricCandlesBySymbol(weeklyCandles);
 
   const rows: WeeklyStrongStockRow[] = [];
 
   for (const instrument of instrumentRows) {
     const dailyRows = dailyCandlesBySymbol.get(instrument.symbol) ?? [];
-    // Drops a trailing in-progress week before it can ever be evaluated as "the latest completed week" - see excludeIncompleteTradingWeek. Only the weekly leg needs this: a daily candle is complete the moment it's synced, but a weekly bucket keeps accumulating until its week ends.
-    const weeklyRows = excludeIncompleteTradingWeek(
-      weeklyCandlesBySymbol.get(instrument.symbol) ?? [],
-      exchange
-    );
     const latestDaily = dailyRows[dailyRows.length - 1];
-    const latestWeekly = weeklyRows[weeklyRows.length - 1];
-    if (!latestDaily || !latestWeekly) continue;
+    if (!latestDaily) continue;
 
-    // A near-empty window has its own "high" roughly equal to its own close, which trivially passes a "near the high" check - that's a data gap, not a real breakout, so skip symbols without a reasonably substantial sample.
-    if (!hasSufficientWeeklyStrongHistory(dailyRows.length, weeklyRows.length)) continue;
-
-    const decision = evaluateWeeklyStrongLatest(
-      dailyRows.map((row) => row.close),
-      weeklyRows.map((row) => row.close)
+    const signal = resolveScannerSignalFromDailyCloses(
+      dailyRows.map((row) => ({ time: row.time, close: row.close })),
+      exchange,
+      SCANNER_LOOKBACK_WEEKS[lookback]
     );
-    if (!decision.passes) continue;
+    if (!signal.matched) continue;
 
     const previousDaily = dailyRows[dailyRows.length - 2];
     const changePct =
@@ -282,19 +283,11 @@ export async function computeWeeklyStrongStocks(
         ? ((latestDaily.close - previousDaily.close) * 100) / previousDaily.close
         : 0;
 
-    // Return: entry close (start of the still-open qualifying streak) through today's latest close. Reuses the same series evaluator the decision above already ran a "latest" version of - no new reference point invented, no extra candle fetch.
-    const series = evaluateWeeklyStrongSeries(dailyRows, weeklyRows);
-    const entryIndex = findCurrentStreakEntryIndex(series);
-    let returnPct: number | null = null;
-    let inSince: string | null = null;
-    if (entryIndex !== null) {
-      const entryTime = series[entryIndex].time;
-      inSince = getWeekEndingFriday(entryTime);
-      const entryClose = weeklyRows.find((row) => row.time === entryTime)?.close;
-      if (entryClose !== undefined && entryClose > 0) {
-        returnPct = ((latestDaily.close - entryClose) / entryClose) * 100;
-      }
-    }
+    const inSince = signal.entryTime ? getWeekEndingFriday(signal.entryTime) : null;
+    const returnPct =
+      signal.entryClose !== null && signal.entryClose > 0 && signal.currentClose !== null
+        ? ((signal.currentClose - signal.entryClose) / signal.entryClose) * 100
+        : null;
 
     rows.push({
       symbol: instrument.symbol,
