@@ -23,10 +23,68 @@ already authenticating into, whether that specific login is *accepted*.
 ## 2. Login methods
 
 Two independent login methods exist: Google OAuth (both portals) and
-password login (email + password, set during registration — no separate
-"forgot password" flow exists yet). Both funnel into the same
+password login (email + password, set during registration or reset via
+the forgot-password flow, §2b). Both funnel into the same
 `evaluatePortalAccess` decision and the same `createSession` before either
 ever issues a token.
+
+**One account per email, across both methods.** `users.email` is unique at
+the DB level, and both signup paths enforce it *before* creating or
+mutating a row — neither one silently attaches itself to the other's
+existing account:
+
+- Google login (`findOrCreateUser`, `google-auth.service.ts`): if a `users`
+  row for that email already has a `passwordHash` **and no prior Google
+  `authAccounts` link**, the login is rejected
+  (`{ ok: false, reason: "account-exists-with-password" }`, surfaced to the
+  frontend as `?auth=account-exists-password`) — it never silently links
+  Google onto an existing password account or creates a second row. A
+  password account that *has* previously been linked (an `authAccounts`
+  row already exists) logs in normally.
+- Password registration (`requestUserRegistration` /
+  `verifyUserRegistrationOtp`, `registration.service.ts`): if a `users` row
+  for that email already exists at all — password-based or Google-only —
+  the request is rejected with a `409` before an OTP is even sent, telling
+  the caller which method to use instead. A Google-only row (no
+  `passwordHash`) is never silently given one by a later password signup.
+  The identical check is re-run inside the OTP-verification transaction
+  (defense in depth against a Google account being created in the window
+  between the initial request and OTP verification).
+
+Explicit account linking (letting one authenticated user attach a second
+login method to their own account on purpose) does not exist yet — deferred
+to a future explicit, verified flow, not an implicit side effect of either
+login path above.
+
+### 2b. Forgot password
+
+`backend/src/modules/auth/password-reset.service.ts`. Password-only (a
+Google-only account has nothing to reset — `requestPasswordReset` silently
+no-ops for one, see below).
+
+- `POST /api/auth/password-reset/request` — always returns the same
+  generic `{ message }` regardless of whether the email exists, whether it
+  has a password, or whether the email delivery actually happened; never
+  reveals account existence. Only when a `users` row with a `passwordHash`
+  is found does it generate a token, store the token's **hash** (never the
+  raw token) in `password_reset_tokens`, and email a
+  `{WEB_APP_URL}/reset-password?token=<raw token>` link. Rate-limited
+  (`auth:password-reset-request`, 5/15min) and Turnstile-gated, same as
+  registration.
+- `POST /api/auth/password-reset/confirm` — looks up the token by hash
+  inside a `SELECT ... FOR UPDATE` transaction (same locking pattern as
+  `rotateRefreshToken`/OTP verification), rejects an unknown, expired, or
+  already-consumed token with one generic message (never distinguishes
+  "expired" from "invalid" to the caller), sets the new `passwordHash`,
+  marks the token `consumedAt`, and revokes every existing (non-revoked)
+  `refresh_tokens` row for that user — a password reset ends every active
+  session, not just future logins with the old password. Rate-limited
+  (`auth:password-reset-confirm`, 10/15min); no Turnstile (only reachable
+  with a possessed, single-use token already).
+- Tokens expire after 30 minutes (`PASSWORD_RESET_TOKEN_EXPIRY_MS`), are
+  single-use (`consumedAt`), and are looked up only by their HMAC hash —
+  the raw token exists only in the emailed link and the requester's
+  browser.
 
 ### Google OAuth
 

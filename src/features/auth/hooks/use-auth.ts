@@ -10,9 +10,11 @@ import {
   refreshAdminSession,
 } from "../api/admin-auth-api";
 import {
+  confirmPasswordReset,
   getCurrentAuthUser,
   loginWithPassword,
   refreshSession,
+  requestPasswordReset,
   requestRegistration,
   resendRegistration,
   startGoogleLogin,
@@ -130,6 +132,18 @@ export function useRegistrationVerify() {
 export function useRegistrationResend() {
   return useMutation({
     mutationFn: resendRegistration,
+  });
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: requestPasswordReset,
+  });
+}
+
+export function useConfirmPasswordReset() {
+  return useMutation({
+    mutationFn: confirmPasswordReset,
   });
 }
 

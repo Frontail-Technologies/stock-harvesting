@@ -36,7 +36,7 @@ import {
   exportWeeklyStrongStocksToCsv,
   exportWeeklyStrongStocksToXlsx,
 } from "../lib/export-weekly-strong-stocks";
-import { formatMediumDate, formatWeekEnding } from "../lib/format-as-of-date";
+import { formatMediumDate } from "../lib/format-as-of-date";
 
 type SortKey = "symbol" | "name" | "close" | "changePct" | "returnPct" | "inSince" | "volume";
 type SortDirection = "asc" | "desc";
@@ -75,8 +75,7 @@ export function WeeklyStrongStockTable({
   const router = useRouter();
   const setScannerStock = useScannerUiStore((state) => state.setSelectedStock);
   const { formatStockCurrency } = useCurrency();
-  const { items, isLoading, isError, weekEnding } = useCollectionWeeklyStrongStocks({ code });
-  const weekEndingLabel = !isLoading ? formatWeekEnding(weekEnding) : "";
+  const { items, isLoading, isError } = useCollectionWeeklyStrongStocks({ code });
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "changePct",
@@ -206,10 +205,7 @@ export function WeeklyStrongStockTable({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-foreground">Harvest Results</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Qualified stocks for this segment
-            {weekEndingLabel && <span className="text-foreground/70"> · {weekEndingLabel}</span>}
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Qualified stocks for this segment</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-56">

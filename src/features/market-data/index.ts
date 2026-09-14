@@ -1,5 +1,6 @@
 export { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "./constants";
 export {
+  ensureFreshCandles,
   getCandles,
   getHistoryRange,
   getIndexRelativeStrength,
@@ -18,6 +19,9 @@ export {
 export type {
   CandleListInput,
   CandleListResponse,
+  EnsureFreshCandlesInput,
+  EnsureFreshCandlesResponse,
+  EnsureFreshCandlesStatus,
   HistoryRangeInput,
   HistoryRangeResponse,
   IndexRelativeStrengthMetric,

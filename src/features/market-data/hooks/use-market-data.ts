@@ -11,6 +11,7 @@ import { DEV_MOCK_FALLBACK_ENABLED } from "@/utils/frontend-flags";
 import { searchStocks } from "@/utils/stock-search";
 import { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "../constants";
 import {
+  ensureFreshCandles,
   getCandles,
   getHistoryRange,
   getIndexRelativeStrength,
@@ -310,12 +311,19 @@ export function useHistoryRange(input: HistoryRangeInput) {
     gcTime: 60 * 60_000,
   });
 }
-export function useCandles(input: CandleListInput) {
+export function useCandles(
+  input: CandleListInput,
+  options: { ensureFresh?: boolean } = {}
+) {
   const authStatus = useSessionStore((state) => state.status);
+  const ensureFresh = options.ensureFresh ?? false;
 
   return useQuery({
     queryKey: queryKeys.marketData.candles(input),
     queryFn: async () => {
+      if (ensureFresh && input.exchange === "BSE") {
+        await ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
+      }
       const response = await getCandles(input);
       return response.candles;
     },
@@ -324,7 +332,7 @@ export function useCandles(input: CandleListInput) {
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,
 
-    placeholderData: (previousData) => previousData,
+    placeholderData: ensureFresh ? undefined : (previousData) => previousData,
   });
 }
 

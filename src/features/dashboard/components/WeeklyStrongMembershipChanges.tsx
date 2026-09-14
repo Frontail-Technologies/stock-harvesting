@@ -49,7 +49,9 @@ function MembershipChangeTable({
           {title} ({count})
         </h3>
         {previousWeekLabel && (
-          <p className="mt-0.5 text-xs text-muted-foreground">vs {previousWeekLabel}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground" title={previousWeekLabel}>
+            vs previous week
+          </p>
         )}
       </div>
 

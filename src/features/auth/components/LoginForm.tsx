@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,12 @@ export function LoginForm({
           {errors.password && (
             <p className="mt-1 text-[11px] text-destructive">{errors.password.message}</p>
           )}
+          <Link
+            href="/forgot-password"
+            className="mt-1.5 inline-block cursor-pointer text-[12px] font-medium text-landing-text-secondary underline-offset-4 hover:text-brand-gold hover:underline"
+          >
+            Forgot password?
+          </Link>
         </div>
 
         <Button

@@ -40,6 +40,7 @@ export type WeeklyStrongBacktestStatus =
   | { state: "failed"; errorMessage: string | null };
 
 export type WeeklyStrongBacktestMembershipChangeMember = {
+  instrumentId: string;
   symbol: string;
   name: string;
   exchange: string;

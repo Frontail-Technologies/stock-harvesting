@@ -18,7 +18,6 @@ export type DashboardCardCrossFilter = {
 export type DashboardCardData = {
   id: string;
   title: string;
-  timestamp: string;
   variant: DashboardCardVariant;
   items: DashboardItem[];
   crossFilter?: DashboardCardCrossFilter;

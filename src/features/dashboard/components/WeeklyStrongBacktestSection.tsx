@@ -647,7 +647,13 @@ function WeekResultsView({
   );
 }
 
-export function WeeklyStrongBacktestSection({ code }: { code: string }) {
+export function WeeklyStrongBacktestSection({
+  code,
+  canonicalWeekEnding,
+}: {
+  code: string;
+  canonicalWeekEnding?: string | null;
+}) {
   const { points, generated, isLoading, isError, membershipNote } = useWeeklyStrongBacktestStacked({
     code,
   });
@@ -683,10 +689,14 @@ export function WeeklyStrongBacktestSection({ code }: { code: string }) {
     [points, periodWeeks]
   );
 
+  const defaultWeek =
+    canonicalWeekEnding && visiblePoints.some((point) => point.weekEnding === canonicalWeekEnding)
+      ? canonicalWeekEnding
+      : (visiblePoints[visiblePoints.length - 1]?.weekEnding ?? null);
   const selectedWeek =
     selectedWeekOverride && visiblePoints.some((point) => point.weekEnding === selectedWeekOverride)
       ? selectedWeekOverride
-      : (visiblePoints[visiblePoints.length - 1]?.weekEnding ?? null);
+      : defaultWeek;
 
   const slotCount = visiblePoints.length;
 

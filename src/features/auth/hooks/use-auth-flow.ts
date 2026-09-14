@@ -14,6 +14,8 @@ export type PendingRegistration = {
 };
 
 const GENERIC_LOGIN_ERROR = "Invalid email or password.";
+const ACCOUNT_EXISTS_WITH_PASSWORD_ERROR =
+  "An account already exists with this email. Please sign in using your password.";
 
 function validNextPath(nextPath: string | null) {
   return Boolean(
@@ -43,7 +45,12 @@ export function useAuthFlow() {
   const [dismissedQueryReason, setDismissedQueryReason] = useState(false);
 
   const authReason = dismissedQueryReason ? null : searchParams.get("auth");
-  const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
+  const queryError =
+    authReason === "account-exists-password"
+      ? ACCOUNT_EXISTS_WITH_PASSWORD_ERROR
+      : authReason && authReason !== "success"
+        ? GENERIC_LOGIN_ERROR
+        : null;
   const error = handlerError ?? queryError;
   const showChecking = useDelayedFlag(status !== "guest");
 

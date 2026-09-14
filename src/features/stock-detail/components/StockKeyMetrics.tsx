@@ -23,11 +23,11 @@ export function StockKeyMetrics({ fundamentals, currency }: StockKeyMetricsProps
     <section>
       <h2 className="text-lg font-semibold text-foreground">Key stats</h2>
 
-      {/* Desktop/tablet: one horizontal strip. */}
+      {/* Desktop/tablet: one horizontal strip, stretched to fill the full width. */}
       <div className="mt-3 hidden overflow-x-auto border-t border-border sm:block">
-        <div className="flex min-w-max divide-x divide-border">
+        <div className="flex min-w-full divide-x divide-border">
           {metrics.map((metric) => (
-            <div key={metric.label} className="flex shrink-0 flex-col gap-1 px-4 py-3">
+            <div key={metric.label} className="flex min-w-fit flex-1 flex-col gap-1 px-4 py-3">
               <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
                 {metric.label}
               </span>

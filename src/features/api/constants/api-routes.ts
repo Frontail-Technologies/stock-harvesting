@@ -6,6 +6,8 @@ export const API_ROUTES = {
     register: "/api/auth/register",
     registerResend: "/api/auth/register/resend",
     registerVerify: "/api/auth/register/verify",
+    passwordResetRequest: "/api/auth/password-reset/request",
+    passwordResetConfirm: "/api/auth/password-reset/confirm",
     refresh: "/api/auth/refresh",
     me: "/api/auth/me",
     logout: "/api/auth/logout",
@@ -23,6 +25,7 @@ export const API_ROUTES = {
     chartEligibleStockSearch: "/api/market-data/stocks/search/chart-eligible",
     candles: (symbol: string) =>
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
+    ensureFreshCandles: "/api/market-data/candles/ensure-fresh",
     publicCandles: (symbol: string) =>
       `/api/market-data/public/candles/${encodeURIComponent(symbol)}`,
     historyRange: "/api/market-data/history-range",

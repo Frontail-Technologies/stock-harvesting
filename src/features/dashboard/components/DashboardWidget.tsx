@@ -132,8 +132,6 @@ export function DashboardWidget({
           <Info className="size-3.5 shrink-0 text-muted-foreground" />
         </div>
       </div>
-      <p className="mt-1 text-[0.6875rem] text-muted-foreground">{card.timestamp}</p>
-
       <div
         ref={rowsContainerRef}
         className={cn(

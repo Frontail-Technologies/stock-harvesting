@@ -43,3 +43,45 @@ export async function sendRegistrationOtpEmail(input: RegistrationOtpEmail) {
     );
   }
 }
+
+type PasswordResetEmail = {
+  email: string;
+  name: string;
+  resetUrl: string;
+};
+
+export async function sendPasswordResetEmail(input: PasswordResetEmail) {
+  if (!env.AUTH_OTP_EMAIL_WEBHOOK_URL) {
+    if (env.NODE_ENV === "production") {
+      throw new AppError(
+        HTTP_STATUS.internalServerError,
+        ERROR_CODES.internalError,
+        "Password reset email delivery is not configured"
+      );
+    }
+    return;
+  }
+
+  const response = await fetch(env.AUTH_OTP_EMAIL_WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(env.AUTH_OTP_EMAIL_WEBHOOK_TOKEN
+        ? { authorization: `Bearer ${env.AUTH_OTP_EMAIL_WEBHOOK_TOKEN}` }
+        : {}),
+    },
+    body: JSON.stringify({
+      to: input.email,
+      subject: "Reset your Stock Harvesting password",
+      text: `Hi ${input.name}, use this link to reset your Stock Harvesting password: ${input.resetUrl}. It expires in 30 minutes. If you didn't request this, you can ignore this email.`,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new AppError(
+      HTTP_STATUS.internalServerError,
+      ERROR_CODES.internalError,
+      "Password reset email delivery failed"
+    );
+  }
+}

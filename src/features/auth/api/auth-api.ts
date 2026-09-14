@@ -28,6 +28,16 @@ type RegistrationResendInput = {
   verificationId: string;
 };
 
+type PasswordResetRequestInput = {
+  email: string;
+  turnstileToken?: string;
+};
+
+type PasswordResetConfirmInput = {
+  token: string;
+  password: string;
+};
+
 export type RegistrationChallenge = {
   verificationId: string;
   expiresAt: string;
@@ -74,6 +84,22 @@ export async function verifyRegistration(input: RegistrationVerificationInput) {
 
 export async function resendRegistration(input: RegistrationResendInput) {
   return apiFetch<RegistrationChallenge>(API_ROUTES.auth.registerResend, {
+    method: "POST",
+    body: JSON.stringify(input),
+    skipAuthRefresh: true,
+  });
+}
+
+export async function requestPasswordReset(input: PasswordResetRequestInput) {
+  return apiFetch<{ message: string }>(API_ROUTES.auth.passwordResetRequest, {
+    method: "POST",
+    body: JSON.stringify(input),
+    skipAuthRefresh: true,
+  });
+}
+
+export async function confirmPasswordReset(input: PasswordResetConfirmInput) {
+  return apiFetch<{ ok: boolean }>(API_ROUTES.auth.passwordResetConfirm, {
     method: "POST",
     body: JSON.stringify(input),
     skipAuthRefresh: true,

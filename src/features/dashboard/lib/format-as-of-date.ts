@@ -10,10 +10,7 @@ export function formatAsOfDate(asOfDate: string | null | undefined): string {
   return formatted ? `As of ${formatted}` : "";
 }
 
-// For weekly Harvest results, whose date identity is a week-ending Friday,
-// not a daily "as of" marker - kept distinct from formatAsOfDate, which is
-// still correct for the daily relative-strength metric.
-export function formatWeekEnding(weekEnding: string | null | undefined): string {
+export function formatAnalysisWeek(weekEnding: string | null | undefined): string {
   const formatted = formatMediumDate(weekEnding);
-  return formatted ? `Week ending ${formatted}` : "";
+  return formatted ? `Analysis week: ${formatted}` : "";
 }

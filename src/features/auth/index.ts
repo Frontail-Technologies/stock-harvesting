@@ -1,4 +1,6 @@
 export { LoginScreen } from "./components/LoginScreen";
+export { ForgotPasswordScreen } from "./components/ForgotPasswordScreen";
+export { ResetPasswordScreen } from "./components/ResetPasswordScreen";
 export { AdminLoginScreen } from "./components/AdminLoginScreen";
 export { AuthBootstrap } from "./components/AuthBootstrap";
 export { AdminAuthBootstrap } from "./components/AdminAuthBootstrap";

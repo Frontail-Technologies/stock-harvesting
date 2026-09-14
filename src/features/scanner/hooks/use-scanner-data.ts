@@ -73,7 +73,7 @@ export function useScannerCandles(
   timeframe: Timeframe,
   exchange?: string
 ) {
-  return useCandles({ symbol, timeframe, exchange });
+  return useCandles({ symbol, timeframe, exchange }, { ensureFresh: true });
 }
 
 export function useScannerResults(

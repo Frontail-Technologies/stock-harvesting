@@ -10,13 +10,11 @@ function buildItems(labels: string[], values: number[]): DashboardItem[] {
   }));
 }
 
-const TIMESTAMP = "10th Jul, 3:30pm";
 
 export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-index",
     title: "Index Harvest",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -37,7 +35,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-sector",
     title: "Sector Harvest",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -58,7 +55,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-industry",
     title: "Industry Harvest",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -79,7 +75,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "weekly-strong-stock-list",
     title: "Harvest Results",
-    timestamp: TIMESTAMP,
     variant: "stockList",
     items: buildItems(
       [
@@ -100,7 +95,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-index-top-500",
     title: "Index Harvest Top 500",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -121,7 +115,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-sector-mix",
     title: "Sector Harvest Mix",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -142,7 +135,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "relative-strength-industry-mix",
     title: "Industry Harvest Mix",
-    timestamp: TIMESTAMP,
     variant: "category",
     items: buildItems(
       [
@@ -163,7 +155,6 @@ export const dashboardCards: DashboardCardData[] = [
   {
     id: "weekly-mix-500-strong-stock-list",
     title: "Harvest Mix 500 Results",
-    timestamp: TIMESTAMP,
     variant: "stockList",
     items: buildItems(
       [

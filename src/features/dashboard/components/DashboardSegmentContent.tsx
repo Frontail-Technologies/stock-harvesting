@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useCollectionRelativeStrength,
   useCollectionSectorIndustryTaxonomy,
+  useCollectionWeeklyStrongStocks,
   type CollectionGroupRelativeStrengthRow,
   type CollectionRelativeStrengthMetric,
 } from "@/features/market-collections";
@@ -20,7 +21,6 @@ import {
   type CrossFilterState,
   type SectorIndustryRelation,
 } from "../lib/dashboard-cross-filter";
-import { formatAsOfDate } from "../lib/format-as-of-date";
 import { colorForDashboardLabel } from "../lib/dashboard-widget-colors";
 import { DashboardGridSkeleton } from "./DashboardWidgetSkeleton";
 import { DashboardWidgetRow } from "./DashboardWidgetRow";
@@ -58,6 +58,8 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
   const indexExchange = INDEX_EXCHANGE_BY_EQUITY_EXCHANGE[exchange] ?? "NSE_IDX";
   const indexQuery = useIndexRelativeStrength(150, indexExchange);
 
+  const { weekEnding: canonicalWeekEnding } = useCollectionWeeklyStrongStocks({ code });
+
   const [crossFilter, setCrossFilter] = useState<CrossFilterState>(EMPTY_CROSS_FILTER);
 
   const relation = useMemo(
@@ -92,13 +94,9 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
   const cards = buildCollectionCards({
     indexMetrics: indexQuery.metrics,
-    indexAsOfDate: indexQuery.asOfDate,
     stockStrengthMetrics: filteredStockStrengthMetrics,
-    stockStrengthAsOfDate: rsQuery.asOfDate,
     sectorGroups: sectorQuery.data?.groups ?? [],
-    sectorAsOfDate: sectorQuery.asOfDate,
     industryGroups: industryQuery.data?.groups ?? [],
-    industryAsOfDate: industryQuery.asOfDate,
     relation,
     crossFilter,
     onSectorClick: handleSectorClick,
@@ -137,7 +135,7 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
       <WeeklyStrongMembershipChanges code={code} />
 
-      <WeeklyStrongBacktestSection key={code} code={code} />
+      <WeeklyStrongBacktestSection key={code} code={code} canonicalWeekEnding={canonicalWeekEnding} />
     </div>
   );
 }
@@ -150,13 +148,9 @@ type StockChangeRow = {
 
 function buildCollectionCards(input: {
   indexMetrics: StockChangeRow[];
-  indexAsOfDate: string | null;
   stockStrengthMetrics: CollectionRelativeStrengthMetric[];
-  stockStrengthAsOfDate: string | null;
   sectorGroups: CollectionGroupRelativeStrengthRow[];
-  sectorAsOfDate: string | null;
   industryGroups: CollectionGroupRelativeStrengthRow[];
-  industryAsOfDate: string | null;
   relation: SectorIndustryRelation;
   crossFilter: CrossFilterState;
   onSectorClick: (sector: string) => void;
@@ -171,30 +165,18 @@ function buildCollectionCards(input: {
   );
 
   return [
-    createStockCard(
-      "relative-strength-index",
-      "Index Harvest",
-      formatAsOfDate(input.indexAsOfDate),
-      input.indexMetrics
-    ),
-    createGroupCard(
-      "relative-strength-sector",
-      "Sector Harvest",
-      formatAsOfDate(input.sectorAsOfDate),
-      input.sectorGroups,
-      { selectedLabel: input.crossFilter.selectedSector, onSelectLabel: input.onSectorClick }
-    ),
-    createGroupCard(
-      "relative-strength-industry",
-      "Industry Harvest",
-      formatAsOfDate(input.industryAsOfDate),
-      visibleIndustryGroups,
-      { selectedLabel: input.crossFilter.selectedIndustry, onSelectLabel: input.onIndustryClick }
-    ),
+    createStockCard("relative-strength-index", "Index Harvest", input.indexMetrics),
+    createGroupCard("relative-strength-sector", "Sector Harvest", input.sectorGroups, {
+      selectedLabel: input.crossFilter.selectedSector,
+      onSelectLabel: input.onSectorClick,
+    }),
+    createGroupCard("relative-strength-industry", "Industry Harvest", visibleIndustryGroups, {
+      selectedLabel: input.crossFilter.selectedIndustry,
+      onSelectLabel: input.onIndustryClick,
+    }),
     createStockCard(
       "55-day-stock-strength",
       "Stock Harvest",
-      formatAsOfDate(input.stockStrengthAsOfDate),
       input.stockStrengthMetrics,
       input.onStockClick
     ),
@@ -204,7 +186,6 @@ function buildCollectionCards(input: {
 function createStockCard(
   id: string,
   title: string,
-  timestamp: string,
   metrics: StockChangeRow[],
   onItemClick?: DashboardCardData["onItemClick"]
 ): DashboardCardData {
@@ -213,7 +194,6 @@ function createStockCard(
   return {
     id,
     title,
-    timestamp,
     variant: "stockList",
     items: rows.map((row, index) => ({
       rank: index + 1,
@@ -230,14 +210,12 @@ function createStockCard(
 function createGroupCard(
   id: string,
   title: string,
-  timestamp: string,
   groups: CollectionGroupRelativeStrengthRow[],
   crossFilter: DashboardCardData["crossFilter"]
 ): DashboardCardData {
   return {
     id,
     title,
-    timestamp,
     variant: "category",
     items: groups.map((group, index) => ({
       rank: index + 1,

@@ -13,11 +13,13 @@ import { Select, type SelectOption } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
+  useCollectionWeeklyStrongStocks,
   useMarketCollections,
   type MarketCollection,
 } from "@/features/market-collections";
 import { cn } from "@/utils/cn";
 import { getCountryDisplay } from "../constants/dashboard-countries";
+import { formatAnalysisWeek } from "../lib/format-as-of-date";
 import {
   DASHBOARD_WIDGET_COLUMNS_OPTIONS,
   useDashboardUiStore,
@@ -69,6 +71,11 @@ export function DashboardPage() {
     ? collections.find((collection) => collection.code === segmentParam)
     : undefined;
   const effectiveSegment = requestedSegment ?? collections[0] ?? null;
+
+  const { weekEnding: analysisWeekEnding } = useCollectionWeeklyStrongStocks({
+    code: effectiveSegment?.code ?? "",
+  });
+  const analysisWeekLabel = formatAnalysisWeek(analysisWeekEnding);
 
   const updateParams = (next: { country: string; segment?: string }) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -216,6 +223,12 @@ export function DashboardPage() {
             triggerClassName="h-9 w-full sm:w-32"
           />
         </div>
+
+        {analysisWeekLabel && (
+          <div className="col-span-2 flex min-w-0 items-center sm:col-span-1">
+            <span className="text-xs font-semibold text-foreground">{analysisWeekLabel}</span>
+          </div>
+        )}
 
         <div className="flex items-end sm:contents">
           <Button

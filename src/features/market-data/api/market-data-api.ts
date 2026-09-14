@@ -3,6 +3,8 @@ import type {
   CandleListInput,
   CandleListResponse,
   ChartEligibleStockSearchResponse,
+  EnsureFreshCandlesInput,
+  EnsureFreshCandlesResponse,
   HistoryRangeInput,
   HistoryRangeResponse,
   IndexRelativeStrengthResponse,
@@ -84,6 +86,13 @@ export async function getCandles(input: CandleListInput) {
       exchange: input.exchange,
     })
   );
+}
+
+export async function ensureFreshCandles(input: EnsureFreshCandlesInput) {
+  return apiFetch<EnsureFreshCandlesResponse>(API_ROUTES.marketData.ensureFreshCandles, {
+    method: "POST",
+    body: JSON.stringify({ symbol: input.symbol, exchange: input.exchange }),
+  });
 }
 
 export async function getHistoryRange(input: HistoryRangeInput) {

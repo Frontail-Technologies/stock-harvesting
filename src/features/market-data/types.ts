@@ -64,6 +64,26 @@ export type CandleListInput = {
   exchange?: string;
 };
 
+export type EnsureFreshCandlesInput = {
+  symbol: string;
+  exchange?: string;
+};
+
+export type EnsureFreshCandlesStatus =
+  | "updated"
+  | "repaired"
+  | "already-current"
+  | "in-progress"
+  | "bootstrap-required"
+  | "provider-empty"
+  | "failed";
+
+export type EnsureFreshCandlesResponse = {
+  status: EnsureFreshCandlesStatus;
+  changed: boolean;
+  latestExpectedDate: string;
+};
+
 export type IndexRelativeStrengthMetric = {
   symbol: string;
   name: string;
