@@ -22,6 +22,7 @@ import type {
   AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
   AdminMonetizationConfig,
+  AdminUser,
   AdminUserFilters,
   AdminUsersResponse,
   BulkImportFileResult,
@@ -66,6 +67,13 @@ export function getAdminUsersExportCsv(
       direction: filters.direction,
     })
   );
+}
+
+export function createAdminUser(input: { email: string; name: string; password: string }) {
+  return adminApiFetch<{ user: AdminUser }>(API_ROUTES.admin.users, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function updateAdminUserRole(input: { id: string; role: UserRole }) {

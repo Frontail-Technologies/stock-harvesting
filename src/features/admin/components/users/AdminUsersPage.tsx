@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getAdminUsersExportCsv } from "../../api/admin-api";
 import {
   useAdminUsers,
+  useCreateAdminUser,
   useDeleteAdminUser,
   useUpdateAdminUserPlan,
   useUpdateAdminUserRole,
@@ -16,6 +17,7 @@ import { AdminUsersFilters } from "./AdminUsersFilters";
 import { AdminUsersHeader } from "./AdminUsersHeader";
 import { AdminUsersPagination } from "./AdminUsersPagination";
 import { AdminUsersTable } from "./AdminUsersTable";
+import { CreateAdminUserSheet } from "./CreateAdminUserSheet";
 
 export function AdminUsersPage() {
   const {
@@ -30,8 +32,10 @@ export function AdminUsersPage() {
   const roleMutation = useUpdateAdminUserRole();
   const planMutation = useUpdateAdminUserPlan();
   const deleteMutation = useDeleteAdminUser();
+  const createMutation = useCreateAdminUser();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -65,6 +69,17 @@ export function AdminUsersPage() {
     });
   };
 
+  const handleOpenCreateSheet = () => {
+    createMutation.reset();
+    setCreateSheetOpen(true);
+  };
+
+  const handleCreateAdmin = (input: { name: string; email: string; password: string }) => {
+    createMutation.mutate(input, {
+      onSuccess: () => setCreateSheetOpen(false),
+    });
+  };
+
   return (
     <div className="flex w-full flex-col gap-5">
       <AdminUsersHeader
@@ -73,6 +88,7 @@ export function AdminUsersPage() {
         exporting={exporting}
         onRefresh={() => void usersQuery.refetch()}
         onExport={() => void handleExport()}
+        onCreateAdmin={handleOpenCreateSheet}
       />
 
       <section className="flex flex-col gap-3 text-foreground">
@@ -110,6 +126,14 @@ export function AdminUsersPage() {
         onRoleChange={roleMutation.mutate}
         onPlanChange={planMutation.mutate}
         onDelete={handleDelete}
+      />
+
+      <CreateAdminUserSheet
+        open={createSheetOpen}
+        onOpenChange={setCreateSheetOpen}
+        pending={createMutation.isPending}
+        error={createMutation.error?.message ?? null}
+        onSubmit={handleCreateAdmin}
       />
     </div>
   );

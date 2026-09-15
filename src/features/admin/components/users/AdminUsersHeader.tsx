@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type AdminUsersHeaderProps = {
@@ -9,6 +9,7 @@ type AdminUsersHeaderProps = {
   exporting: boolean;
   onRefresh: () => void;
   onExport: () => void;
+  onCreateAdmin: () => void;
 };
 
 export function AdminUsersHeader({
@@ -17,6 +18,7 @@ export function AdminUsersHeader({
   exporting,
   onRefresh,
   onExport,
+  onCreateAdmin,
 }: AdminUsersHeaderProps) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
@@ -35,6 +37,15 @@ export function AdminUsersHeader({
         <span className="inline-flex h-8 items-center rounded-md border border-border bg-[var(--admin-elevated)] px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {totalUsers} Users
         </span>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 gap-1.5 rounded-md"
+          onClick={onCreateAdmin}
+        >
+          <UserPlus className="size-3.5" />
+          New Admin
+        </Button>
         <Button
           type="button"
           variant="outline"

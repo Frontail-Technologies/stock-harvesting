@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useAdminSessionStore } from "@/features/auth";
 import {
+  createAdminUser,
   deleteAdminUser,
   getAdminUsers,
   updateAdminUserPlan,
@@ -19,6 +20,17 @@ export function useAdminUsers(filters: AdminUserFilters) {
     queryKey: queryKeys.admin.users(filters),
     queryFn: () => getAdminUsers(filters),
     enabled: status === "authenticated" && user?.role === "admin",
+  });
+}
+
+export function useCreateAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAdminUser,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.usersRoot });
+    },
   });
 }
 
