@@ -12,6 +12,7 @@ import {
 } from "react";
 import { ArrowLeft, Info } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { ScannerLookbackMultiplier } from "@/features/scanner/types";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -504,16 +505,18 @@ function SectorLegend({
 function WeekResultsView({
   code,
   weekEnding,
+  lookback,
   onBack,
 }: {
   code: string;
   weekEnding: string;
+  lookback: ScannerLookbackMultiplier;
   onBack: () => void;
 }) {
   const { members, isLoading } = useWeeklyStrongBacktestWeekDetail({ code, weekEnding });
 
   const handleRowClick = (member: { symbol: string; exchange: string }) => {
-    openChartInNewTab(member.symbol, member.exchange);
+    openChartInNewTab(member.symbol, member.exchange, lookback);
   };
 
   return (
@@ -648,9 +651,11 @@ function WeekResultsView({
 export function WeeklyStrongBacktestSection({
   code,
   canonicalWeekEnding,
+  lookback,
 }: {
   code: string;
   canonicalWeekEnding?: string | null;
+  lookback: ScannerLookbackMultiplier;
 }) {
   const { points, generated, isLoading, isError, membershipNote } = useWeeklyStrongBacktestStacked({
     code,
@@ -937,7 +942,7 @@ export function WeeklyStrongBacktestSection({
         </div>
       ) : isResultsView && selectedWeek ? (
 
-        <WeekResultsView code={code} weekEnding={selectedWeek} onBack={handleBackToChart} />
+        <WeekResultsView code={code} weekEnding={selectedWeek} lookback={lookback} onBack={handleBackToChart} />
       ) : (
         <>
           {sectorLegend.length > 0 && (

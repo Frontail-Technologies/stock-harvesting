@@ -140,7 +140,12 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
 
       <WeeklyStrongMembershipChanges code={code} lookback={harvestLookback} />
 
-      <WeeklyStrongBacktestSection key={code} code={code} canonicalWeekEnding={canonicalWeekEnding} />
+      <WeeklyStrongBacktestSection
+        key={code}
+        code={code}
+        canonicalWeekEnding={canonicalWeekEnding}
+        lookback={harvestLookback}
+      />
     </div>
   );
 }
