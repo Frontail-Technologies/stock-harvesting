@@ -212,11 +212,22 @@ export function ScannerPage() {
     setWatchlistPanelOpen(true);
   }, [searchParams, setActiveSegmentCode, setWatchlistPanelOpen, setPanelMode]);
 
+  // Zustand's persist middleware rehydrates lookbackMultiplier from
+  // localStorage asynchronously after mount - on first render the store
+  // still holds its pre-hydration default, so a "does this already match
+  // the URL?" check can trivially (and misleadingly) pass before the real
+  // persisted value has loaded, then get silently overwritten by
+  // rehydration a moment later with no re-check. Tracking which lookback
+  // param value has already been applied (same ref pattern as the segment
+  // panel param above) forces the URL to win exactly once per distinct
+  // value, regardless of what the store happens to hold at the time.
+  const appliedLookbackParamRef = useRef<string | null>(null);
   useEffect(() => {
     if (!lookbackParam || !SCANNER_LOOKBACK_VALUES.has(lookbackParam)) return;
-    if (lookbackParam === lookbackMultiplier) return;
+    if (appliedLookbackParamRef.current === lookbackParam) return;
+    appliedLookbackParamRef.current = lookbackParam;
     setLookbackMultiplier(lookbackParam as ScannerLookbackMultiplier);
-  }, [lookbackParam, lookbackMultiplier, setLookbackMultiplier]);
+  }, [lookbackParam, setLookbackMultiplier]);
 
   
   
