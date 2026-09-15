@@ -18,6 +18,11 @@ export type MarketCollection = {
   preparationError: string | null;
   membersWithRequiredHistory: number | null;
   membersUnavailable: number | null;
+  // Admin-controlled Widget page default membership/ordering - see
+  // docs/DASHBOARD.md's Widget section. Never derived from the display
+  // name on the client; the DB is the sole source of truth for defaults.
+  showOnWidgetDefault: boolean;
+  widgetOrder: number | null;
 };
 
 export type CollectionMemberQuote = {

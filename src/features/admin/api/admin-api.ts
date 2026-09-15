@@ -265,6 +265,8 @@ export function updateAdminMarketCollection(input: {
   name?: string;
   description?: string | null;
   active?: boolean;
+  showOnWidgetDefault?: boolean;
+  widgetOrder?: number | null;
 }) {
   const { id, ...body } = input;
   return adminApiFetch<{ collection: AdminMarketCollection }>(API_ROUTES.admin.marketCollection(id), {

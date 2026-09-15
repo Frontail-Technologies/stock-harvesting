@@ -139,4 +139,7 @@ export const queryKeys = {
     list: (input: { exchange?: string; symbol?: string; status?: string }) =>
       ["price-alerts", "list", input] as const,
   },
+  widgetPreferences: {
+    current: ["widget-preferences", "current"] as const,
+  },
 } as const;

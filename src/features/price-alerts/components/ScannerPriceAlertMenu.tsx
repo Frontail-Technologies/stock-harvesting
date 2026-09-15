@@ -340,7 +340,6 @@ function PriceAlertFormBody({
           <EmptyState
             size="compact"
             title="No price alerts yet."
-            description="Create an alert to get notified when a stock reaches your level."
           />
         ) : (
           <>

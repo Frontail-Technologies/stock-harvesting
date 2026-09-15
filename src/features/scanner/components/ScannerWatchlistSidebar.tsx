@@ -111,7 +111,6 @@ function WatchlistEmptyState({ onCreate }: { onCreate: () => void }) {
       <EmptyState
         size="compact"
         title="No watchlists yet"
-        description="Create a watchlist to track stocks and jump straight into Charts."
         primaryAction={{ label: "Create Watchlist", icon: Plus, onClick: onCreate }}
         secondaryAction={{ label: "Open Watchlists page", href: "/watchlists" }}
       />

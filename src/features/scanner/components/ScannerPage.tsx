@@ -365,7 +365,6 @@ function ScannerEmptyState({ onOpenSearch }: { onOpenSearch: () => void }) {
         <EmptyState
           illustration={<ChartsEmptyIllustration />}
           title="Select a stock to start reviewing."
-          description="Search for a company to open its chart and market context."
           primaryAction={{
             label: "Search stocks",
             icon: Search,

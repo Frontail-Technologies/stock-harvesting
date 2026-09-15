@@ -13,7 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -23,12 +25,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { CollectionPreparationStatus } from "@/features/market-collections";
+import type { CollectionPreparationStatus, MarketCollection } from "@/features/market-collections";
 import { adminPath } from "@/utils/seo";
 import { cn } from "@/utils/cn";
 import {
   useAdminMarketCollections,
   useRetryAdminCollectionPreparation,
+  useUpdateAdminMarketCollection,
 } from "../../hooks/use-admin-market-collections";
 import { AdminBulkDeleteCollectionsDialog } from "./AdminBulkDeleteCollectionsDialog";
 import { AdminCreateCollectionDialog } from "./AdminCreateCollectionDialog";
@@ -62,9 +65,71 @@ function PreparationStatusBadge({ status }: { status: CollectionPreparationStatu
   );
 }
 
+// Toggle + order live in one cell (the order only means anything while the
+// toggle is on) - a self-contained local draft for the order input so
+// typing doesn't fire a save on every keystroke, committed on blur/Enter.
+function WidgetDefaultCell({
+  collection,
+  onToggle,
+  onOrderCommit,
+  pending,
+}: {
+  collection: MarketCollection;
+  onToggle: (checked: boolean) => void;
+  onOrderCommit: (value: number | null) => void;
+  pending: boolean;
+}) {
+  // Resyncing to the server value when it changes underneath this cell is
+  // handled by the caller keying this component on collection.widgetOrder
+  // (remounts with a fresh initial draft) rather than an effect.
+  const [orderDraft, setOrderDraft] = useState(collection.widgetOrder?.toString() ?? "");
+
+  const commitOrder = () => {
+    const trimmed = orderDraft.trim();
+    if (trimmed === "") {
+      if (collection.widgetOrder !== null) onOrderCommit(null);
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setOrderDraft(collection.widgetOrder?.toString() ?? "");
+      return;
+    }
+    if (parsed !== collection.widgetOrder) onOrderCommit(parsed);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        checked={collection.showOnWidgetDefault}
+        disabled={pending}
+        onCheckedChange={onToggle}
+        aria-label={`Toggle Widget default for ${collection.name}`}
+      />
+      {collection.showOnWidgetDefault && (
+        <Input
+          type="number"
+          min={1}
+          value={orderDraft}
+          disabled={pending}
+          onChange={(event) => setOrderDraft(event.target.value)}
+          onBlur={commitOrder}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+          placeholder="Order"
+          aria-label={`Widget order for ${collection.name}`}
+          className="h-7 w-16 px-1.5 text-xs"
+        />
+      )}
+    </div>
+  );
+}
+
 export function AdminMarketCollectionsPage() {
   const collectionsQuery = useAdminMarketCollections();
   const retryMutation = useRetryAdminCollectionPreparation();
+  const updateMutation = useUpdateAdminMarketCollection();
   const collections = collectionsQuery.data?.collections ?? [];
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -157,6 +222,9 @@ export function AdminMarketCollectionsPage() {
               <TableHead className="w-40 border-r border-border px-2 text-xs font-semibold">
                 Data
               </TableHead>
+              <TableHead className="w-40 border-r border-border px-2 text-xs font-semibold">
+                Widget Default
+              </TableHead>
               <TableHead className="sticky right-0 z-10 w-12 border-l border-border bg-muted/50 p-0" />
             </TableRow>
           </TableHeader>
@@ -239,6 +307,19 @@ export function AdminMarketCollectionsPage() {
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="border-r border-border px-2">
+                  <WidgetDefaultCell
+                    key={`${collection.id}:${collection.widgetOrder ?? "none"}`}
+                    collection={collection}
+                    pending={updateMutation.isPending && updateMutation.variables?.id === collection.id}
+                    onToggle={(checked) =>
+                      updateMutation.mutate({ id: collection.id, showOnWidgetDefault: checked })
+                    }
+                    onOrderCommit={(value) =>
+                      updateMutation.mutate({ id: collection.id, widgetOrder: value })
+                    }
+                  />
+                </TableCell>
                 <TableCell className="sticky right-0 z-10 w-12 border-l border-border bg-card p-0">
                   <div className="flex items-center justify-center py-2">
                     <DropdownMenu>
@@ -271,7 +352,7 @@ export function AdminMarketCollectionsPage() {
 
             {collections.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                   {collectionsQuery.isLoading ? (
                     <span className="inline-flex items-center gap-2">
                       <Spinner size="sm" />
@@ -284,7 +365,6 @@ export function AdminMarketCollectionsPage() {
                       size="compact"
                       illustration={<Layers className="size-4 text-muted-foreground" />}
                       title="No segments yet."
-                      description="Create one to get started."
                       className="py-0"
                     />
                   )}

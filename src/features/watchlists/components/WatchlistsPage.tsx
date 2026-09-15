@@ -90,7 +90,6 @@ export function WatchlistsPage() {
           <EmptyState
             illustration={<WatchlistEmptyIllustration />}
             title="Keep stocks you want to review together."
-            description="Create watchlists to organize companies and open them quickly in Charts."
             primaryAction={{
               label: "Create Watchlist",
               icon: Plus,

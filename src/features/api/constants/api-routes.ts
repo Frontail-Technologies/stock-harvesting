@@ -140,6 +140,9 @@ export const API_ROUTES = {
       `/api/watchlists/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
     relativeStrength: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/relative-strength`,
   },
+  widgetPreferences: {
+    root: "/api/widget-preferences",
+  },
   monetization: {
     config: "/api/monetization/config",
   },

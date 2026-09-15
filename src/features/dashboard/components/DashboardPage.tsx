@@ -257,7 +257,6 @@ export function DashboardPage() {
           <EmptyState
             illustration={<DashboardEmptyIllustration />}
             title="No segments available for this market."
-            description="Try a different market, or check back once data is available."
           />
         </div>
       ) : effectiveSegment ? (

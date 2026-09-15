@@ -70,7 +70,6 @@ export function GlobalSearchResultsList({
         <EmptyState
           size="compact"
           title="No matching stocks found."
-          description="Try another symbol or company name."
           className="py-4"
         />
       </div>
