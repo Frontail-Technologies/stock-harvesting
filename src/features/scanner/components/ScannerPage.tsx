@@ -494,6 +494,19 @@ function ScannerDrawingWorkspace({
       candleQuery.isSuccess &&
       (candleQuery.data?.length ?? 0) > 0,
     onEvent: (event: MarketStreamEvent) => {
+      if (event.type === "market.symbol.refreshed") {
+        if (event.data.exchange !== stock.exchange || event.data.symbol !== stock.symbol) return;
+        void queryClient.invalidateQueries({
+          predicate: (query) => {
+            const [namespace, resource, input] = query.queryKey;
+            if (namespace !== "market-data" || resource !== "candles") return false;
+            const candleInput = input as { symbol?: string; exchange?: string } | undefined;
+            return candleInput?.symbol === stock.symbol && candleInput?.exchange === stock.exchange;
+          },
+        });
+        return;
+      }
+
       if (event.type !== "market.candle.update") return;
       if (event.data.exchange !== stock.exchange || event.data.symbol !== stock.symbol) return;
       if (event.data.timeframe !== timeframe) return;

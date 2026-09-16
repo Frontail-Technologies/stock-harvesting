@@ -128,6 +128,10 @@ export const queryKeys = {
     jobs: ["admin", "jobs"] as const,
     monetization: ["admin", "monetization"] as const,
     dataProviders: ["admin", "data-providers"] as const,
+    marketDataWorkers: ["admin", "market-data", "workers"] as const,
+    marketDataHealth: ["admin", "market-data", "health"] as const,
+    marketDataJobRuns: ["admin", "market-data", "job-runs"] as const,
+    marketDataSchedules: ["admin", "market-data", "schedules"] as const,
   },
   watchlists: {
     list: ["watchlists", "list"] as const,

@@ -15,16 +15,20 @@ import type {
   AdminAdPlacementKey,
   AdminAiKeyResponse,
   AdminAiSettingsResponse,
+  AdminBackgroundJobRun,
   AdminDataProviderConnectResponse,
   AdminDataProviderConnectUrlResponse,
   AdminDataProviderHealthResult,
   AdminDataProviderSettingsResponse,
   AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
+  AdminMarketDataHealth,
   AdminMonetizationConfig,
+  AdminScheduledJobStatus,
   AdminUser,
   AdminUserFilters,
   AdminUsersResponse,
+  AdminWorkerStatus,
   BulkImportFileResult,
   BulkImportPreviewResponse,
   MonetizationMode,
@@ -224,6 +228,22 @@ export function syncAdminMarketDataPrices(input: { exchange: string }) {
     method: "POST",
     body: JSON.stringify({ exchange: input.exchange }),
   });
+}
+
+export function getAdminMarketDataWorkers() {
+  return adminApiFetch<{ workers: AdminWorkerStatus[] }>(API_ROUTES.admin.marketDataWorkers);
+}
+
+export function getAdminMarketDataHealth() {
+  return adminApiFetch<AdminMarketDataHealth>(API_ROUTES.admin.marketDataHealth);
+}
+
+export function getAdminMarketDataJobRuns() {
+  return adminApiFetch<{ runs: AdminBackgroundJobRun[] }>(API_ROUTES.admin.marketDataJobRuns);
+}
+
+export function getAdminMarketDataSchedules() {
+  return adminApiFetch<{ schedules: AdminScheduledJobStatus[] }>(API_ROUTES.admin.marketDataSchedules);
 }
 
 export function syncAdminSectorClassification() {

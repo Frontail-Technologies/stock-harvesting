@@ -170,3 +170,59 @@ export type BulkImportPreviewResponse = {
 };
 
 export type BulkImportFileResult = CollectionImportResult & { created: boolean; name: string; code: string };
+
+export type AdminWorkerStatus = {
+  name: string;
+  status: "online" | "offline";
+  lastHeartbeat: string | null;
+  startedAt: string | null;
+};
+
+export type AdminMarketDataHealth = {
+  exchange: string;
+  latestExpectedTradingDate: string;
+  activeSymbols: number;
+  fresh: number;
+  stale: number;
+  bootstrapRequired: number;
+  lastSuccessfulRefresh: string | null;
+};
+
+export type AdminBackgroundJobRunStatus = "running" | "completed" | "partial" | "failed";
+
+export type AdminFailedSymbolDetail = {
+  instrumentId: string | null;
+  symbol: string;
+  reason: string;
+};
+
+export type AdminBackgroundJobRun = {
+  id: string;
+  jobType: string;
+  status: AdminBackgroundJobRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  processedCount: number;
+  updatedCount: number;
+  repairedCount: number;
+  alreadyCurrentCount: number;
+  bootstrapRequiredCount: number;
+  failedCount: number;
+  errorSummary: string | null;
+  metadata: { failedSymbols?: AdminFailedSymbolDetail[] } & Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AdminScheduledJobStatus = {
+  jobType: string;
+  nextRunAt: string | null;
+  lastRun: {
+    status: AdminBackgroundJobRunStatus;
+    startedAt: string;
+    finishedAt: string | null;
+    processedCount: number;
+    updatedCount: number;
+    repairedCount: number;
+    failedCount: number;
+  } | null;
+};

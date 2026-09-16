@@ -22,6 +22,7 @@ import {
   type ScannerLookbackMultiplier,
   type Timeframe,
 } from "../types";
+import { ChartRefreshButton } from "./ChartRefreshButton";
 import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { ScannerAccountMenu } from "./ScannerAccountMenu";
@@ -187,6 +188,13 @@ export function TopToolbar({
       </div>
 
       <div className="hidden min-w-0 flex-1 items-center justify-end gap-1.5 sm:flex">
+        {hasStock && (
+          <>
+            <ChartRefreshButton symbol={stock.symbol} exchange={stock.exchange} />
+            <Separator orientation="vertical" className="mx-0.5 h-5 bg-border/50" />
+          </>
+        )}
+
         <div className="flex shrink-0 items-center gap-1.5">
           <ChartSnapshotMenu stock={stock} disabled={!hasStock} />
           <ShareMenu stock={stock} disabled={!hasStock} />

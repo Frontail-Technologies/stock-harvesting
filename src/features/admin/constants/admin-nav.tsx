@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ImageIcon, Layers, Megaphone, Radio, Sparkles, Users } from "lucide-react";
+import { Activity, ImageIcon, Layers, Megaphone, Radio, Sparkles, Users } from "lucide-react";
 
 export type AdminNavItem = {
   label: string;
@@ -24,6 +24,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: "Segments",
     href: "/admin/market-collections",
     icon: <Layers className="size-4" />,
+  },
+  {
+    label: "Market Data",
+    href: "/admin/jobs",
+    icon: <Activity className="size-4" />,
   },
   {
     label: "Ads",

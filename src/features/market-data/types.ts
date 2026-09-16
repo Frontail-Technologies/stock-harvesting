@@ -26,6 +26,11 @@ export type ChartEligibleStockSearchResponse = {
 
 export type CandleListResponse = {
   candles: Candle[];
+  // The latest ACTUAL underlying 1D trading-day candle date, never a
+  // weekly/monthly aggregated bucket's own display timestamp (which may be
+  // a future-within-its-own-week Friday label that hasn't completed yet).
+  // Null only when there is no daily data at all to derive it from.
+  dataThrough: string | null;
 };
 
 export type HistoryRangeInput = {

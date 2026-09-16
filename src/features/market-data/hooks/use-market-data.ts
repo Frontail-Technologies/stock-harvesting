@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
 import { DEFAULT_MARKET_EXCHANGE } from "@/features/market";
@@ -318,14 +318,13 @@ export function useCandles(
   const authStatus = useSessionStore((state) => state.status);
   const ensureFresh = options.ensureFresh ?? false;
 
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.marketData.candles(input),
     queryFn: async () => {
       if (ensureFresh && input.exchange === "BSE") {
-        void ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
+        await ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
       }
-      const response = await getCandles(input);
-      return response.candles;
+      return getCandles(input);
     },
     enabled: authStatus !== "unknown" && Boolean(input.symbol) && Boolean(input.exchange),
     retry: false,
@@ -333,6 +332,27 @@ export function useCandles(
     gcTime: 60 * 60_000,
 
     placeholderData: ensureFresh ? undefined : (previousData) => previousData,
+  });
+
+  return { ...query, data: query.data?.candles, dataThrough: query.data?.dataThrough ?? null };
+}
+
+export function useManualChartRefresh() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ensureFreshCandles,
+    onSuccess: (response, variables) => {
+      if (!response.changed) return;
+      void queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [namespace, resource, input] = query.queryKey;
+          if (namespace !== "market-data" || resource !== "candles") return false;
+          const candleInput = input as { symbol?: string; exchange?: string } | undefined;
+          return candleInput?.symbol === variables.symbol && candleInput?.exchange === variables.exchange;
+        },
+      });
+    },
   });
 }
 

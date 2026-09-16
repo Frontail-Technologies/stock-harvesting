@@ -51,7 +51,8 @@ function isMarketEvent(message: MarketStreamServerMessage): message is MarketStr
     message.type === "market.tick" ||
     message.type === "market.candle.update" ||
     message.type === "market.provider.status" ||
-    message.type === "job.progress"
+    message.type === "job.progress" ||
+    message.type === "market.symbol.refreshed"
   );
 }
 

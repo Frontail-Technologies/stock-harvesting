@@ -1,9 +1,13 @@
-import { redirect } from "next/navigation";
-import { adminPath } from "@/utils/seo";
+import { AdminShell } from "@/features/admin";
+import { AdminMarketDataPage } from "@/features/admin/components/market-data/AdminMarketDataPage";
 import { createAdminMetadata } from "../admin-metadata";
 
-export const metadata = createAdminMetadata("Admin Jobs");
+export const metadata = createAdminMetadata("Market Data");
 
 export default function AdminJobsRoute() {
-  redirect(adminPath("/admin/users"));
+  return (
+    <AdminShell>
+      <AdminMarketDataPage />
+    </AdminShell>
+  );
 }

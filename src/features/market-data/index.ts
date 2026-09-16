@@ -13,6 +13,7 @@ export {
   useHistoryRange,
   useIndexRelativeStrength,
   useInfiniteStocks,
+  useManualChartRefresh,
   useStocks,
   useStockSearch,
 } from "./hooks/use-market-data";
