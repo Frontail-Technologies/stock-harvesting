@@ -33,6 +33,7 @@ const JOB_TYPE_LABEL: Record<string, string> = {
   daily_candle_morning: "Morning Sync",
   daily_candle_post_market: "Post-Market Sync",
   daily_candle_retry: "Retry Sync",
+  daily_candle_evening: "Evening Sync",
   chart_ensure_fresh: "Chart Ensure-Fresh",
 };
 
@@ -406,10 +407,11 @@ export function AdminMarketDataPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <ScheduleCard label="Morning Sync" schedule={scheduleByType.get("daily_candle_morning")} />
         <ScheduleCard label="Post-Market Sync" schedule={scheduleByType.get("daily_candle_post_market")} />
         <ScheduleCard label="Retry Sync" schedule={scheduleByType.get("daily_candle_retry")} />
+        <ScheduleCard label="Evening Sync" schedule={scheduleByType.get("daily_candle_evening")} />
       </div>
 
       <div>

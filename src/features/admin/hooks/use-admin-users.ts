@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useAdminSessionStore } from "@/features/auth";
+import { useIsAdminReady } from "@/features/auth";
 import {
   createAdminUser,
   deleteAdminUser,
@@ -13,13 +13,12 @@ import {
 import type { AdminUserFilters } from "../types";
 
 export function useAdminUsers(filters: AdminUserFilters) {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
+  const isAdminReady = useIsAdminReady();
 
   return useQuery({
     queryKey: queryKeys.admin.users(filters),
     queryFn: () => getAdminUsers(filters),
-    enabled: status === "authenticated" && user?.role === "admin",
+    enabled: isAdminReady,
   });
 }
 

@@ -15,5 +15,5 @@ export {
   useLogout,
 } from "./hooks/use-auth";
 export { useSessionStore } from "./stores/session-store";
-export { useAdminSessionStore } from "./stores/admin-session-store";
+export { useAdminSessionStore, useIsAdminReady } from "./stores/admin-session-store";
 export type { AuthStatus, AuthUser, UserPlan, UserRole } from "./types";

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useAdminSessionStore } from "@/features/auth";
+import { useIsAdminReady } from "@/features/auth";
 import {
   getAdminMonetization,
   updateAdminMonetizationPlacement,
@@ -10,13 +10,12 @@ import {
 } from "../api/admin-api";
 
 export function useAdminMonetization() {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
+  const isAdminReady = useIsAdminReady();
 
   return useQuery({
     queryKey: queryKeys.admin.monetization,
     queryFn: getAdminMonetization,
-    enabled: status === "authenticated" && user?.role === "admin",
+    enabled: isAdminReady,
   });
 }
 

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useAdminSessionStore } from "@/features/auth";
+import { useIsAdminReady } from "@/features/auth";
 import {
   backfillAdminIndexCandles,
   connectAdminDataProvider,
@@ -27,26 +27,24 @@ const PROVIDER_STATUS_QUERY_OPTIONS = {
 } as const;
 
 export function useAdminDataProviderStatus() {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
+  const isAdminReady = useIsAdminReady();
 
   return useQuery({
     ...PROVIDER_STATUS_QUERY_OPTIONS,
     queryKey: queryKeys.admin.dataProviderStatus,
     queryFn: getAdminDataProviderStatus,
-    enabled: status === "authenticated" && user?.role === "admin",
+    enabled: isAdminReady,
   });
 }
 
 export function useAdminDataProviderStatuses() {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
+  const isAdminReady = useIsAdminReady();
 
   return useQuery({
     ...PROVIDER_STATUS_QUERY_OPTIONS,
     queryKey: queryKeys.admin.dataProviderStatuses,
     queryFn: getAdminDataProviderStatuses,
-    enabled: status === "authenticated" && user?.role === "admin",
+    enabled: isAdminReady,
   });
 }
 
@@ -55,13 +53,12 @@ export function useAdminDataProviderStatuses() {
 // it stays a background fetch with a single retry - the local status query is
 // what makes the card feel immediate.
 export function useAdminDataProviderHealth(provider: string) {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
+  const isAdminReady = useIsAdminReady();
 
   return useQuery({
     queryKey: queryKeys.admin.dataProviderHealth(provider),
     queryFn: () => getAdminDataProviderHealth(provider),
-    enabled: status === "authenticated" && user?.role === "admin",
+    enabled: isAdminReady,
     retry: 1,
     retryDelay: 1_000,
     staleTime: 30_000,

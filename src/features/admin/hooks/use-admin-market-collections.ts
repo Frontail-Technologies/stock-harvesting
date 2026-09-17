@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useAdminSessionStore } from "@/features/auth";
+import { useIsAdminReady } from "@/features/auth";
 import {
   bulkDeleteAdminMarketCollections,
   createAdminMarketCollection,
@@ -28,9 +28,7 @@ import {
 const BACKTEST_STATUS_STALE_TIME_MS = 30_000;
 
 function useIsAdmin() {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
-  return status === "authenticated" && user?.role === "admin";
+  return useIsAdminReady();
 }
 
 export function useAdminMarketCollections() {

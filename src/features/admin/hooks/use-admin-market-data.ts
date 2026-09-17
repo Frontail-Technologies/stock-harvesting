@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
-import { useAdminSessionStore } from "@/features/auth";
+import { useIsAdminReady } from "@/features/auth";
 import {
   getAdminMarketDataHealth,
   getAdminMarketDataJobRuns,
@@ -13,9 +13,7 @@ import {
 const MARKET_DATA_STATUS_REFETCH_MS = 30_000;
 
 function useIsAdmin() {
-  const status = useAdminSessionStore((state) => state.status);
-  const user = useAdminSessionStore((state) => state.user);
-  return status === "authenticated" && user?.role === "admin";
+  return useIsAdminReady();
 }
 
 export function useAdminMarketDataWorkers() {

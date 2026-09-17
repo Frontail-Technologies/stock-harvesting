@@ -97,3 +97,16 @@ if (typeof window !== "undefined") {
     }
   });
 }
+
+// `status` alone goes "authenticated" as soon as the persisted snapshot
+// rehydrates, optimistically, before the bearer token (kept in-memory only,
+// never persisted - see admin-token-store.ts) is actually restored by
+// useAdminAuthBootstrap's refresh call. Any query that needs a real
+// Authorization header must gate on this instead of raw status/user, or it
+// fires once with a null token (401), then again once the retry-refresh in
+// adminApiFetch recovers it.
+export function useIsAdminReady() {
+  return useAdminSessionStore(
+    (state) => state.status === "authenticated" && state.user?.role === "admin" && Boolean(state.accessToken),
+  );
+}
