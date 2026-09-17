@@ -186,6 +186,30 @@ export type AdminMarketDataHealth = {
   stale: number;
   bootstrapRequired: number;
   lastSuccessfulRefresh: string | null;
+  liveDelayedFeed: Array<{
+    provider: string;
+    connected: boolean;
+    exchange?: string;
+    lastMessageTime: string | null;
+    activeSubscriptions: number;
+    currentDayCandlesInMemory: number;
+    lastError: string | null;
+  }>;
+  providerCapabilities: Array<{
+    provider: string;
+    exchange?: string;
+    realtime: "available" | "unavailable" | "unknown";
+    currentDayCandle: "available" | "unavailable" | "unknown";
+    completedDailyHistory: "available" | "unavailable" | "unknown";
+    reason: string | null;
+    lastCheckedAt: string | null;
+    retryAfter: string | null;
+  }>;
+  mechanisms: {
+    historicalDailySync: string;
+    currentPriceSnapshot: string;
+    liveFeed: string;
+  };
 };
 
 export type AdminBackgroundJobRunStatus = "running" | "completed" | "partial" | "failed";

@@ -135,40 +135,36 @@ export function DashboardPage() {
   const isRefreshing = isManualRefresh || collectionsQuery.isFetching;
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-7">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="flex flex-col gap-3 sm:gap-7">
+      <div className="flex items-end justify-between gap-3 sm:flex-wrap sm:items-start sm:gap-4">
         <div>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">
             Market strength and harvest review
           </p>
         </div>
         {updatedAtLabel && (
-          <span className="mt-1 text-xs text-muted-foreground">
-            Last refreshed {updatedAtLabel}
+          <span className="mb-0.5 shrink-0 text-right text-[10px] leading-tight text-muted-foreground sm:mt-1 sm:mb-0 sm:text-xs">
+            <span className="sm:hidden">Updated </span>
+            <span className="hidden sm:inline">Last refreshed </span>
+            {updatedAtLabel}
           </span>
         )}
       </div>
 
-      {/* Mobile: a deliberate 2x2 grid (Country/Segment, View/Refresh) so
-          every control belongs to a cell instead of View floating alone
-          and Refresh drifting to its own row. Desktop (sm+): the existing
-          single-row toolbar, unchanged - the grid cells simply stop being
-          boxes (display: contents) and Refresh's own sm:ml-auto takes back
-          over pushing it to the row's end. */}
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+      <div className="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)_2.25rem] gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-3 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-3">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="hidden text-xs font-medium text-muted-foreground sm:block">
             Country
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger
               disabled={availableCountryCodes.length === 0}
-              className="flex h-9 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-muted/50 aria-expanded:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-32 dark:bg-input/30"
+              className="flex h-9 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-primary/10 aria-expanded:bg-primary/10 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-32 sm:rounded-lg sm:px-3 sm:text-sm sm:hover:bg-muted/50 sm:aria-expanded:bg-muted/50 dark:bg-input/30"
             >
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-muted text-[9px] font-bold tracking-wide text-muted-foreground uppercase tabular-nums">
+              <span className="hidden size-5 shrink-0 items-center justify-center rounded-[4px] bg-muted text-[9px] font-bold tracking-wide text-muted-foreground uppercase tabular-nums sm:flex">
                 {countryCode ?? "—"}
               </span>
               <span className="min-w-0 flex-1 truncate text-left">
@@ -204,7 +200,7 @@ export function DashboardPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="hidden text-xs font-medium text-muted-foreground sm:block">
             Segment
           </span>
           <Select
@@ -218,12 +214,12 @@ export function DashboardPage() {
               value: collection.code,
               label: collection.name,
             }))}
-            triggerClassName={cn("h-9 w-full sm:w-auto sm:min-w-48")}
+            triggerClassName={cn("h-9 w-full rounded-md px-2 text-xs sm:w-auto sm:min-w-48 sm:rounded-lg sm:px-3 sm:text-sm")}
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
+        <div className="hidden min-w-0 flex-col gap-1.5 sm:flex">
+          <span className="hidden text-xs font-medium text-muted-foreground sm:block">
             View
           </span>
           <Select
@@ -232,7 +228,7 @@ export function DashboardPage() {
               setWidgetColumns(Number(value) as DashboardWidgetColumns)
             }
             options={WIDGET_COLUMNS_OPTIONS}
-            triggerClassName="h-9 w-full sm:w-32"
+            triggerClassName="h-9 w-full rounded-md px-2 text-xs sm:w-32 sm:rounded-lg sm:px-3 sm:text-sm"
           />
         </div>
 
@@ -240,12 +236,14 @@ export function DashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-full gap-1.5 sm:ml-auto sm:w-auto"
+            className="h-9 w-9 gap-1.5 p-0 sm:ml-auto sm:w-auto sm:px-3"
             disabled={isRefreshing}
             onClick={() => void handleRefresh()}
+            aria-label={isRefreshing ? "Refreshing dashboard" : "Refresh dashboard"}
+            title={isRefreshing ? "Refreshing" : "Refresh"}
           >
             <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />
-            {isRefreshing ? "Refreshing" : "Refresh"}
+            <span className="hidden sm:inline">{isRefreshing ? "Refreshing" : "Refresh"}</span>
           </Button>
         </div>
       </div>

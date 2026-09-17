@@ -3,7 +3,6 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bell, Loader2, X } from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -207,7 +206,7 @@ export function ScannerPriceAlertMenu({ stock, disabled }: ScannerPriceAlertMenu
       </Tooltip>
       <PopoverContent
         align="end"
-        className="scanner-portal w-80 max-w-[calc(100vw-1.5rem)] p-3"
+        className="scanner-portal w-72 max-w-[calc(100vw-1rem)] p-2.5"
       >
         {formBody}
       </PopoverContent>
@@ -255,15 +254,15 @@ function PriceAlertFormBody({
   deletingId: string | null;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div>
         <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Price Alert
         </p>
-        <p className="mt-1 text-sm font-bold text-foreground">
+        <p className="mt-0.5 text-sm font-bold text-foreground">
           {stock.symbol} <span className="font-normal text-muted-foreground">· {stock.exchange}</span>
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="text-[0.6875rem] text-muted-foreground">
           Current{" "}
           <span className="font-semibold text-foreground">
             {currentPrice !== null
@@ -277,14 +276,14 @@ function PriceAlertFormBody({
 
       <div>
         <label className="text-xs font-medium text-muted-foreground">Condition</label>
-        <div className="mt-1 grid grid-cols-2 gap-1 rounded-md border border-border bg-background p-1">
+        <div className="mt-0.5 grid grid-cols-2 gap-1 rounded-md border border-border bg-background p-0.5">
           {(["ABOVE", "BELOW"] as PriceAlertCondition[]).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => onConditionChange(option)}
               className={cn(
-                "h-8 cursor-pointer rounded-md text-xs font-bold transition-colors hover:bg-muted",
+                "h-7 cursor-pointer rounded-sm text-xs font-bold transition-colors hover:bg-muted",
                 condition === option && "bg-primary text-primary-foreground hover:bg-primary"
               )}
             >
@@ -305,7 +304,7 @@ function PriceAlertFormBody({
           value={targetPrice}
           onChange={onTargetPriceChange}
           placeholder="0.00"
-          className="mt-1 h-9 w-full rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+          className="mt-0.5 h-8 w-full rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground outline-none focus:border-primary"
         />
       </div>
 
@@ -329,18 +328,15 @@ function PriceAlertFormBody({
         type="button"
         disabled={!canSubmit || isPending}
         onClick={onSubmit}
-        className="flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />}
         {isPending ? "Creating..." : "Create Alert"}
       </button>
 
-      <div className="border-t border-border pt-3">
+      <div className="border-t border-border pt-2">
         {!alertsLoading && alerts.length === 0 ? (
-          <EmptyState
-            size="compact"
-            title="No price alerts yet."
-          />
+          <p className="py-1 text-center text-xs text-muted-foreground">No price alerts yet.</p>
         ) : (
           <>
             <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

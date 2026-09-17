@@ -21,6 +21,8 @@ const STATUS_LABEL: Record<string, string> = {
   "already-current": "Already current",
   failed: "Failed",
   "in-progress": "Refreshing...",
+  "bootstrap-required": "Preparing data...",
+  "provider-empty": "No data available",
 };
 
 export function ChartRefreshButton({ symbol, exchange, className }: ChartRefreshButtonProps) {
@@ -42,6 +44,8 @@ export function ChartRefreshButton({ symbol, exchange, className }: ChartRefresh
           setResultLabel(STATUS_LABEL[response.status] ?? "Refresh");
           if (response.status === "failed") {
             toast.error(`Refresh failed for ${symbol}`);
+          } else if (response.status === "provider-empty") {
+            toast.error(`No historical data found for ${symbol}`);
           } else if (response.status === "already-current") {
             toast.success(`${symbol} is already current`);
           } else if (response.changed) {

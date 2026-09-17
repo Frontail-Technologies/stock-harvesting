@@ -31,6 +31,34 @@ export type CandleListResponse = {
   // a future-within-its-own-week Friday label that hasn't completed yet).
   // Null only when there is no daily data at all to derive it from.
   dataThrough: string | null;
+  nextBefore?: string | null;
+  hasMore?: boolean;
+};
+
+// Today's still-forming, provider-delayed session - chart display only,
+// never a completed/canonical candle. Never fed into Scanner/Weekly
+// Strong/any analytical read.
+export type CurrentDayDelayedCandle = {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+  lastUpdatedAt: string;
+  provisional: true;
+};
+
+export type CurrentDayCandleResponse = {
+  candle: CurrentDayDelayedCandle | null;
+  capability: {
+    realtime: "available" | "unavailable" | "unknown";
+    currentDayCandle: "available" | "unavailable" | "unknown";
+    completedDailyHistory: "available" | "unavailable" | "unknown";
+    reason: string | null;
+    lastCheckedAt: string | null;
+    retryAfter: string | null;
+  } | null;
 };
 
 export type HistoryRangeInput = {
@@ -66,6 +94,8 @@ export type CandleListInput = {
   timeframe: string;
   from?: string;
   to?: string;
+  before?: string;
+  limit?: number;
   exchange?: string;
 };
 

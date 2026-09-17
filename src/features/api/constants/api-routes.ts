@@ -25,6 +25,8 @@ export const API_ROUTES = {
     chartEligibleStockSearch: "/api/market-data/stocks/search/chart-eligible",
     candles: (symbol: string) =>
       `/api/market-data/charts/${encodeURIComponent(symbol)}/candles`,
+    currentDayCandle: (symbol: string) =>
+      `/api/market-data/charts/${encodeURIComponent(symbol)}/current-day-candle`,
     ensureFreshCandles: "/api/market-data/candles/ensure-fresh",
     publicCandles: (symbol: string) =>
       `/api/market-data/public/candles/${encodeURIComponent(symbol)}`,
@@ -48,8 +50,10 @@ export const API_ROUTES = {
       `/api/weekly-strong-backtest/${encodeURIComponent(code)}`,
     weekDetail: (code: string, weekEnding: string) =>
       `/api/weekly-strong-backtest/${encodeURIComponent(code)}/${encodeURIComponent(weekEnding)}`,
-    membershipChanges: (code: string, weekEnding: string) =>
-      `/api/weekly-strong-backtest/${encodeURIComponent(code)}/membership-changes?weekEnding=${encodeURIComponent(weekEnding)}`,
+    membershipChanges: (code: string, weekEnding?: string) =>
+      weekEnding
+        ? `/api/weekly-strong-backtest/${encodeURIComponent(code)}/membership-changes?weekEnding=${encodeURIComponent(weekEnding)}`
+        : `/api/weekly-strong-backtest/${encodeURIComponent(code)}/membership-changes`,
   },
   scanner: {
     results: "/api/scanner/results",
@@ -140,6 +144,7 @@ export const API_ROUTES = {
     root: "/api/watchlists",
     byId: (id: string) => `/api/watchlists/${encodeURIComponent(id)}`,
     items: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/items`,
+    bulkItems: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/items/bulk`,
     item: (id: string, itemId: string) =>
       `/api/watchlists/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}`,
     relativeStrength: (id: string) => `/api/watchlists/${encodeURIComponent(id)}/relative-strength`,

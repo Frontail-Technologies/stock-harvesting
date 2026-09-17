@@ -22,6 +22,7 @@ export type MarketCandleUpdateEvent = {
     low: number;
     close: number;
     volume?: number;
+    lastUpdatedAt?: string;
   };
 };
 

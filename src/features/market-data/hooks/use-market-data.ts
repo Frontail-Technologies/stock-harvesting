@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
@@ -13,6 +13,7 @@ import { MARKET_DATA_PAGE_SIZE, STOCK_SEARCH_LIMIT } from "../constants";
 import {
   ensureFreshCandles,
   getCandles,
+  getCurrentDayCandle,
   getHistoryRange,
   getIndexRelativeStrength,
   getStocks,
@@ -22,7 +23,7 @@ import {
 import { normalizeStocks } from "../lib/stock-mappers";
 import { useMarketDataCacheStore } from "../stores/market-data-cache-store";
 import type { CandleListInput, HistoryRangeInput, StockListInput } from "../types";
-import type { Stock } from "@/types/market";
+import type { Candle, Stock } from "@/types/market";
 
 const STOCK_SEARCH_STALE_TIME_MS = 10 * 60_000;
 const STOCK_LIST_STALE_TIME_MS = 5 * 60_000;
@@ -317,24 +318,118 @@ export function useCandles(
 ) {
   const authStatus = useSessionStore((state) => state.status);
   const ensureFresh = options.ensureFresh ?? false;
+  const queryClient = useQueryClient();
+  const ensuredKeyRef = useRef<string | null>(null);
 
   const query = useQuery({
     queryKey: queryKeys.marketData.candles(input),
-    queryFn: async () => {
-      if (ensureFresh && input.exchange === "BSE") {
-        await ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange }).catch(() => undefined);
-      }
-      return getCandles(input);
-    },
+    queryFn: () => getCandles(input),
     enabled: authStatus !== "unknown" && Boolean(input.symbol) && Boolean(input.exchange),
     retry: false,
     staleTime: CANDLE_STALE_TIME_MS,
     gcTime: 60 * 60_000,
 
-    placeholderData: ensureFresh ? undefined : (previousData) => previousData,
+    // Keeps the previously-displayed candles visible during any refetch
+    // (manual Refresh, WS-triggered invalidation, ensure-fresh repair) -
+    // isLoading/isFetching still reflect the real query state, this only
+    // avoids the array collapsing to [] mid-fetch and the chart briefly
+    // rendering a single lone (provisional-merged) candle.
+    placeholderData: (previousData) => previousData,
+    refetchInterval: (currentQuery) =>
+      ensureFresh &&
+      input.exchange === "BSE" &&
+      currentQuery.state.data?.candles.length === 0
+        ? 3_000
+        : false,
   });
 
+  useEffect(() => {
+    if (!ensureFresh || input.exchange !== "BSE" || !input.symbol || !query.isSuccess) return;
+    const ensureKey = `${input.exchange}:${input.symbol}`;
+    if (ensuredKeyRef.current === ensureKey) return;
+    ensuredKeyRef.current = ensureKey;
+
+    void ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange })
+      .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.marketData.candles(input) }))
+      .catch(() => undefined);
+  }, [ensureFresh, input, query.isSuccess, queryClient]);
+
   return { ...query, data: query.data?.candles, dataThrough: query.data?.dataThrough ?? null };
+}
+
+const PROGRESSIVE_CANDLE_PAGE_SIZE = 400;
+
+export function useProgressiveCandles(
+  input: Omit<CandleListInput, "before" | "limit">,
+  options: { ensureFresh?: boolean } = {}
+) {
+  const authStatus = useSessionStore((state) => state.status);
+  const ensureFresh = options.ensureFresh ?? false;
+  const queryClient = useQueryClient();
+  const ensuredKeyRef = useRef<string | null>(null);
+  const queryInput = { ...input, limit: PROGRESSIVE_CANDLE_PAGE_SIZE };
+  const queryKey = queryKeys.marketData.candles(queryInput);
+  const query = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }) =>
+      getCandles({ ...queryInput, before: pageParam || undefined }),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextBefore ? lastPage.nextBefore : undefined,
+    enabled: authStatus !== "unknown" && Boolean(input.symbol) && Boolean(input.exchange),
+    retry: false,
+    staleTime: CANDLE_STALE_TIME_MS,
+    gcTime: 60 * 60_000,
+  });
+
+  useEffect(() => {
+    if (!ensureFresh || input.exchange !== "BSE" || !input.symbol || !query.isSuccess) return;
+    const ensureKey = `${input.exchange}:${input.symbol}`;
+    if (ensuredKeyRef.current === ensureKey) return;
+    ensuredKeyRef.current = ensureKey;
+
+    void ensureFreshCandles({ symbol: input.symbol, exchange: input.exchange })
+      .then(() => queryClient.invalidateQueries({ queryKey }))
+      .catch(() => undefined);
+  }, [ensureFresh, input.exchange, input.symbol, query.isSuccess, queryClient, queryKey]);
+
+  const candleMap = new Map<string, Candle>();
+  for (const page of [...(query.data?.pages ?? [])].reverse()) {
+    for (const candle of page.candles) candleMap.set(candle.time, candle);
+  }
+  const data = Array.from(candleMap.values()).sort((a, b) => a.time.localeCompare(b.time));
+
+  return {
+    ...query,
+    data,
+    dataThrough: query.data?.pages[0]?.dataThrough ?? null,
+  };
+}
+
+const CURRENT_DAY_CANDLE_STALE_TIME_MS = 60_000;
+
+export function useCurrentDayCandle(
+  input: { symbol: string; exchange: string },
+  options: { enabled?: boolean } = {}
+) {
+  const authStatus = useSessionStore((state) => state.status);
+  const enabled = options.enabled ?? true;
+
+  const query = useQuery({
+    queryKey: queryKeys.marketData.currentDayCandle(input),
+    queryFn: () => getCurrentDayCandle(input),
+    enabled:
+      authStatus !== "unknown" &&
+      enabled &&
+      Boolean(input.symbol) &&
+      Boolean(input.exchange) &&
+      input.exchange === "BSE",
+    retry: false,
+    staleTime: CURRENT_DAY_CANDLE_STALE_TIME_MS,
+    gcTime: 5 * 60_000,
+  });
+
+  return { ...query, candle: query.data?.candle ?? null, capability: query.data?.capability ?? null };
 }
 
 export function useManualChartRefresh() {
@@ -343,7 +438,12 @@ export function useManualChartRefresh() {
   return useMutation({
     mutationFn: ensureFreshCandles,
     onSuccess: (response, variables) => {
-      if (!response.changed) return;
+      if (variables.exchange) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.marketData.currentDayCandle({ symbol: variables.symbol, exchange: variables.exchange }),
+        });
+      }
+
       void queryClient.invalidateQueries({
         predicate: (query) => {
           const [namespace, resource, input] = query.queryKey;

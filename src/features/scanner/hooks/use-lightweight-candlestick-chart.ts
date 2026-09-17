@@ -54,6 +54,9 @@ type UseLightweightCandlestickChartArgs = {
   percentageScale: boolean;
 
   viewResetKey: string;
+  hasMoreData?: boolean;
+  loadingMoreData?: boolean;
+  onLoadMore?: () => void;
 };
 
 export function useLightweightCandlestickChart({
@@ -65,12 +68,16 @@ export function useLightweightCandlestickChart({
   autoScale,
   percentageScale,
   viewResetKey,
+  hasMoreData = false,
+  loadingMoreData = false,
+  onLoadMore,
 }: UseLightweightCandlestickChartArgs) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const priceSeriesRef = useRef<ScannerPriceSeries | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const initialChartTypeRef = useRef(chartType);
+  const initialViewResetKeyRef = useRef(viewResetKey);
   const latestDataRef = useRef(data);
   const latestPriceFormatterRef = useRef(priceFormatter);
   const latestThemeRef = useRef(theme);
@@ -84,6 +91,11 @@ export function useLightweightCandlestickChart({
   const appliedAutoScaleRef = useRef<boolean | null>(null);
   const appliedPercentageScaleRef = useRef<boolean | null>(null);
   const appliedViewResetKeyRef = useRef<string | null>(null);
+  const hasMoreDataRef = useRef(hasMoreData);
+  const loadingMoreDataRef = useRef(loadingMoreData);
+  const onLoadMoreRef = useRef(onLoadMore);
+  const renderedPointCountRef = useRef(0);
+  const renderedFirstTimeRef = useRef<unknown>(null);
   const [chartHandles, setChartHandles] = useState<ScannerChartHandles | null>(null);
 
   useEffect(() => {
@@ -109,6 +121,12 @@ export function useLightweightCandlestickChart({
   useEffect(() => {
     latestPercentageScaleRef.current = percentageScale;
   }, [percentageScale]);
+
+  useEffect(() => {
+    hasMoreDataRef.current = hasMoreData;
+    loadingMoreDataRef.current = loadingMoreData;
+    onLoadMoreRef.current = onLoadMore;
+  }, [hasMoreData, loadingMoreData, onLoadMore]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -148,6 +166,8 @@ export function useLightweightCandlestickChart({
     });
 
     volumeSeries.setData(initialData.volumeRenderData);
+    renderedPointCountRef.current = initialData.candleRenderData.length;
+    renderedFirstTimeRef.current = initialData.candleRenderData[0]?.time ?? null;
 
     if (!initialAutoScale) {
       chart.priceScale("right").setVisibleRange(initialData.priceRange);
@@ -173,7 +193,7 @@ export function useLightweightCandlestickChart({
     appliedCrosshairRef.current = initialCrosshairActive;
     appliedAutoScaleRef.current = initialAutoScale;
     appliedPercentageScaleRef.current = initialPercentageScale;
-    appliedViewResetKeyRef.current = viewResetKey;
+    appliedViewResetKeyRef.current = initialViewResetKeyRef.current;
     setChartHandles({ chart, series: priceSeries });
 
     const resizeChart = () => {
@@ -190,11 +210,18 @@ export function useLightweightCandlestickChart({
     const resizeObserver = new ResizeObserver(resizeChart);
     resizeObserver.observe(container);
     window.addEventListener("resize", resizeChart);
+    const handleVisibleRangeChange = (range: { from: number; to: number } | null) => {
+      if (!range || range.from > 80) return;
+      if (!hasMoreDataRef.current || loadingMoreDataRef.current) return;
+      onLoadMoreRef.current?.();
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
 
     return () => {
       disposed = true;
       resizeObserver.disconnect();
       window.removeEventListener("resize", resizeChart);
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
       chartRef.current = null;
       priceSeriesRef.current = null;
       volumeSeriesRef.current = null;
@@ -248,8 +275,29 @@ export function useLightweightCandlestickChart({
     try {
       const chartOptions = createScannerChartOptions(latestThemeRef.current);
       chart.applyOptions({ grid: chartOptions.grid });
+      const visibleRange = chart.timeScale().getVisibleLogicalRange();
+      const nextPointCount = data.candleRenderData.length;
+      const nextFirstTime = data.candleRenderData[0]?.time ?? null;
+      const prependedPointCount =
+        visibleRange &&
+        appliedViewResetKeyRef.current === viewResetKey &&
+        renderedFirstTimeRef.current !== null &&
+        nextFirstTime !== renderedFirstTimeRef.current &&
+        nextPointCount > renderedPointCountRef.current
+          ? nextPointCount - renderedPointCountRef.current
+          : 0;
       setPriceSeriesData(priceSeries, data, chartType);
       volumeSeries.setData(data.volumeRenderData);
+
+      renderedPointCountRef.current = nextPointCount;
+      renderedFirstTimeRef.current = nextFirstTime;
+
+      if (visibleRange && prependedPointCount > 0) {
+        chart.timeScale().setVisibleLogicalRange({
+          from: visibleRange.from + prependedPointCount,
+          to: visibleRange.to + prependedPointCount,
+        });
+      }
 
       if (appliedViewResetKeyRef.current !== viewResetKey) {
         if (!latestAutoScaleRef.current) {

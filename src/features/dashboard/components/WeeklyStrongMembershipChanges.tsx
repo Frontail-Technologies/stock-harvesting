@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCollectionWeeklyStrongStocks } from "@/features/market-collections";
 import type { ScannerLookbackMultiplier } from "@/features/scanner/types";
 import { useWeeklyStrongBacktestMembershipChanges } from "@/features/weekly-strong-backtest";
 import type { WeeklyStrongBacktestMembershipChangeMember } from "@/features/weekly-strong-backtest";
@@ -128,20 +127,14 @@ export function WeeklyStrongMembershipChanges({
   code: string;
   lookback: ScannerLookbackMultiplier;
 }) {
-  const { weekEnding, isLoading: isHarvestResultLoading } = useCollectionWeeklyStrongStocks({
-    code,
-    lookback,
-  });
   const {
     available,
     enteredStocks,
     exitedStocks,
     previousWeekEnding,
-    isLoading: isChangesLoading,
+    isLoading,
     isError,
-  } = useWeeklyStrongBacktestMembershipChanges({ code, weekEnding, lookback });
-
-  const isLoading = isHarvestResultLoading || isChangesLoading;
+  } = useWeeklyStrongBacktestMembershipChanges({ code, lookback });
 
   const handleRowClick = (member: WeeklyStrongBacktestMembershipChangeMember) => {
     openChartInNewTab(member.symbol, member.exchange, lookback);

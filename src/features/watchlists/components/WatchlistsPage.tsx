@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -11,6 +11,7 @@ import { CreateWatchlistDialog } from "./CreateWatchlistDialog";
 import { DeleteWatchlistDialog } from "./DeleteWatchlistDialog";
 import { RenameWatchlistDialog } from "./RenameWatchlistDialog";
 import { WatchlistCardSkeleton } from "./WatchlistCardSkeleton";
+import { WatchlistCsvImportDialog } from "./WatchlistCsvImportDialog";
 import { WatchlistEmptyIllustration } from "./WatchlistEmptyIllustration";
 import { WatchlistFullViewDialog } from "./WatchlistFullViewDialog";
 import { WatchlistWidget } from "./WatchlistWidget";
@@ -39,6 +40,7 @@ export function WatchlistsPage() {
   );
   const [addStockTargetId, setAddStockTargetId] = useState<string | null>(null);
   const [fullViewId, setFullViewId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const viewMode = useWatchlistViewStore((state) => state.viewMode);
   const setViewMode = useWatchlistViewStore((state) => state.setViewMode);
 
@@ -46,27 +48,38 @@ export function WatchlistsPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="mt-1 text-[1.75rem] font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:mt-1 sm:text-[1.75rem]">
             Watchlists
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground sm:mt-1.5">
             Build and organize the stocks you want to review.
           </p>
         </div>
         {hasWatchlists && (
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-            <Select
-              value={viewMode}
-              onValueChange={(value) => setViewMode(value as WatchlistViewMode)}
-              options={VIEW_MODE_OPTIONS}
-              triggerClassName="h-9 min-w-0 flex-1 sm:w-44 sm:flex-none"
-            />
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <div className="hidden sm:block">
+              <Select
+                value={viewMode}
+                onValueChange={(value) => setViewMode(value as WatchlistViewMode)}
+                options={VIEW_MODE_OPTIONS}
+                triggerClassName="h-9 w-44"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="h-9 flex-1 gap-1.5 px-3 sm:flex-none"
+            >
+              <Upload className="size-4" />
+              Import CSV
+            </Button>
             <Button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="shrink-0 gap-1.5"
+              className="h-9 flex-1 gap-1.5 px-3 sm:flex-none"
             >
               <Plus className="size-4" />
               New Watchlist
@@ -77,7 +90,7 @@ export function WatchlistsPage() {
 
       {isLoading ? (
         <div
-          className={cn("grid gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}
+          className={cn("grid gap-3 sm:gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}
           aria-label="Loading watchlists"
           role="status"
         >
@@ -98,7 +111,7 @@ export function WatchlistsPage() {
           />
         </div>
       ) : (
-        <div className={cn("grid gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}>
+        <div className={cn("grid gap-3 sm:gap-4", WATCHLIST_VIEW_MODE_CARD_GRID_CLASS[viewMode])}>
           {watchlists.map((watchlist) => (
             <WatchlistWidget
               key={watchlist.id}
@@ -116,6 +129,11 @@ export function WatchlistsPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(watchlistId) => setFullViewId(watchlistId)}
+      />
+      <WatchlistCsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        watchlists={watchlists}
       />
       <RenameWatchlistDialog
         watchlist={renameTarget}

@@ -3,6 +3,7 @@ import type {
   CandleListInput,
   CandleListResponse,
   ChartEligibleStockSearchResponse,
+  CurrentDayCandleResponse,
   EnsureFreshCandlesInput,
   EnsureFreshCandlesResponse,
   HistoryRangeInput,
@@ -83,8 +84,16 @@ export async function getCandles(input: CandleListInput) {
       timeframe: toApiTimeframe(input.timeframe),
       from: input.from,
       to: input.to,
+      before: input.before,
+      limit: input.limit,
       exchange: input.exchange,
     })
+  );
+}
+
+export async function getCurrentDayCandle(input: { symbol: string; exchange: string }) {
+  return apiFetch<CurrentDayCandleResponse>(
+    withQuery(API_ROUTES.marketData.currentDayCandle(input.symbol), { exchange: input.exchange })
   );
 }
 

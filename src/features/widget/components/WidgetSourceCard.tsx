@@ -167,7 +167,7 @@ export function WidgetSourceCard({
           would visibly grow/shrink the instant real rows replace the
           loading skeleton or an empty result. Same min/max convention
           already used by the Watchlist widget cards. */}
-      <div className="h-full min-h-104 max-h-112 overflow-hidden rounded-xl">
+      <div className="h-full min-w-0 min-h-104 max-h-112 overflow-hidden rounded-xl">
         {isLoading ? (
           <DashboardWidgetSkeleton title={source.name} offset={0} />
         ) : (

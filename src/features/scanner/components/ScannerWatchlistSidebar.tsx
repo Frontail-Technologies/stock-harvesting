@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { ChevronRight, MoreHorizontal, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
 import type { Stock } from "@/types/market";
@@ -457,6 +457,7 @@ export function ScannerWatchlistSidebar({
   const setWatchlistPanelWidth = useScannerUiStore((state) => state.setWatchlistPanelWidth);
   const isDesktop = useIsDesktopViewport();
   const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const dragWidthRef = useRef<number | null>(null);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? Infinity : window.innerWidth
   );
@@ -488,21 +489,23 @@ export function ScannerWatchlistSidebar({
         SCANNER_WATCHLIST_PANEL_MAX_WIDTH,
         Math.max(0, startWidth + delta)
       );
+      dragWidthRef.current = next;
       setDragWidth(next);
     };
     const handleUp = () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
-      setDragWidth((current) => {
-        if (current !== null) {
-          if (current < COLLAPSE_ON_DRAG_THRESHOLD) {
-            setOpen(false);
-          } else {
-            setWatchlistPanelWidth(current);
-          }
-        }
-        return null;
-      });
+
+      const current = dragWidthRef.current;
+      dragWidthRef.current = null;
+      setDragWidth(null);
+
+      if (current === null) return;
+      if (current < COLLAPSE_ON_DRAG_THRESHOLD) {
+        setOpen(false);
+      } else {
+        setWatchlistPanelWidth(current);
+      }
     };
 
     window.addEventListener("pointermove", handleMove);

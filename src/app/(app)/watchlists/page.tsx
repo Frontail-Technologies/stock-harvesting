@@ -16,8 +16,8 @@ export default function Page() {
     <AppShell>
 
       <AppPage
-        className="px-3 py-8 font-sans sm:px-4 lg:px-6"
-        contentClassName="max-w-none gap-8"
+        className="px-3 pt-4 pb-6 font-sans sm:px-4 sm:pt-6 sm:pb-8 lg:px-6"
+        contentClassName="max-w-none gap-5 sm:gap-8"
       >
         <WatchlistsPage />
       </AppPage>

@@ -6,6 +6,7 @@ import { queryKeys } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
 import {
   addWatchlistItem,
+  bulkAddWatchlistItems,
   createWatchlist,
   deleteWatchlist,
   getWatchlist,
@@ -201,6 +202,20 @@ export function useAddWatchlistItem() {
       }
     },
     onSettled: (_data, _error, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.watchlists.detail(variables.watchlistId),
+      });
+    },
+  });
+}
+
+export function useBulkAddWatchlistItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: bulkAddWatchlistItems,
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.watchlists.list });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.watchlists.detail(variables.watchlistId),

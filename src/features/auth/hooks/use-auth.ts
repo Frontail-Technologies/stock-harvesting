@@ -76,12 +76,13 @@ export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
 export function useCurrentUser() {
   const queryClient = useQueryClient();
   const status = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const setUser = useSessionStore((state) => state.setUser);
   const setGuest = useSessionStore((state) => state.setGuest);
   const query = useQuery({
     queryKey: queryKeys.auth.currentUser,
     queryFn: getCurrentAuthUser,
-    enabled: status === "authenticated",
+    enabled: status === "authenticated" && Boolean(accessToken),
   });
 
   useEffect(() => {
@@ -206,12 +207,13 @@ export function useAdminAuthBootstrap() {
 export function useAdminCurrentUser() {
   const queryClient = useQueryClient();
   const status = useAdminSessionStore((state) => state.status);
+  const accessToken = useAdminSessionStore((state) => state.accessToken);
   const setUser = useAdminSessionStore((state) => state.setUser);
   const setGuest = useAdminSessionStore((state) => state.setGuest);
   const query = useQuery({
     queryKey: queryKeys.auth.adminCurrentUser,
     queryFn: getCurrentAdminUser,
-    enabled: status === "authenticated",
+    enabled: status === "authenticated" && Boolean(accessToken),
   });
 
   useEffect(() => {

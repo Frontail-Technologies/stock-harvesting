@@ -107,37 +107,47 @@ export function WidgetPage() {
   const skeletonCount = sources.length > 0 ? sources.length : SKELETON_FALLBACK_COUNT;
 
   return (
-    <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight text-foreground">Widget</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+    <div className="flex min-w-0 flex-col gap-8 overflow-x-clip">
+      <div className="relative flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="pr-24 text-xl font-semibold tracking-tight text-foreground sm:pr-0 sm:text-[1.75rem]">Widget</h1>
+          <p className="mt-1.5 hidden text-sm text-muted-foreground sm:block">
             Quick ranked snapshot across your selected Segments and Watchlists.
           </p>
         </div>
         {hasSelection && (
-          <div className="flex items-center gap-2">
-            <Select
-              value={viewMode}
-              onValueChange={(value) => setViewMode(value as WidgetViewMode)}
-              options={VIEW_MODE_OPTIONS}
-              triggerClassName="h-9 w-40"
-            />
+          <div className="absolute right-0 top-0 flex min-w-0 items-center justify-end gap-2 sm:static sm:w-auto">
+            <div className="hidden sm:block">
+              <Select
+                value={viewMode}
+                onValueChange={(value) => setViewMode(value as WidgetViewMode)}
+                options={VIEW_MODE_OPTIONS}
+                triggerClassName="h-9 w-40"
+              />
+            </div>
             {preferences.hasSavedPreference && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={resetToDefaults}
                 disabled={clearMutation.isPending}
-                className="gap-1.5"
+                className="h-9 w-9 gap-1.5 p-0 sm:w-auto sm:px-4"
+                aria-label="Reset widgets to defaults"
+                title="Reset to defaults"
               >
                 <RotateCcw className="size-4" />
-                Reset to defaults
+                <span className="hidden sm:inline">Reset to defaults</span>
               </Button>
             )}
-            <Button type="button" onClick={() => setSelectorOpen(true)} className="gap-1.5">
+            <Button
+              type="button"
+              onClick={() => setSelectorOpen(true)}
+              className="h-9 w-9 gap-1.5 p-0 sm:w-auto sm:px-4"
+              aria-label="Add widget"
+              title="Add Widget"
+            >
               <Plus className="size-4" />
-              Add Widget
+              <span className="hidden sm:inline">Add Widget</span>
             </Button>
           </div>
         )}
@@ -145,12 +155,12 @@ export function WidgetPage() {
 
       {isLoading ? (
         <div
-          className={cn("grid gap-4", WIDGET_VIEW_MODE_CARD_GRID_CLASS[viewMode])}
+          className={cn("grid min-w-0 gap-4", WIDGET_VIEW_MODE_CARD_GRID_CLASS[viewMode])}
           aria-label="Loading widgets"
           role="status"
         >
           {Array.from({ length: skeletonCount }, (_, index) => (
-            <div key={index} className="h-full min-h-104 max-h-112 overflow-hidden rounded-xl">
+            <div key={index} className="h-full min-w-0 min-h-104 max-h-112 overflow-hidden rounded-xl">
               <DashboardWidgetSkeleton title="Loading..." offset={index} />
             </div>
           ))}
@@ -173,7 +183,7 @@ export function WidgetPage() {
           />
         </div>
       ) : (
-        <div className={cn("grid gap-4", WIDGET_VIEW_MODE_CARD_GRID_CLASS[viewMode])}>
+        <div className={cn("grid min-w-0 gap-4", WIDGET_VIEW_MODE_CARD_GRID_CLASS[viewMode])}>
           {resolvedSources.map((source, index) => (
             <WidgetSourceCard
               key={`${source.type}:${source.id}`}
@@ -195,6 +205,6 @@ export function WidgetPage() {
         onSelect={(source) => addSource(source)}
         onRemove={(source) => removeSource(source)}
       />
-    </>
+    </div>
   );
 }

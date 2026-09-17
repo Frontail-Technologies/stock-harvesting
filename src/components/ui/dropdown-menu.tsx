@@ -38,6 +38,7 @@ function DropdownMenuContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
+        collisionAvoidance={{ side: "none", align: "none", fallbackAxisSide: "none" }}
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"

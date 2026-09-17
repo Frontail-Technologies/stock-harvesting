@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRemoveWatchlistItem, useWatchlist } from "../hooks/use-watchlists";
 import { buildWatchlistChartsHref } from "../lib/watchlist-chart-links";
+import { watchlistTintStyleForSymbol } from "../lib/watchlist-colors";
 
 type WatchlistFullViewDialogProps = {
   watchlistId: string | null;
@@ -77,6 +78,19 @@ function WatchlistItemActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
     </Tooltip>
+  );
+}
+
+function StockLogo({ symbol }: { symbol: string }) {
+  const tint = watchlistTintStyleForSymbol(symbol);
+  return (
+    <span
+      aria-hidden="true"
+      style={tint}
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-bold uppercase"
+    >
+      {symbol.slice(0, 2)}
+    </span>
   );
 }
 
@@ -178,12 +192,17 @@ export function WatchlistFullViewDialog({
                         <TableRow
                           key={item.id}
                           onClick={() => openInCharts(item.symbol, item.exchange)}
-                          className="cursor-pointer border-border/60 hover:bg-primary/5"
+                          className="cursor-pointer border-border/60 hover:bg-muted/50"
                         >
                           <TableCell className="h-12 px-4 text-muted-foreground tabular-nums">
                             {String(index + 1).padStart(2, "0")}
                           </TableCell>
-                          <TableCell className="px-4 font-semibold text-foreground">{item.symbol}</TableCell>
+                          <TableCell className="px-4 font-semibold text-foreground">
+                            <span className="flex items-center gap-2.5">
+                              <StockLogo symbol={item.symbol} />
+                              {item.symbol}
+                            </span>
+                          </TableCell>
                           <TableCell className="px-4 text-muted-foreground">{item.exchange}</TableCell>
                           <TableCell className="px-4 text-right" onClick={(event) => event.stopPropagation()}>
                             <WatchlistItemActionsMenu
@@ -205,12 +224,13 @@ export function WatchlistFullViewDialog({
                     <div
                       key={item.id}
                       onClick={() => openInCharts(item.symbol, item.exchange)}
-                      className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-primary/5"
+                      className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 active:bg-muted/50"
                     >
-                      <div className="flex min-w-0 items-baseline gap-2">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                           {String(index + 1).padStart(2, "0")}
                         </span>
+                        <StockLogo symbol={item.symbol} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-foreground">{item.symbol}</p>
                           <p className="text-xs text-muted-foreground">{item.exchange}</p>

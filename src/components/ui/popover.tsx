@@ -41,6 +41,7 @@ function PopoverContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
+        collisionAvoidance={{ side: "none", align: "none", fallbackAxisSide: "none" }}
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"

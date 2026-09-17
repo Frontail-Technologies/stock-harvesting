@@ -9,6 +9,7 @@ import { useCurrency } from "@/features/currency";
 import { useDelayedFlag } from "@/hooks/use-delayed-flag";
 import { downloadBlob } from "@/utils/download-blob";
 import { formatCompactVolume, formatSignedChange } from "@/utils/formatters";
+import { cn } from "@/utils/cn";
 import type { ScannerChartHandles } from "../hooks/use-lightweight-candlestick-chart";
 import type { ScannerBacktestStats } from "../api/scanner-api.types";
 import { getScannerChartTheme } from "../lib/scanner-chart-config";
@@ -24,6 +25,7 @@ import { ChartInfoOverlay } from "./ChartInfoOverlay";
 import { ScanBandOverlay } from "./ScanBandOverlay";
 import { ScannerBacktestStatsOverlay } from "./ScannerBacktestStatsOverlay";
 import { DrawingOverlay } from "./DrawingOverlay";
+import { ChartRefreshButton } from "./ChartRefreshButton";
 
 const WATERMARK_SAFE_GAP_PX = 18;
 
@@ -41,6 +43,7 @@ type ScannerChartStageProps = {
   theme: ScannerTheme;
   backtestStats: ScannerBacktestStats | null;
   scannerHighlightsVisible: boolean;
+  analysisReady: boolean;
 };
 
 export function ScannerChartStage({
@@ -57,6 +60,7 @@ export function ScannerChartStage({
   theme,
   backtestStats,
   scannerHighlightsVisible,
+  analysisReady,
 }: ScannerChartStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const chartCursor = getChartCursorCss(drawing.activeTool);
@@ -243,66 +247,85 @@ export function ScannerChartStage({
         cursor: chartCursor,
       }}
     >
-      <div ref={containerRef} className="relative z-10 h-full w-full" />
       <div
-        className="pointer-events-none absolute bottom-9 z-20 flex select-none items-center gap-1 bg-transparent opacity-60 sm:bottom-10"
-        style={{ right: priceScaleWidth + WATERMARK_SAFE_GAP_PX }}
+        className={cn(
+          "absolute inset-0 transition-[filter,opacity] duration-300 ease-out motion-reduce:transition-none",
+          analysisReady ? "opacity-100 blur-none" : "opacity-75 blur-[1.5px]",
+        )}
       >
-        <NextImage
-          src={getBrandLogoPath(theme)}
-          alt=""
-          width={220}
-          height={70}
-          loading="eager"
-          className="h-3.5 w-auto shrink-0 object-contain sm:h-4.5"
-          unoptimized
-        />
-        <span
-          className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[0.6875rem] font-bold leading-none tracking-tight sm:text-sm"
-          style={{ color: getScreenshotTextColors(theme).text }}
+        <div ref={containerRef} className="relative z-10 h-full w-full" />
+        <div
+          className="pointer-events-none absolute bottom-9 z-20 flex select-none items-center gap-1 bg-transparent opacity-60 sm:bottom-10"
+          style={{ right: priceScaleWidth + WATERMARK_SAFE_GAP_PX }}
         >
-          <span>Stock</span>
-          <span style={{ color: getScreenshotTextColors(theme).primary }}>Harvesting</span>
-        </span>
+          <NextImage
+            src={getBrandLogoPath(theme)}
+            alt=""
+            width={220}
+            height={70}
+            loading="eager"
+            className="h-3.5 w-auto shrink-0 object-contain sm:h-4.5"
+            unoptimized
+          />
+          <span
+            className="flex shrink-0 items-baseline gap-1 whitespace-nowrap text-[0.6875rem] font-bold leading-none tracking-tight sm:text-sm"
+            style={{ color: getScreenshotTextColors(theme).text }}
+          >
+            <span>Stock</span>
+            <span style={{ color: getScreenshotTextColors(theme).primary }}>Harvesting</span>
+          </span>
+        </div>
+        <ChartInfoOverlay
+          stock={stock}
+          timeframe={timeframe}
+          candles={candles}
+          activeCandle={hoveredCandle}
+          latestSignalActive={latestSignalActive}
+        />
+        <ScannerBacktestStatsOverlay stats={analysisReady ? backtestStats : null} />
+
+        {chartHandles && (
+          <>
+            {analysisReady && scannerHighlightsVisible && (
+              <ScanBandOverlay
+                series={chartHandles.series}
+                bands={scanBands}
+                candleTimes={candleTimes}
+                theme={theme}
+                hoveredTime={hoveredCandleTime}
+              />
+            )}
+            <DrawingOverlay
+              chart={chartHandles.chart}
+              series={chartHandles.series}
+              containerRef={containerRef}
+              candleTimes={candleTimes}
+              candles={candles}
+              drawing={drawing}
+              exchange={stock.exchange}
+            />
+          </>
+        )}
       </div>
-      <ChartInfoOverlay
-        stock={stock}
-        timeframe={timeframe}
-        candles={candles}
-        activeCandle={hoveredCandle}
-        latestSignalActive={latestSignalActive}
-      />
-      <ScannerBacktestStatsOverlay stats={backtestStats} />
-      {showChartLoading && (
+      {(showChartLoading || (!loading && candles.length > 0 && !analysisReady)) && (
         <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-background/35">
           <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-foreground sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
             <Spinner size="sm" />
-            Loading {stock.symbol} {timeframe} candles...
+            Loading chart...
           </div>
         </div>
       )}
-
-      {chartHandles && (
-        <>
-          {scannerHighlightsVisible && (
-            <ScanBandOverlay
-              series={chartHandles.series}
-              bands={scanBands}
-              candleTimes={candleTimes}
-              theme={theme}
-              hoveredTime={hoveredCandleTime}
-            />
-          )}
-          <DrawingOverlay
-            chart={chartHandles.chart}
-            series={chartHandles.series}
-            containerRef={containerRef}
-            candleTimes={candleTimes}
-            candles={candles}
-            drawing={drawing}
-            exchange={stock.exchange}
-          />
-        </>
+      {!loading && candles.length === 0 && (
+        <div className="absolute inset-0 z-30 grid place-items-center bg-background/70">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Spinner size="sm" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Preparing chart data</p>
+              <p className="mt-1 text-xs text-muted-foreground">History will appear automatically when ready.</p>
+            </div>
+            <ChartRefreshButton symbol={stock.symbol} exchange={stock.exchange} />
+          </div>
+        </div>
       )}
     </div>
   );

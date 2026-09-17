@@ -6,6 +6,7 @@ import { useSessionStore } from "@/features/auth";
 import {
   getStocks,
   useCandles,
+  useProgressiveCandles,
   useHistoryRange,
   useStockSearch,
 } from "@/features/market-data";
@@ -74,6 +75,14 @@ export function useScannerCandles(
   exchange?: string
 ) {
   return useCandles({ symbol, timeframe, exchange }, { ensureFresh: true });
+}
+
+export function useProgressiveScannerCandles(
+  symbol: string,
+  timeframe: Timeframe,
+  exchange?: string
+) {
+  return useProgressiveCandles({ symbol, timeframe, exchange }, { ensureFresh: true });
 }
 
 export function useScannerResults(
@@ -163,4 +172,3 @@ export function useSaveScannerDrawings(symbol: string, timeframe: Timeframe) {
     },
   });
 }
-

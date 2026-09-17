@@ -56,7 +56,7 @@ export function WatchlistWidget({
   };
 
   return (
-    <div className="flex h-full min-h-104 max-h-112 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card px-4 py-3.5 text-card-foreground">
+    <div className="flex h-full min-h-80 max-h-96 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card px-3 py-3 text-card-foreground sm:min-h-104 sm:max-h-112 sm:px-4 sm:py-3.5">
       <div className="flex items-center justify-between gap-2">
         <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
           {watchlist.name}
@@ -118,7 +118,7 @@ export function WatchlistWidget({
         {watchlist.itemCount} {watchlist.itemCount === 1 ? "stock" : "stocks"}
       </p>
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col">
+      <div className="mt-2.5 flex min-h-0 flex-1 flex-col sm:mt-3">
         {isLoading ? (
           <WatchlistWidgetSkeleton />
         ) : items.length === 0 ? (

@@ -6,7 +6,7 @@ const LANDING_TITLE = "Stock Charting & Review Workspace";
 const LANDING_DESCRIPTION =
   "Stock Harvesting helps investors surface relevant market behaviour, review stocks in a focused chart workspace, save insights, and explore markets across global exchanges.";
 const SOCIAL_TITLE = `${LANDING_TITLE} | ${SITE_NAME}`;
-const SOCIAL_IMAGE = absoluteUrl("/images/logo.png");
+const SOCIAL_IMAGE = absoluteUrl("/images/logo-dark-cropped.png");
 
 export const metadata: Metadata = {
   title: LANDING_TITLE,

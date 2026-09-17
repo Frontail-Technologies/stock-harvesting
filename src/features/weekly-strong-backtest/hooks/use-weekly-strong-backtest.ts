@@ -53,9 +53,16 @@ export function useWeeklyStrongBacktestWeekDetail(input: { code: string; weekEnd
   return { ...query, members: query.data?.members ?? [] };
 }
 
+// weekEnding is optional - when omitted, the backend resolves and returns
+// the current week itself (it always derives its own week internally; a
+// caller-supplied weekEnding is only used as a consistency check against
+// that). Not requiring it here lets this query fire immediately instead of
+// waiting on some other query (e.g. the Harvest Result list) to resolve a
+// week first - that dependency used to make this panel visibly slower than
+// it needed to be.
 export function useWeeklyStrongBacktestMembershipChanges(input: {
   code: string;
-  weekEnding: string | null;
+  weekEnding?: string | null;
   lookback?: string;
 }) {
   const authStatus = useSessionStore((state) => state.status);
@@ -68,10 +75,10 @@ export function useWeeklyStrongBacktestMembershipChanges(input: {
     queryFn: () =>
       getWeeklyStrongBacktestMembershipChanges({
         code: input.code,
-        weekEnding: input.weekEnding as string,
+        weekEnding: input.weekEnding ?? undefined,
         lookback: input.lookback,
       }),
-    enabled: authStatus !== "unknown" && Boolean(input.code) && Boolean(input.weekEnding),
+    enabled: authStatus !== "unknown" && Boolean(input.code),
     retry: false,
     staleTime: BACKTEST_STALE_TIME_MS,
     gcTime: BACKTEST_GC_TIME_MS,

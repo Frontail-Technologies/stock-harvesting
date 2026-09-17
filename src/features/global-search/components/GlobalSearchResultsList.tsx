@@ -1,6 +1,8 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { watchlistTintStyleForSymbol } from "@/features/watchlists/lib/watchlist-colors";
 import type { Stock } from "@/types/market";
 import { cn } from "@/utils/cn";
 
@@ -50,8 +52,9 @@ export function GlobalSearchResultsList({
 
   if (isLoading) {
     return (
-      <div className={cn("px-3 py-2.5 text-sm text-muted-foreground", className)}>
-        Searching...
+      <div className={cn("flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground", className)}>
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        <span className="sr-only">Searching…</span>
       </div>
     );
   }
@@ -99,17 +102,18 @@ export function GlobalSearchResultsList({
             >
               <span
                 aria-hidden="true"
-                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[0.65rem] font-bold tracking-tight text-primary"
+                style={watchlistTintStyleForSymbol(stock.symbol)}
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold tracking-tight"
               >
                 {getStockBadgeText(stock)}
               </span>
 
-              <span className="w-28 shrink-0 truncate text-sm font-semibold text-foreground">
-                {stock.symbol}
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                {stock.name}
               </span>
 
-              <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                {stock.name}
+              <span className="max-w-28 shrink-0 truncate text-sm text-muted-foreground">
+                {stock.symbol}
               </span>
 
               <span className="shrink-0 font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">

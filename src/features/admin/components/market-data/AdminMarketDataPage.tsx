@@ -308,6 +308,8 @@ export function AdminMarketDataPage() {
 
   const worker = workersQuery.data?.workers[0] ?? null;
   const health = healthQuery.data ?? null;
+  const liveFeed = health?.liveDelayedFeed?.[0] ?? null;
+  const gdfCapability = health?.providerCapabilities?.find((capability) => capability.provider === "global-datafeeds" && capability.exchange === "BSE") ?? null;
   const runs = jobRunsQuery.data?.runs ?? [];
   const schedules = schedulesQuery.data?.schedules ?? [];
   const scheduleByType = new Map(schedules.map((schedule) => [schedule.jobType, schedule]));
@@ -342,6 +344,65 @@ export function AdminMarketDataPage() {
         <StatCard
           label="Last Successful Refresh"
           value={health?.lastSuccessfulRefresh ? formatDateTime(health.lastSuccessfulRefresh) : "-"}
+          sub={health?.mechanisms.historicalDailySync}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <StatCard
+          label="GDF Stream"
+          value={liveFeed ? (liveFeed.connected ? "Connected" : "Disconnected") : "-"}
+          sub={health?.mechanisms.liveFeed ?? (liveFeed ? `${liveFeed.provider}${liveFeed.exchange ? ` · ${liveFeed.exchange}` : ""}` : undefined)}
+        />
+        <StatCard
+          label="Feed Last Message"
+          value={liveFeed?.lastMessageTime ? formatDateTime(liveFeed.lastMessageTime) : "-"}
+        />
+        <StatCard
+          label="Feed Subscriptions"
+          value={liveFeed ? String(liveFeed.activeSubscriptions) : "-"}
+        />
+        <StatCard
+          label="Current-Day Candles"
+          value={liveFeed ? String(liveFeed.currentDayCandlesInMemory) : "-"}
+          sub={health?.mechanisms.currentPriceSnapshot}
+        />
+        <StatCard
+          label="Feed Last Error"
+          value={liveFeed?.lastError ?? "-"}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          label="GDF Current-Day Feed"
+          value={
+            gdfCapability
+              ? gdfCapability.currentDayCandle === "available"
+                ? "Available"
+                : gdfCapability.currentDayCandle === "unavailable"
+                  ? "Unavailable"
+                  : "Unknown"
+              : "-"
+          }
+          sub={gdfCapability?.reason ?? undefined}
+        />
+        <StatCard
+          label="Completed Daily History"
+          value={
+            gdfCapability
+              ? gdfCapability.completedDailyHistory === "available"
+                ? "Available"
+                : gdfCapability.completedDailyHistory === "unavailable"
+                  ? "Unavailable"
+                  : "Unknown"
+              : "-"
+          }
+        />
+        <StatCard
+          label="Last Capability Check"
+          value={gdfCapability?.lastCheckedAt ? formatDateTime(gdfCapability.lastCheckedAt) : "-"}
+          sub={gdfCapability?.retryAfter ? `Retry after ${formatDateTime(gdfCapability.retryAfter)}` : undefined}
         />
       </div>
 

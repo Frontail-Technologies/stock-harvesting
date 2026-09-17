@@ -29,7 +29,7 @@ export function getWeeklyStrongBacktestWeekDetail(input: { code: string; weekEnd
 
 export function getWeeklyStrongBacktestMembershipChanges(input: {
   code: string;
-  weekEnding: string;
+  weekEnding?: string;
   lookback?: string;
 }) {
   return apiFetch<WeeklyStrongBacktestMembershipChangesResponse>(

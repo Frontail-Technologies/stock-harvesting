@@ -9,6 +9,7 @@ import { AdPlacement, AdsenseScript } from "@/features/adsense";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Stock } from "@/types/market";
 import { AuthGuard, useSessionStore } from "@/features/auth";
+import { useCurrentDayCandle } from "@/features/market-data";
 import { useMarketStream, type MarketStreamEvent } from "@/features/market-stream";
 import { useSearchModalStore } from "@/features/global-search/stores/search-modal-store";
 import { useTheme } from "@/features/theme";
@@ -19,7 +20,7 @@ import { useScannerDrawingState } from "../hooks/use-scanner-drawing-state";
 import {
   useScannerBacktest,
   useSaveScannerDrawings,
-  useScannerCandles,
+  useProgressiveScannerCandles,
   useScannerHistoryRange,
   useScannerResults,
   useScannerWorkspaceDrawings,
@@ -31,6 +32,7 @@ import {
   type AvailableHistoryRange,
 } from "../lib/historical-range";
 import { useScannerUiStore } from "../stores/scanner-ui-store";
+import { mergeProvisionalCandleForDisplay } from "../lib/provisional-candles";
 import type {
   ChartCaptureRequest,
   ScannerRangeFilter,
@@ -54,10 +56,6 @@ const SCANNER_GUTTER_B = "mb-0.5 sm:mb-[3px] lg:mb-1";
 const SCANNER_LOOKBACK_VALUES = new Set<string>(
   SCANNER_LOOKBACK_OPTIONS.map((option) => option.value)
 );
-
-
-
-
 
 function buildEmptyStock(exchange: string): Stock {
   return {
@@ -425,7 +423,7 @@ function ScannerDrawingWorkspace({
     if (!range?.from || !range.to) return null;
     return { from: range.from, to: range.to };
   }, [historyRangeQuery.data]);
-  const candleQuery = useScannerCandles(stock.symbol, timeframe, stock.exchange);
+  const candleQuery = useProgressiveScannerCandles(stock.symbol, timeframe, stock.exchange);
   const candles = useMemo(
     () =>
       candleQuery.data && candleQuery.data.length > 0
@@ -433,6 +431,27 @@ function ScannerDrawingWorkspace({
         : [],
     [candleQuery.data]
   );
+  const currentDayCandleQuery = useCurrentDayCandle(
+    { symbol: stock.symbol, exchange: stock.exchange },
+    { enabled: Boolean(stock.symbol) && stock.exchange === "BSE" && (timeframe === "1D" || timeframe === "1W" || timeframe === "1M") }
+  );
+  // Chart display only - never fed into candleHistoryRange or
+  // weeklyScanBands/mapScanBandsToDisplayTimeframe's OWN scan-verdict
+  // computation (which candles matched, per-symbol pass/fail), both of
+  // which keep reading the plain `candles` (completed-only) array above.
+  // mapScanBandsToDisplayTimeframe itself DOES take displayCandles below,
+  // but only to know which real calendar days are on the chart (.time
+  // only, never price) - see the comment at that call site. Holds off
+  // merging in the provisional candle until historical candles have
+  // loaded at least once -
+  // the current-day snapshot query is a single lightweight round trip and
+  // routinely resolves before the historical ensure-fresh repair does, so
+  // without this the chart would flash "just today's candle" before the
+  // history pops in behind it.
+  const displayCandles = useMemo(() => {
+    if (candleQuery.isLoading) return candles;
+    return mergeProvisionalCandleForDisplay(candles, currentDayCandleQuery.candle, timeframe);
+  }, [candles, candleQuery.isLoading, currentDayCandleQuery.candle, timeframe]);
   const candleHistoryRange = useMemo<AvailableHistoryRange | null>(() => {
     if (candles.length === 0) return null;
 
@@ -456,26 +475,31 @@ function ScannerDrawingWorkspace({
 
     onRangeFilterChange(effectiveRangeFilter);
   }, [availableHistoryRange, effectiveRangeFilter, onRangeFilterChange, rangeFilter]);
-  const analysisCandleQuery = useScannerCandles(
-    stock.symbol,
-    SCANNER_ANALYSIS_TIMEFRAME,
-    stock.exchange
-  );
+  // Fires as soon as symbol/exchange are known, in parallel with the candle
+  // fetch(es) above - not gated on candleQuery/analysisCandleQuery finishing.
+  // The backend computes scan results straight from whatever's already in
+  // the DB, independent of the client's own ensure-fresh repair, so there
+  // was no correctness reason to wait; waiting only stacked this request's
+  // full round trip on top of the (often slower, ensure-fresh-gated) candle
+  // fetch, which is why the yellow highlight bands took so long to appear.
+  // baseScanBands below still only produces visible bands once `candles`
+  // has loaded, since it maps highlight times onto actual candle positions.
   const scannerResultsQuery = useScannerResults(
     stock.symbol,
     SCANNER_ANALYSIS_TIMEFRAME,
-    timeframe === SCANNER_ANALYSIS_TIMEFRAME
-      ? !candleQuery.isPending
-      : !analysisCandleQuery.isPending,
+    true,
     stock.exchange,
     lookbackMultiplier
   );
-  const { stats: visibleBacktestStats } = useScannerBacktest(
+  const backtestQuery = useScannerBacktest(
     stock.symbol,
     true,
     stock.exchange,
     lookbackMultiplier
   );
+  const visibleBacktestStats = backtestQuery.stats;
+  const scannerAnalysisReady =
+    !scannerResultsQuery.isPending && !backtestQuery.isPending;
   const workspaceDrawingsQuery = useScannerWorkspaceDrawings(stock.symbol, timeframe);
   const { mutate: saveDrawings } = useSaveScannerDrawings(stock.symbol, timeframe);
   const { replaceDrawings } = drawing;
@@ -509,6 +533,26 @@ function ScannerDrawingWorkspace({
 
       if (event.type !== "market.candle.update") return;
       if (event.data.exchange !== stock.exchange || event.data.symbol !== stock.symbol) return;
+      if (event.data.timeframe === "1D") {
+        queryClient.setQueryData(
+          queryKeys.marketData.currentDayCandle({
+            symbol: stock.symbol,
+            exchange: stock.exchange,
+          }),
+          {
+            candle: {
+              time: event.data.time,
+              open: event.data.open,
+              high: event.data.high,
+              low: event.data.low,
+              close: event.data.close,
+              volume: event.data.volume ?? null,
+              lastUpdatedAt: event.data.lastUpdatedAt ?? event.data.time,
+              provisional: true,
+            },
+          }
+        );
+      }
       if (event.data.timeframe !== timeframe) return;
 
       queryClient.setQueryData(
@@ -565,9 +609,17 @@ function ScannerDrawingWorkspace({
     [scannerResultsQuery.isError, scannerResultsQuery.scanBands]
   );
 
+  // displayCandles, not candles - mapScanBandsToDisplayTimeframe only ever
+  // reads .time from this array (which real calendar days already exist on
+  // the chart), never price, so including the provisional/delayed candle
+  // here can't fabricate a signal. Without it, the "carry a confirmed PASS
+  // onto the current week's real candles" logic (see that file's own
+  // comments) could only ever reach as far as the DB's last completed
+  // candle - stopping the highlight one day short of the chart's actual
+  // latest (delayed) candle whenever today hasn't synced to the DB yet.
   const baseScanBands = useMemo(
-    () => mapScanBandsToDisplayTimeframe(weeklyScanBands, candles, timeframe),
-    [candles, timeframe, weeklyScanBands]
+    () => mapScanBandsToDisplayTimeframe(weeklyScanBands, displayCandles, timeframe),
+    [displayCandles, timeframe, weeklyScanBands]
   );
 
   useEffect(() => {
@@ -619,7 +671,7 @@ function ScannerDrawingWorkspace({
         <div className={cn("relative min-h-0 min-w-0 flex-1 overflow-hidden", SCANNER_GUTTER_B)}>
           <ScannerChart
             stock={stock}
-            candles={candles}
+            candles={displayCandles}
             baseScanBands={baseScanBands}
             loading={candleQuery.isPending}
             chartType={chartType}
@@ -635,6 +687,14 @@ function ScannerDrawingWorkspace({
             showBacktestStats={showBacktestStats}
             backtestStats={visibleBacktestStats}
             scannerHighlightsVisible={scannerHighlightsVisible}
+            analysisReady={scannerAnalysisReady}
+            hasMoreCandles={candleQuery.hasNextPage}
+            loadingMoreCandles={candleQuery.isFetchingNextPage}
+            onLoadMoreCandles={() => {
+              if (candleQuery.hasNextPage && !candleQuery.isFetchingNextPage) {
+                void candleQuery.fetchNextPage();
+              }
+            }}
           />
         </div>
         <RangeFilterTabs

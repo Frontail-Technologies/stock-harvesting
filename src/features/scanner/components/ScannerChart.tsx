@@ -36,6 +36,10 @@ type ScannerChartProps = {
   showBacktestStats: boolean;
   backtestStats: ScannerBacktestStats | null;
   scannerHighlightsVisible: boolean;
+  analysisReady: boolean;
+  hasMoreCandles: boolean;
+  loadingMoreCandles: boolean;
+  onLoadMoreCandles: () => void;
 };
 
 export function ScannerChart({
@@ -55,6 +59,10 @@ export function ScannerChart({
   showBacktestStats,
   backtestStats,
   scannerHighlightsVisible,
+  analysisReady,
+  hasMoreCandles,
+  loadingMoreCandles,
+  onLoadMoreCandles,
 }: ScannerChartProps) {
   const { formatStockCurrency } = useCurrency();
   const chartData = useMemo(
@@ -82,6 +90,9 @@ export function ScannerChart({
     autoScale,
     percentageScale,
     viewResetKey,
+    hasMoreData: hasMoreCandles,
+    loadingMoreData: loadingMoreCandles,
+    onLoadMore: onLoadMoreCandles,
   });
 
   return (
@@ -99,6 +110,7 @@ export function ScannerChart({
       theme={theme}
       backtestStats={showBacktestStats ? backtestStats : null}
       scannerHighlightsVisible={scannerHighlightsVisible}
+      analysisReady={analysisReady}
     />
   );
 }

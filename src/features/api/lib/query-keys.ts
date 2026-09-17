@@ -38,8 +38,12 @@ export const queryKeys = {
       timeframe: string;
       from?: string;
       to?: string;
+      before?: string;
+      limit?: number;
       exchange?: string;
     }) => ["market-data", "candles", input] as const,
+    currentDayCandle: (input: { symbol: string; exchange: string }) =>
+      ["market-data", "current-day-candle", input] as const,
     historyRange: (input: { symbol: string; timeframe: string; exchange?: string }) =>
       ["market-data", "history-range", input] as const,
     exchanges: ["market-data", "exchanges"] as const,

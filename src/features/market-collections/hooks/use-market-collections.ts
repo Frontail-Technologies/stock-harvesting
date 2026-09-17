@@ -25,10 +25,11 @@ const COLLECTION_TAXONOMY_STALE_TIME_MS = 30 * 60_000;
 
 export function useMarketCollections(input: { exchange?: string } = {}) {
   const authStatus = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.list(input),
     queryFn: () => getMarketCollections(input),
-    enabled: authStatus !== "unknown",
+    enabled: authStatus === "authenticated" && Boolean(accessToken),
     retry: false,
     staleTime: COLLECTIONS_STALE_TIME_MS,
     gcTime: 15 * 60_000,
@@ -41,6 +42,7 @@ export function useMarketCollections(input: { exchange?: string } = {}) {
 
 export function useCollectionMembers(input: CollectionMembersInput) {
   const authStatus = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.members({
       code: input.code,
@@ -51,7 +53,7 @@ export function useCollectionMembers(input: CollectionMembersInput) {
       sortDirection: input.sortDirection,
     }),
     queryFn: () => getCollectionMembers(input),
-    enabled: authStatus !== "unknown" && Boolean(input.code),
+    enabled: authStatus === "authenticated" && Boolean(accessToken) && Boolean(input.code),
     retry: false,
     staleTime: COLLECTION_MEMBERS_STALE_TIME_MS,
     gcTime: 15 * 60_000,
@@ -76,10 +78,11 @@ export function useCollectionRelativeStrength(input: {
   groupBy?: "sector" | "industry";
 }) {
   const authStatus = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.relativeStrength(input),
     queryFn: () => getCollectionRelativeStrength(input),
-    enabled: authStatus !== "unknown" && Boolean(input.code),
+    enabled: authStatus === "authenticated" && Boolean(accessToken) && Boolean(input.code),
     retry: false,
     staleTime: COLLECTION_RS_STALE_TIME_MS,
     gcTime: 15 * 60_000,
@@ -92,10 +95,11 @@ export function useCollectionRelativeStrength(input: {
 
 export function useCollectionSectorIndustryTaxonomy(input: { code: string }) {
   const authStatus = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.sectorIndustryTaxonomy(input),
     queryFn: () => getCollectionSectorIndustryTaxonomy(input),
-    enabled: authStatus !== "unknown" && Boolean(input.code),
+    enabled: authStatus === "authenticated" && Boolean(accessToken) && Boolean(input.code),
     retry: false,
     staleTime: COLLECTION_TAXONOMY_STALE_TIME_MS,
     gcTime: 60 * 60_000,
@@ -108,10 +112,11 @@ export function useCollectionSectorIndustryTaxonomy(input: { code: string }) {
 
 export function useCollectionWeeklyStrongStocks(input: { code: string; lookback?: string }) {
   const authStatus = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const query = useQuery({
     queryKey: queryKeys.marketCollections.weeklyStrongStocks(input),
     queryFn: () => getCollectionWeeklyStrongStocks(input),
-    enabled: authStatus !== "unknown" && Boolean(input.code),
+    enabled: authStatus === "authenticated" && Boolean(accessToken) && Boolean(input.code),
     retry: false,
     staleTime: COLLECTION_WEEKLY_STRONG_STALE_TIME_MS,
     gcTime: 15 * 60_000,

@@ -50,6 +50,19 @@ export function addWatchlistItem(input: { watchlistId: string; exchange: string;
   });
 }
 
+export function bulkAddWatchlistItems(input: {
+  watchlistId: string;
+  items: Array<{ exchange: string; symbol: string }>;
+}) {
+  return apiFetch<{ items: WatchlistItem[]; added: number; skipped: number }>(
+    API_ROUTES.watchlists.bulkItems(input.watchlistId),
+    {
+      method: "POST",
+      body: JSON.stringify({ items: input.items }),
+    }
+  );
+}
+
 export function removeWatchlistItem(input: { watchlistId: string; itemId: string }) {
   return apiFetch<{ ok: true }>(API_ROUTES.watchlists.item(input.watchlistId, input.itemId), {
     method: "DELETE",
