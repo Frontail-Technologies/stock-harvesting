@@ -609,6 +609,33 @@ function ScannerDrawingWorkspace({
     [scannerResultsQuery.isError, scannerResultsQuery.scanBands]
   );
 
+  // Scan bands can reach back as far as the selected lookback multiplier
+  // (1x/3x/5x = 50/150/250 weeks), but progressive loading only fetches
+  // PROGRESSIVE_CANDLE_PAGE_SIZE candles up front. mapScanBandsToDisplayTimeframe
+  // can only place a band on a candle that's already loaded, so without this,
+  // 3x/5x bands older than the initial page silently disappear until the user
+  // manually pans back far enough to trigger more pages. Auto-fetch older
+  // pages until loaded history reaches the oldest band we need to place, or
+  // the provider has no more to give.
+  const oldestRequiredBandTime = useMemo(() => {
+    let oldest: string | null = null;
+    for (const band of weeklyScanBands) {
+      const candidate = band.highlightTimes?.[0] ?? band.startTime;
+      if (!candidate) continue;
+      if (!oldest || candidate < oldest) oldest = candidate;
+    }
+    return oldest;
+  }, [weeklyScanBands]);
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = candleQuery;
+  useEffect(() => {
+    if (!oldestRequiredBandTime) return;
+    if (!hasNextPage || isFetchingNextPage) return;
+    const earliestLoadedTime = candles[0]?.time;
+    if (earliestLoadedTime && earliestLoadedTime <= oldestRequiredBandTime) return;
+    void fetchNextPage();
+  }, [oldestRequiredBandTime, candles, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   // displayCandles, not candles - mapScanBandsToDisplayTimeframe only ever
   // reads .time from this array (which real calendar days already exist on
   // the chart), never price, so including the provisional/delayed candle
