@@ -11,6 +11,8 @@ import {
 
 const BACKTEST_STALE_TIME_MS = 60 * 60_000;
 const BACKTEST_GC_TIME_MS = 2 * 60 * 60_000;
+// The In/Out diff tracks the in-progress week, so it must refresh as new daily candles land.
+const MEMBERSHIP_CHANGES_STALE_TIME_MS = 2 * 60_000;
 
 export function useWeeklyStrongBacktestStacked(input: { code: string }) {
   const authStatus = useSessionStore((state) => state.status);
@@ -80,7 +82,8 @@ export function useWeeklyStrongBacktestMembershipChanges(input: {
       }),
     enabled: authStatus !== "unknown" && Boolean(input.code),
     retry: false,
-    staleTime: BACKTEST_STALE_TIME_MS,
+    staleTime: MEMBERSHIP_CHANGES_STALE_TIME_MS,
+    refetchInterval: MEMBERSHIP_CHANGES_STALE_TIME_MS,
     gcTime: BACKTEST_GC_TIME_MS,
 
     placeholderData: (previousData) => previousData,
@@ -89,6 +92,8 @@ export function useWeeklyStrongBacktestMembershipChanges(input: {
   return {
     ...query,
     available: query.data?.available ?? false,
+    inProgress: query.data?.inProgress ?? false,
+    asOf: query.data?.asOf ?? null,
     weekEnding: query.data?.weekEnding ?? null,
     previousWeekEnding: query.data?.previousWeekEnding ?? null,
     enteredStocks: query.data?.enteredStocks ?? [],

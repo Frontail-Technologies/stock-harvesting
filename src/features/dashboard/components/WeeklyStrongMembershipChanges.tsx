@@ -22,6 +22,7 @@ function MembershipChangeTable({
   title,
   count,
   previousWeekLabel,
+  comparisonLabel,
   members,
   isLoading,
   isError,
@@ -32,6 +33,7 @@ function MembershipChangeTable({
   title: string;
   count: number;
   previousWeekLabel: string;
+  comparisonLabel: string;
   members: WeeklyStrongBacktestMembershipChangeMember[];
   isLoading: boolean;
   isError: boolean;
@@ -50,7 +52,7 @@ function MembershipChangeTable({
         </h3>
         {previousWeekLabel && (
           <p className="mt-0.5 text-xs text-muted-foreground" title={previousWeekLabel}>
-            vs previous week
+            {comparisonLabel}
           </p>
         )}
       </div>
@@ -132,6 +134,8 @@ export function WeeklyStrongMembershipChanges({
     enteredStocks,
     exitedStocks,
     previousWeekEnding,
+    inProgress,
+    asOf,
     isLoading,
     isError,
   } = useWeeklyStrongBacktestMembershipChanges({ code, lookback });
@@ -141,6 +145,10 @@ export function WeeklyStrongMembershipChanges({
   };
 
   const previousWeekLabel = !isLoading ? formatMediumDate(previousWeekEnding) : "";
+  const comparisonLabel = inProgress
+    ? `Live${asOf ? ` as of ${formatMediumDate(asOf)}` : ""} vs last completed week`
+    : "vs previous week";
+  const periodLabel = inProgress ? "This Week (Live)" : "This Week";
 
   if (!isLoading && !isError && !available) {
     return (
@@ -157,9 +165,10 @@ export function WeeklyStrongMembershipChanges({
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <MembershipChangeTable
-        title="Stocks In This Week"
+        title={`Stocks In ${periodLabel}`}
         count={enteredStocks.length}
         previousWeekLabel={previousWeekLabel}
+        comparisonLabel={comparisonLabel}
         members={enteredStocks}
         isLoading={isLoading}
         isError={isError}
@@ -168,9 +177,10 @@ export function WeeklyStrongMembershipChanges({
         onRowClick={handleRowClick}
       />
       <MembershipChangeTable
-        title="Stocks Out This Week"
+        title={`Stocks Out ${periodLabel}`}
         count={exitedStocks.length}
         previousWeekLabel={previousWeekLabel}
+        comparisonLabel={comparisonLabel}
         members={exitedStocks}
         isLoading={isLoading}
         isError={isError}

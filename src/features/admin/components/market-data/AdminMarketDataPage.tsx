@@ -15,7 +15,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { queryKeys } from "@/features/api";
 import type { AdminJobProgressEvent, AdminMarketDataEvent } from "@/features/market-stream";
 import { cn } from "@/utils/cn";
-import { catchUpAdminMarketData, reconcileAdminMarketData } from "../../api/admin-api";
+import {
+  catchUpAdminMarketData,
+  reconcileAdminMarketData,
+  refreshAdminMarketDataBacktests,
+} from "../../api/admin-api";
 import { useAdminMarketDataStream } from "../../hooks/use-admin-market-data-stream";
 import {
   useBackfillAdminIndexCandles,
@@ -288,6 +292,16 @@ export function AdminMarketDataPage() {
 
   const reconcileMutation = useMutation({ mutationFn: reconcileAdminMarketData, onSuccess: refresh });
   const catchUpMutation = useMutation({ mutationFn: catchUpAdminMarketData, onSuccess: refresh });
+  const refreshCandlesMutation = useMutation({
+    mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
+      Promise.all(targets.map((target) => catchUpAdminMarketData(target))),
+    onSuccess: refresh,
+  });
+  const refreshBacktestsMutation = useMutation({
+    mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
+      Promise.all(targets.map((target) => refreshAdminMarketDataBacktests(target))),
+    onSuccess: refresh,
+  });
 
   useAdminMarketDataStream({
     onEvent: (event: AdminMarketDataEvent) => {
@@ -327,6 +341,26 @@ export function AdminMarketDataPage() {
       }),
   ].sort((left, right) => new Date(right.startedAt ?? 0).getTime() - new Date(left.startedAt ?? 0).getTime());
   const operations = operationsQuery.data;
+  const expectedDate = operations?.expectedCompletedTradingDate ?? null;
+  const expectedCoverage = operations?.coverage.filter((item) => item.tradingDate === expectedDate) ?? [];
+  const candleTargets = expectedCoverage
+    .filter((item) => item.missing > 0)
+    .map((item) => ({ exchange: item.exchange, tradingDate: item.tradingDate }));
+  const candlesLoaded = expectedCoverage.length > 0 && candleTargets.length === 0;
+  const backtestTargets = expectedCoverage.map((item) => ({ exchange: item.exchange, tradingDate: item.tradingDate }));
+  const backtestsStale = expectedDate !== null && (operations?.backtestsThrough ?? "") < expectedDate;
+  const candleButtonTitle = !expectedDate
+    ? "Waiting for market-data status"
+    : candlesLoaded
+      ? `Daily candles for ${formatDate(expectedDate)} are already loaded`
+      : `Fetch the missing ${formatDate(expectedDate)} daily candles (${candleTargets.map((item) => item.exchange).join(", ")}) from GlobalDataFeeds`;
+  const backtestButtonTitle = !expectedDate
+    ? "Waiting for market-data status"
+    : !candlesLoaded
+      ? `Load the ${formatDate(expectedDate)} daily candles first - backtests only refresh on complete data`
+      : !backtestsStale
+        ? `Backtests already run through ${formatDate(expectedDate)}`
+        : `Refresh Weekly Strong backtests for every segment (${backtestTargets.map((item) => item.exchange).join(", ")}) through ${formatDate(expectedDate)}`;
   const lastFailedRun = runs.find((run) => run.failedCount > 0);
   const missingCount = operations?.coverage.reduce((total, item) => total + item.missing, 0) ?? 0;
   const attentionCount = missingCount || lastFailedRun?.failedCount || 0;
@@ -378,6 +412,28 @@ export function AdminMarketDataPage() {
             className="w-48"
             triggerClassName="h-9"
           />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={candleTargets.length === 0 || refreshCandlesMutation.isPending}
+            title={candleButtonTitle}
+            onClick={() => refreshCandlesMutation.mutate(candleTargets)}
+          >
+            <Database className={cn("size-4", refreshCandlesMutation.isPending && "animate-pulse")} />
+            {candlesLoaded ? "Candles loaded" : "Refresh candles"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!candlesLoaded || !backtestsStale || refreshBacktestsMutation.isPending}
+            title={backtestButtonTitle}
+            onClick={() => refreshBacktestsMutation.mutate(backtestTargets)}
+          >
+            <RotateCcw className={cn("size-4", refreshBacktestsMutation.isPending && "animate-spin")} />
+            {candlesLoaded && !backtestsStale ? "Backtests current" : "Refresh backtests"}
+          </Button>
           <Button type="button" size="sm" variant="outline" disabled={reconcileMutation.isPending} onClick={() => reconcileMutation.mutate()}>
             <RefreshCw className={cn("size-4", reconcileMutation.isPending && "animate-spin")} />
             Refresh

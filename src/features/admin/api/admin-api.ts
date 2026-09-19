@@ -246,7 +246,13 @@ export function catchUpAdminMarketData(input: { exchange: string; tradingDate: s
 }
 
 export function refreshAdminMarketDataBacktests(input: { exchange: string; tradingDate: string }) {
-  return adminApiFetch(API_ROUTES.admin.marketDataRefreshBacktests, {
+  return adminApiFetch<{
+    exchange: string;
+    tradingDate: string;
+    refreshed: boolean;
+    reason: "historical-incomplete" | "already-current" | null;
+    backtestsThrough: string | null;
+  }>(API_ROUTES.admin.marketDataRefreshBacktests, {
     method: "POST",
     body: JSON.stringify(input),
   });

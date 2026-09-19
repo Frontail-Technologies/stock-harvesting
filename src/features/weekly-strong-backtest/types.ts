@@ -52,6 +52,8 @@ export type WeeklyStrongBacktestMembershipChangesResponse = {
   available: boolean;
   weekEnding: string | null;
   previousWeekEnding: string | null;
+  inProgress: boolean;
+  asOf: string | null;
   enteredStocks: WeeklyStrongBacktestMembershipChangeMember[];
   exitedStocks: WeeklyStrongBacktestMembershipChangeMember[];
 };
