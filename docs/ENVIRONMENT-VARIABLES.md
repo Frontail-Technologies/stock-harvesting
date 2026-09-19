@@ -66,6 +66,7 @@ max-connections calculation before raising `DB_POOL_MAX`).
 | `GLOBAL_DATAFEEDS_ENABLED` | `false` | Enables the GlobalDataFeeds WebSocket feed adapter |
 | `GLOBAL_DATAFEEDS_API_KEY` | — | WebSocket feed key (separate product from Fundamentals below) |
 | `GLOBAL_DATAFEEDS_WS_URL` | vendor test URL | WebSocket endpoint |
+| `GLOBAL_DATAFEEDS_SESSION_MODE` | `broker` | `broker`: the worker owns the one GDF session and the API relays through Redis (GDF allows one session per key). `direct`: each process opens its own socket |
 | `GLOBAL_DATAFEEDS_EXCHANGES` | `BSE,BSE_IDX` | Exchanges routed to this provider |
 | `GLOBAL_DATAFEEDS_SYMBOL_LIMIT` | `100` | Max symbols subscribed per connection |
 | `GLOBAL_DATAFEEDS_FUNDAMENTALS_ENABLED` | `false` | Enables the separate Fundamentals REST product (sector/industry classification) |
