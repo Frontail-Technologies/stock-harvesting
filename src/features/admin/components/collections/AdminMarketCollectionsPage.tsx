@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Layers, Loader2, MoreHorizontal, RotateCcw, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Layers, Loader2, MoreHorizontal, RotateCcw, Trash2, Upload, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -83,19 +83,23 @@ function WidgetDefaultCell({
   // handled by the caller keying this component on collection.widgetOrder
   // (remounts with a fresh initial draft) rather than an effect.
   const [orderDraft, setOrderDraft] = useState(collection.widgetOrder?.toString() ?? "");
+  const [editingOrder, setEditingOrder] = useState(false);
 
   const commitOrder = () => {
     const trimmed = orderDraft.trim();
     if (trimmed === "") {
       if (collection.widgetOrder !== null) onOrderCommit(null);
+      setEditingOrder(false);
       return;
     }
     const parsed = Number(trimmed);
     if (!Number.isInteger(parsed) || parsed < 1) {
       setOrderDraft(collection.widgetOrder?.toString() ?? "");
+      setEditingOrder(false);
       return;
     }
     if (parsed !== collection.widgetOrder) onOrderCommit(parsed);
+    setEditingOrder(false);
   };
 
   return (
@@ -107,20 +111,41 @@ function WidgetDefaultCell({
         aria-label={`Toggle Widget default for ${collection.name}`}
       />
       {collection.showOnWidgetDefault && (
-        <Input
-          type="number"
-          min={1}
-          value={orderDraft}
-          disabled={pending}
-          onChange={(event) => setOrderDraft(event.target.value)}
-          onBlur={commitOrder}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
-          }}
-          placeholder="Order"
-          aria-label={`Widget order for ${collection.name}`}
-          className="h-7 w-16 px-1.5 text-xs"
-        />
+        editingOrder ? (
+          <Input
+            autoFocus
+            type="number"
+            min={1}
+            value={orderDraft}
+            disabled={pending}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => setOrderDraft(event.target.value)}
+            onBlur={commitOrder}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                setOrderDraft(collection.widgetOrder?.toString() ?? "");
+                setEditingOrder(false);
+              }
+            }}
+            placeholder="Order"
+            aria-label={`Widget order for ${collection.name}`}
+            className="h-7 w-16 px-1.5 text-center text-xs"
+          />
+        ) : (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={(event) => {
+              event.stopPropagation();
+              setEditingOrder(true);
+            }}
+            className="h-7 min-w-9 rounded-md px-2 text-xs tabular-nums text-foreground hover:bg-muted disabled:opacity-50"
+            aria-label={`Edit widget order for ${collection.name}`}
+          >
+            {collection.widgetOrder ?? "Set"}
+          </button>
+        )
       )}
     </div>
   );
@@ -131,6 +156,9 @@ export function AdminMarketCollectionsPage() {
   const retryMutation = useRetryAdminCollectionPreparation();
   const updateMutation = useUpdateAdminMarketCollection();
   const collections = collectionsQuery.data?.collections ?? [];
+  const totalMembers = collections.reduce((total, collection) => total + collection.memberCount, 0);
+  const readyCount = collections.filter((collection) => collection.preparationStatus === "ready").length;
+  const attentionCount = collections.filter((collection) => collection.preparationStatus === "failed" || collection.preparationStatus === "partial").length;
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -173,9 +201,6 @@ export function AdminMarketCollectionsPage() {
           <>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Segments</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage index/segment groups (NIFTY 50, NIFTY 100, ...) used to power the dashboard.
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <Link href={adminPath("/admin/market-collections/bulk-import")}>
@@ -188,6 +213,25 @@ export function AdminMarketCollectionsPage() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-md bg-violet-500/10 text-violet-700 dark:text-violet-300"><Layers className="size-4" /></span>
+          <div><p className="text-[11px] text-muted-foreground">Segments</p><p className="font-semibold text-foreground">{collections.length}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="size-4" /></span>
+          <div><p className="text-[11px] text-muted-foreground">Ready</p><p className="font-semibold text-foreground">{readyCount}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-md bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><Users className="size-4" /></span>
+          <div><p className="text-[11px] text-muted-foreground">Members</p><p className="font-semibold text-foreground tabular-nums">{totalMembers}</p></div>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <span className={cn("flex size-9 items-center justify-center rounded-md", attentionCount > 0 ? "bg-rose-500/10 text-rose-700 dark:text-rose-300" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}><AlertTriangle className="size-4" /></span>
+          <div><p className="text-[11px] text-muted-foreground">Needs attention</p><p className="font-semibold text-foreground">{attentionCount}</p></div>
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-md border border-border bg-card text-card-foreground">
@@ -355,7 +399,7 @@ export function AdminMarketCollectionsPage() {
                 <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                   {collectionsQuery.isLoading ? (
                     <span className="inline-flex items-center gap-2">
-                      <Spinner size="sm" />
+                      <Spinner size="md" className="text-primary" />
                       Loading segments...
                     </span>
                   ) : collectionsQuery.isError ? (

@@ -61,11 +61,8 @@ max-connections calculation before raising `DB_POOL_MAX`).
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATA_PROVIDER` | `eodhd` | `eodhd` \| `zerodha` \| `global-datafeeds` — default provider selection |
 | `EODHD_API_TOKEN` | — | EODHD vendor API key |
 | `EODHD_EXCHANGE_CODE` | `US` | Default EODHD exchange scope |
-| `ZERODHA_API_KEY` / `ZERODHA_API_SECRET` | — | Zerodha Kite Connect credentials |
-| `ZERODHA_REDIRECT_URL` | — | Kite OAuth callback URL |
 | `GLOBAL_DATAFEEDS_ENABLED` | `false` | Enables the GlobalDataFeeds WebSocket feed adapter |
 | `GLOBAL_DATAFEEDS_API_KEY` | — | WebSocket feed key (separate product from Fundamentals below) |
 | `GLOBAL_DATAFEEDS_WS_URL` | vendor test URL | WebSocket endpoint |

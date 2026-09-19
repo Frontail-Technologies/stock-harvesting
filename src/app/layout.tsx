@@ -153,6 +153,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`h-full antialiased ${geist.variable} ${ibmPlexMono.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >

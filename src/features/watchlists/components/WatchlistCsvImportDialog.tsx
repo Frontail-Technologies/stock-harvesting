@@ -136,7 +136,7 @@ export function WatchlistCsvImportDialog({
   };
 
   const downloadSample = () => {
-    const blob = new Blob(["symbol,exchange\nRELIANCE,NSE\nTCS,NSE\nETERNAL,BSE\n"], {
+    const blob = new Blob(["symbol,exchange\nRELIANCE,BSE\nTCS,BSE\nETERNAL,BSE\n"], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);

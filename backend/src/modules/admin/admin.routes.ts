@@ -25,9 +25,11 @@ import {
   validate,
 } from "../../shared/middleware";
 import {
+  adminAnalyticsQuerySchema,
   adminUsersExportQuerySchema,
   adminUsersQuerySchema,
   backfillCandlesBodySchema,
+  createAdminUserBodySchema,
   brandingBodySchema,
   bulkDeleteCollectionsBodySchema,
   bulkImportFileBodySchema,
@@ -41,9 +43,9 @@ import {
   importCollectionCsvBodySchema,
   indexCandleBackfillBodySchema,
   replaceCollectionVersionBodySchema,
-  providerConnectBodySchema,
   providerSyncBodySchema,
   refreshDailyCandlesBodySchema,
+  marketDataLedgerActionBodySchema,
   updateAiSettingsBodySchema,
   updateAiKeyBodySchema,
   updateCollectionBodySchema,
@@ -53,13 +55,12 @@ import {
   userIdParamsSchema,
 } from "./admin.schemas";
 import {
-  completeProviderConnection,
-  createProviderConnectUrl,
+  createAdminUser,
   deleteUser,
   exportAdminUsersCsv,
   getAdminDataProviderSettings,
+  getAdminAnalytics,
   getAdminProviderHealth,
-  getAdminProviderStatus,
   getAdminProviderStatuses,
   getBrandingSettings,
   getWeeklyStrongBacktestHistoricalStatus,
@@ -79,6 +80,16 @@ import {
   updateUserPlan,
   updateUserRole,
 } from "./admin.service";
+import { listRecentBackgroundJobRuns } from "../jobs/background-job-runs.service";
+import { getScheduledDailyCandleSyncStatuses } from "../jobs/scheduled-job-status.service";
+import { getMarketDataWorkerStatuses } from "../jobs/worker-status.service";
+import { getMarketDataHealth } from "../market-data/market-data.health";
+import {
+  createAndQueueCatchUp,
+  getMarketDataOperations,
+  refreshMarketDataBacktests,
+  reconcileMarketDataJobLedger,
+} from "../jobs/market-data-job-ledger";
 import { triggerCollectionPreparation } from "../market-collections/market-collection-preparation.service";
 import {
   bulkDeleteMarketCollections,
@@ -125,6 +136,21 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const query = req.query as unknown as Parameters<typeof listAdminUsers>[0];
     sendData(res, await listAdminUsers(query));
+  })
+);
+
+adminRouter.post(
+  "/users",
+  validate({ body: createAdminUserBodySchema }),
+  asyncHandler(async (req, res) => {
+    const body = req.body as { email: string; name: string; password: string };
+    const user = await createAdminUser({
+      actorUserId: getAuthUserId(req),
+      email: body.email,
+      name: body.name,
+      password: body.password,
+    });
+    sendData(res, { user });
   })
 );
 
@@ -186,10 +212,6 @@ adminRouter.delete(
   })
 );
 
-adminRouter.get("/data-provider/status", asyncHandler(async (_req, res) => {
-  sendData(res, await getAdminProviderStatus());
-}));
-
 adminRouter.get("/data-provider/statuses", asyncHandler(async (_req, res) => {
   sendData(res, await getAdminProviderStatuses());
 }));
@@ -221,23 +243,6 @@ adminRouter.put(
       ...(req.body as { enabled?: boolean; priority?: number; disabledReason?: string | null }),
     });
     sendData(res, { provider });
-  })
-);
-
-adminRouter.post("/data-provider/connect-url", asyncHandler(async (req, res) => {
-  sendData(res, await createProviderConnectUrl(getAuthUserId(req)));
-}));
-
-adminRouter.post(
-  "/data-provider/connect",
-  validate({ body: providerConnectBodySchema }),
-  asyncHandler(async (req, res) => {
-    const body = req.body as { requestToken: string };
-    const result = await completeProviderConnection({
-      actorUserId: getAuthUserId(req),
-      requestToken: body.requestToken,
-    });
-    sendData(res, result);
   })
 );
 
@@ -316,9 +321,60 @@ adminRouter.post(
   })
 );
 
+adminRouter.get("/market-data/workers", asyncHandler(async (_req, res) => {
+  sendData(res, { workers: await getMarketDataWorkerStatuses() });
+}));
+
+adminRouter.get("/market-data/health", asyncHandler(async (_req, res) => {
+  sendData(res, await getMarketDataHealth());
+}));
+
+adminRouter.get("/market-data/job-runs", asyncHandler(async (_req, res) => {
+  sendData(res, { runs: await listRecentBackgroundJobRuns() });
+}));
+
+adminRouter.get("/market-data/schedules", asyncHandler(async (_req, res) => {
+  sendData(res, { schedules: await getScheduledDailyCandleSyncStatuses() });
+}));
+
+adminRouter.get("/market-data/operations", asyncHandler(async (_req, res) => {
+  sendData(res, await getMarketDataOperations());
+}));
+
+adminRouter.post("/market-data/reconcile", asyncHandler(async (_req, res) => {
+  sendData(res, await reconcileMarketDataJobLedger());
+}));
+
+adminRouter.post(
+  "/market-data/catch-up",
+  validate({ body: marketDataLedgerActionBodySchema }),
+  asyncHandler(async (req, res) => {
+    const body = req.body as { exchange: string; tradingDate: string };
+    sendAccepted(res, { runId: await createAndQueueCatchUp(body.exchange, body.tradingDate, undefined, { force: true }) });
+  }),
+);
+
+adminRouter.post(
+  "/market-data/refresh-backtests",
+  validate({ body: marketDataLedgerActionBodySchema }),
+  asyncHandler(async (req, res) => {
+    const body = req.body as { exchange: string; tradingDate: string };
+    sendData(res, await refreshMarketDataBacktests(body.exchange, body.tradingDate));
+  }),
+);
+
 adminRouter.get("/jobs", asyncHandler(async (_req, res) => {
   sendData(res, { jobs: await listJobs() });
 }));
+
+adminRouter.get(
+  "/analytics",
+  validate({ query: adminAnalyticsQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const query = req.query as unknown as Parameters<typeof getAdminAnalytics>[0];
+    sendData(res, await getAdminAnalytics(query));
+  })
+);
 
 adminRouter.get("/branding", asyncHandler(async (_req, res) => {
   sendData(res, { branding: await getBrandingSettings() });
@@ -462,7 +518,13 @@ adminRouter.patch(
   validate({ params: collectionIdParamsSchema, body: updateCollectionBodySchema }),
   asyncHandler(async (req, res) => {
     const params = req.params as { id: string };
-    const body = req.body as { name?: string; description?: string | null; active?: boolean };
+    const body = req.body as {
+      name?: string;
+      description?: string | null;
+      active?: boolean;
+      showOnWidgetDefault?: boolean;
+      widgetOrder?: number | null;
+    };
     const collection = await updateCollection({
       id: params.id,
       actorUserId: getAuthUserId(req),

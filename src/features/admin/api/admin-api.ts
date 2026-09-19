@@ -13,18 +13,19 @@ import type {
 import type { WeeklyStrongBacktestStatus } from "@/features/weekly-strong-backtest";
 import type {
   AdminAdPlacementKey,
+  AdminAnalytics,
+  AdminAnalyticsPeriod,
   AdminAiKeyResponse,
   AdminAiSettingsResponse,
   AdminBackgroundJobRun,
-  AdminDataProviderConnectResponse,
-  AdminDataProviderConnectUrlResponse,
   AdminDataProviderHealthResult,
   AdminDataProviderSettingsResponse,
-  AdminDataProviderStatus,
   AdminDataProviderStatusesResponse,
   AdminMarketDataHealth,
+  AdminMarketDataOperations,
   AdminMonetizationConfig,
   AdminScheduledJobStatus,
+  AdminSyncJob,
   AdminUser,
   AdminUserFilters,
   AdminUsersResponse,
@@ -33,6 +34,10 @@ import type {
   BulkImportPreviewResponse,
   MonetizationMode,
 } from "../types";
+
+export function getAdminAnalytics(period: AdminAnalyticsPeriod) {
+  return adminApiFetch<AdminAnalytics>(withQuery(API_ROUTES.admin.analytics, { period }));
+}
 
 function withQuery(path: string, query: Record<string, string | number | undefined>) {
   const params = new URLSearchParams();
@@ -178,12 +183,6 @@ const LOCAL_STATUS_REQUEST_TIMEOUT_MS = 8_000;
 // 6s per provider). Give the round trip comfortable headroom above that.
 const HEALTH_REQUEST_TIMEOUT_MS = 12_000;
 
-export function getAdminDataProviderStatus() {
-  return adminApiFetch<AdminDataProviderStatus>(API_ROUTES.admin.dataProviderStatus, {
-    signal: AbortSignal.timeout(LOCAL_STATUS_REQUEST_TIMEOUT_MS),
-  });
-}
-
 export function getAdminDataProviderStatuses() {
   return adminApiFetch<AdminDataProviderStatusesResponse>(API_ROUTES.admin.dataProviderStatuses, {
     signal: AbortSignal.timeout(LOCAL_STATUS_REQUEST_TIMEOUT_MS),
@@ -194,25 +193,6 @@ export function getAdminDataProviderHealth(provider: string) {
   return adminApiFetch<AdminDataProviderHealthResult>(
     API_ROUTES.admin.dataProviderHealth(provider),
     { signal: AbortSignal.timeout(HEALTH_REQUEST_TIMEOUT_MS) }
-  );
-}
-
-export function getAdminDataProviderConnectUrl() {
-  return adminApiFetch<AdminDataProviderConnectUrlResponse>(
-    API_ROUTES.admin.dataProviderConnectUrl,
-    {
-      method: "POST",
-    }
-  );
-}
-
-export function connectAdminDataProvider(input: { requestToken: string }) {
-  return adminApiFetch<AdminDataProviderConnectResponse>(
-    API_ROUTES.admin.dataProviderConnect,
-    {
-      method: "POST",
-      body: JSON.stringify({ requestToken: input.requestToken }),
-    }
   );
 }
 
@@ -244,6 +224,32 @@ export function getAdminMarketDataJobRuns() {
 
 export function getAdminMarketDataSchedules() {
   return adminApiFetch<{ schedules: AdminScheduledJobStatus[] }>(API_ROUTES.admin.marketDataSchedules);
+}
+
+export function getAdminJobs() {
+  return adminApiFetch<{ jobs: AdminSyncJob[] }>(API_ROUTES.admin.jobs);
+}
+
+export function getAdminMarketDataOperations() {
+  return adminApiFetch<AdminMarketDataOperations>(API_ROUTES.admin.marketDataOperations);
+}
+
+export function reconcileAdminMarketData() {
+  return adminApiFetch(API_ROUTES.admin.marketDataReconcile, { method: "POST" });
+}
+
+export function catchUpAdminMarketData(input: { exchange: string; tradingDate: string }) {
+  return adminApiFetch<{ runId: string | null }>(API_ROUTES.admin.marketDataCatchUp, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function refreshAdminMarketDataBacktests(input: { exchange: string; tradingDate: string }) {
+  return adminApiFetch(API_ROUTES.admin.marketDataRefreshBacktests, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function syncAdminSectorClassification() {

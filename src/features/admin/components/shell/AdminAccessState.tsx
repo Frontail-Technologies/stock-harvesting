@@ -1,14 +1,21 @@
 "use client";
 
 import { Shield } from "lucide-react";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { getSiteUrl } from "@/utils/seo";
 
 export function AdminLoadingState() {
   return (
     <div className="admin-shell flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
-      <div className="rounded-md border border-border bg-card px-5 py-4 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        Loading admin workspace...
+      <div className="flex flex-col items-center gap-4" aria-label="Loading admin workspace">
+        <BrandLogo
+          size="sm"
+          markClassName="h-8 sm:h-9"
+          textClassName="text-xl sm:text-2xl"
+        />
+        <Spinner size="md" className="text-primary" />
       </div>
     </div>
   );

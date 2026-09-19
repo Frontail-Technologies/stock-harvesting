@@ -156,7 +156,7 @@ Two independent bootstraps, never both active for one page load:
 ## Provider architecture
 
 `backend/src/modules/data-provider/*` — an adapter abstraction over three
-vendors (EODHD, Zerodha, GlobalDataFeeds), resolved per-exchange with a
+vendors (EODHD, GlobalDataFeeds; Zerodha retired 2026-09-19), resolved per-exchange with a
 DB-configurable enabled/priority mechanism. Full detail:
 [PROVIDERS.md](./PROVIDERS.md).
 

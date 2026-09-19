@@ -41,7 +41,7 @@ export function AdminUsersTable({
         <TableHeader>
           <TableRow className="border-border bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
             <TableHead className="w-14 border-r border-border/70 px-3 text-right font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              No.
+              Sr. No.
             </TableHead>
             <TableHead className="min-w-52 border-r border-border/70 px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Name
@@ -73,7 +73,7 @@ export function AdminUsersTable({
                 {startIndex + index + 1}
               </TableCell>
               <TableCell className="border-r border-border/70 px-4">
-                <div className="font-medium text-foreground">{user.name}</div>
+                <AdminUserIdentity name={user.name} email={user.email} />
               </TableCell>
               <TableCell className="border-r border-border/70 px-4 text-muted-foreground">
                 {user.email}
@@ -114,7 +114,7 @@ export function AdminUsersTable({
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
-                    <Spinner size="sm" />
+                    <Spinner size="md" className="text-primary" />
                     Loading users...
                   </span>
                 ) : error ? (
@@ -127,6 +127,37 @@ export function AdminUsersTable({
           )}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+const USER_AVATAR_TONES = [
+  "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
+  "bg-indigo-100 text-indigo-800 dark:bg-indigo-400/15 dark:text-indigo-300",
+  "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300",
+  "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300",
+  "bg-violet-100 text-violet-800 dark:bg-violet-400/15 dark:text-violet-300",
+  "bg-orange-100 text-orange-800 dark:bg-orange-400/15 dark:text-orange-300",
+  "bg-cyan-100 text-cyan-800 dark:bg-cyan-400/15 dark:text-cyan-300",
+] as const;
+
+function AdminUserIdentity({ name, email }: { name: string; email: string }) {
+  const label = name.trim() || email.trim();
+  const initial = label.charAt(0).toUpperCase() || "?";
+  const colorIndex = [...label].reduce((total, character) => total + character.charCodeAt(0), 0) % USER_AVATAR_TONES.length;
+
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          USER_AVATAR_TONES[colorIndex],
+        )}
+      >
+        {initial}
+      </span>
+      <span className="truncate text-sm font-medium text-foreground">{label}</span>
     </div>
   );
 }
@@ -151,4 +182,3 @@ function AdminUserTag({
     </span>
   );
 }
-

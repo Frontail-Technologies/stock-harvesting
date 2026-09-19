@@ -1,5 +1,5 @@
 export { AdminAiSettingsPage } from "./components/ai/AdminAiSettingsPage";
-export { AdminDataProviderCallbackPage } from "./components/data-provider/AdminDataProviderCallbackPage";
+export { AdminAnalyticsPage } from "./components/analytics/AdminAnalyticsPage";
 export { AdminDataProvidersPage } from "./components/data-providers/AdminDataProvidersPage";
 export { AdminMonetizationPage } from "./components/monetization/AdminMonetizationPage";
 export { AdminShell } from "./components/shell/AdminShell";
@@ -13,10 +13,7 @@ export {
 } from "./hooks/use-admin-ai-settings";
 export {
   useAdminDataProviderHealth,
-  useAdminDataProviderStatus,
   useAdminDataProviderStatuses,
-  useConnectAdminDataProvider,
-  useCreateAdminDataProviderConnectUrl,
   useSyncAdminDataProvider,
   useSyncAdminMarketDataPrices,
 } from "./hooks/use-admin-data-provider";
@@ -37,14 +34,14 @@ export {
   useUpdateAdminUserRole,
 } from "./hooks/use-admin-users";
 export type {
+  AdminAnalytics,
+  AdminAnalyticsPeriod,
   AdminAiKeyResponse,
   AdminAiKeyStatus,
   AdminAiModelOption,
   AdminAiSettings,
   AdminAiSettingsResponse,
   AdminDataProviderCapability,
-  AdminDataProviderConnectResponse,
-  AdminDataProviderConnectUrlResponse,
   AdminDataProviderHealth,
   AdminDataProviderHealthResult,
   AdminDataProviderSettingsResponse,

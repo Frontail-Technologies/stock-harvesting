@@ -1,49 +1,155 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Activity, AlertTriangle, Clock3, Database, RefreshCw, RotateCcw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { queryKeys } from "@/features/api";
+import type { AdminJobProgressEvent, AdminMarketDataEvent } from "@/features/market-stream";
 import { cn } from "@/utils/cn";
+import { catchUpAdminMarketData, reconcileAdminMarketData } from "../../api/admin-api";
 import { useAdminMarketDataStream } from "../../hooks/use-admin-market-data-stream";
 import {
+  useBackfillAdminIndexCandles,
+  useSyncAdminDataProvider,
+  useSyncAdminMarketDataPrices,
+  useSyncAdminSectorClassification,
+} from "../../hooks/use-admin-data-provider";
+import {
   useAdminMarketDataHealth,
+  useAdminJobs,
   useAdminMarketDataJobRuns,
-  useAdminMarketDataSchedules,
+  useAdminMarketDataOperations,
   useAdminMarketDataWorkers,
 } from "../../hooks/use-admin-market-data";
-import type {
-  AdminBackgroundJobRun,
-  AdminBackgroundJobRunStatus,
-  AdminScheduledJobStatus,
-} from "../../types";
-import type {
-  AdminJobCompletedEvent,
-  AdminJobFailedEvent,
-  AdminJobProgressEvent,
-  AdminJobStartedEvent,
-  AdminMarketDataEvent,
-  AdminWorkerStatusEvent,
-} from "@/features/market-stream";
+import { useAdminMarketCollections } from "../../hooks/use-admin-market-collections";
+import type { AdminBackgroundJobRunStatus, AdminSyncJob } from "../../types";
 
-const JOB_TYPE_LABEL: Record<string, string> = {
+export const JOB_TYPE_LABEL: Record<string, string> = {
   daily_candle_morning: "Morning Sync",
   daily_candle_post_market: "Post-Market Sync",
   daily_candle_retry: "Retry Sync",
   daily_candle_evening: "Evening Sync",
   chart_ensure_fresh: "Chart Ensure-Fresh",
+  "market-data.instrument-sync": "Instrument Sync",
+  "market-data.price-refresh": "Price Refresh",
+  "market-data.sector-classification-sync": "Sector Classification",
+  "market-data.index-candle-backfill": "Index History Backfill",
+  "market-data.weekly-strong-backtest-backfill": "Current Backtest",
+  "market-data.weekly-strong-backtest-historical-rebuild": "Historical Backtest",
 };
 
-function formatDateTime(value: string | null) {
+const PROVIDER_ACTION_TYPES = new Set([
+  "market-data.instrument-sync",
+  "market-data.price-refresh",
+  "market-data.sector-classification-sync",
+  "market-data.index-candle-backfill",
+  "market-data.weekly-strong-backtest-backfill",
+  "market-data.weekly-strong-backtest-historical-rebuild",
+]);
+
+export type AdminJobDisplay = {
+  id: string;
+  jobType: string;
+  status: AdminBackgroundJobRunStatus;
+  startedAt: string | null;
+  finishedAt: string | null;
+  processedCount: number;
+  updatedCount: number;
+  repairedCount: number;
+  failedCount: number;
+  progress: number | null;
+  source: "run" | "provider";
+  exchange: string | null;
+  tradingDate: string | null;
+  collectionId: string | null;
+  scope: string;
+};
+
+type JobRunsCache = { runs: Array<{
+  id: string;
+  processedCount: number;
+  updatedCount: number;
+  repairedCount: number;
+  failedCount: number;
+  totalExpected?: number;
+  [key: string]: unknown;
+}> };
+
+function applyJobProgress(current: JobRunsCache | undefined, data: AdminJobProgressEvent["data"]) {
+  if (!current) return current;
+  return {
+    runs: current.runs.map((run) => run.id === data.runId ? {
+      ...run,
+      processedCount: data.processed,
+      updatedCount: data.updated,
+      repairedCount: data.repaired,
+      failedCount: data.failed,
+      totalExpected: data.total,
+    } : run),
+  };
+}
+
+function payloadNumber(payload: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return 0;
+}
+
+export function toProviderJobDisplay(job: AdminSyncJob): AdminJobDisplay {
+  const progressValue = job.payload.progress;
+  const progress = typeof progressValue === "number"
+    ? Math.max(0, Math.min(100, Math.round(progressValue)))
+    : job.status === "completed"
+      ? 100
+      : job.status === "queued"
+        ? 0
+        : null;
+  return {
+    id: job.id,
+    jobType: job.type,
+    status: job.status,
+    startedAt: job.createdAt,
+    finishedAt: job.status === "completed" || job.status === "failed" ? job.updatedAt : null,
+    processedCount: payloadNumber(job.payload, "symbolCount", "count", "indexCount", "companiesSeen"),
+    updatedCount: payloadNumber(job.payload, "refreshed", "backfilled", "companiesMatched", "count"),
+    repairedCount: 0,
+    failedCount: job.status === "failed" ? 1 : payloadNumber(job.payload, "failedCount"),
+    progress,
+    source: "provider",
+    exchange: typeof job.payload.exchange === "string" ? job.payload.exchange : null,
+    tradingDate: null,
+    collectionId: typeof job.payload.collectionId === "string" ? job.payload.collectionId : null,
+    scope: typeof job.payload.exchange === "string" ? job.payload.exchange : "Global",
+  };
+}
+
+const STAT_TONES = {
+  green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  cyan: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+  amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+} as const;
+
+export function formatJobDateTime(value: string | null) {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(
-    parsed
-  );
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(parsed);
 }
 
 function formatDate(value: string | null) {
@@ -53,28 +159,51 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(parsed);
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function dateFilterValue(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function StatCard({ icon: Icon, label, value, sub, tone }: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  sub?: string;
+  tone: keyof typeof STAT_TONES;
+}) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-card px-4 py-3">
-      <span className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3">
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", STAT_TONES[tone])}>
+        <Icon className="size-4" />
       </span>
-      <span className="text-lg font-semibold text-foreground">{value}</span>
-      {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-muted-foreground">{label}</span>
+        <span className="block truncate text-base font-semibold text-foreground">{value}</span>
+        {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
+      </span>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: AdminBackgroundJobRunStatus }) {
+export function JobStatusBadge({ status }: { status: AdminBackgroundJobRunStatus }) {
   return (
     <Badge
       variant="outline"
       className={cn(
-        "border-transparent",
+        "border-transparent capitalize",
         status === "completed" && "bg-success/10 text-success",
         status === "partial" && "bg-warning/10 text-warning",
-        status === "failed" && "bg-danger/10 text-danger",
-        status === "running" && "bg-muted text-muted-foreground"
+        (status === "failed" || status === "missed") && "bg-danger/10 text-danger",
+        (status === "pending" || status === "queued" || status === "running") && "bg-muted text-muted-foreground"
       )}
     >
       {status}
@@ -82,372 +211,240 @@ function StatusBadge({ status }: { status: AdminBackgroundJobRunStatus }) {
   );
 }
 
-function ScheduleCard({
-  label,
-  schedule,
-}: {
-  label: string;
-  schedule: AdminScheduledJobStatus | undefined;
-}) {
-  const lastRun = schedule?.lastRun ?? null;
+function JobRunRow({ run, index, onRetry, retrying }: { run: AdminJobDisplay; index: number; onRetry: (run: AdminJobDisplay) => void; retrying: boolean }) {
+  const router = useRouter();
+  const openDetails = () => router.push(`/admin/jobs/${run.id}`);
+  const canRetry = (run.source === "provider" && !run.jobType.includes("backtest")) || Boolean(run.exchange && run.tradingDate);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-foreground">{label}</span>
-        {lastRun && <StatusBadge status={lastRun.status} />}
-      </div>
-      {lastRun ? (
-        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-          <span>Last run: {formatDateTime(lastRun.startedAt)}</span>
-          <span>
-            Processed {lastRun.processedCount} · Updated {lastRun.updatedCount} · Repaired {lastRun.repairedCount} ·
-            Failed {lastRun.failedCount}
-          </span>
-        </div>
-      ) : (
-        <span className="text-xs text-muted-foreground">No runs recorded yet.</span>
-      )}
-      {schedule?.nextRunAt && (
-        <span className="text-xs text-muted-foreground">Next run: {formatDateTime(schedule.nextRunAt)}</span>
-      )}
-    </div>
+    <TableRow
+      tabIndex={0}
+      className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
+      onClick={openDetails}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") openDetails();
+      }}
+    >
+      <TableCell className="w-16 text-center tabular-nums text-muted-foreground">{index + 1}</TableCell>
+      <TableCell className="font-medium text-foreground">{JOB_TYPE_LABEL[run.jobType] ?? run.jobType}</TableCell>
+      <TableCell className="text-center text-muted-foreground">{run.scope}</TableCell>
+      <TableCell className="text-center">{formatJobDateTime(run.startedAt)}</TableCell>
+      <TableCell className="text-center">{formatJobDateTime(run.finishedAt)}</TableCell>
+      <TableCell className="min-w-28 text-center">
+        {run.progress === null ? (
+          <span className="text-xs text-muted-foreground">Running</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Progress value={run.progress} className="min-w-16 flex-1" />
+            <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">{run.progress}%</span>
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="text-center"><JobStatusBadge status={run.status} /></TableCell>
+      <TableCell className="text-center">
+        {canRetry && (run.status === "failed" || run.status === "missed" || run.status === "partial") && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Retry ${JOB_TYPE_LABEL[run.jobType] ?? run.jobType}`}
+            disabled={retrying}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRetry(run);
+            }}
+          >
+            <RotateCcw className={cn("size-4", retrying && "animate-spin")} />
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
   );
-}
-
-function JobRunRow({ run }: { run: AdminBackgroundJobRun }) {
-  const [expanded, setExpanded] = useState(false);
-  const failedSymbols = run.metadata.failedSymbols ?? [];
-  const canExpand = failedSymbols.length > 0;
-
-  return (
-    <>
-      <TableRow
-        className={canExpand ? "cursor-pointer" : undefined}
-        onClick={() => canExpand && setExpanded((current) => !current)}
-      >
-        <TableCell className="flex items-center gap-1.5">
-          {canExpand ? (
-            expanded ? (
-              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-            )
-          ) : (
-            <span className="inline-block size-3.5" />
-          )}
-          {JOB_TYPE_LABEL[run.jobType] ?? run.jobType}
-        </TableCell>
-        <TableCell>{formatDateTime(run.startedAt)}</TableCell>
-        <TableCell>{formatDateTime(run.finishedAt)}</TableCell>
-        <TableCell className="text-right tabular-nums">{run.processedCount}</TableCell>
-        <TableCell className="text-right tabular-nums">{run.updatedCount}</TableCell>
-        <TableCell className="text-right tabular-nums">{run.repairedCount}</TableCell>
-        <TableCell className="text-right tabular-nums">{run.failedCount}</TableCell>
-        <TableCell>
-          <StatusBadge status={run.status} />
-        </TableCell>
-      </TableRow>
-      {expanded && canExpand && (
-        <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={8} className="bg-muted/30 py-3">
-            <div className="flex flex-col gap-1 text-xs">
-              {failedSymbols.map((entry, index) => (
-                <div key={`${entry.symbol}-${index}`} className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-foreground">{entry.symbol}</span>
-                  <span className="text-muted-foreground">{entry.reason}</span>
-                </div>
-              ))}
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-    </>
-  );
-}
-
-type JobRunsCache = { runs: AdminBackgroundJobRun[] };
-type SchedulesCache = { schedules: AdminScheduledJobStatus[] };
-type WorkersCache = { workers: Array<{ name: string; status: "online" | "offline"; lastHeartbeat: string | null; startedAt: string | null }> };
-
-function applyJobStarted(current: JobRunsCache | undefined, data: AdminJobStartedEvent["data"]): JobRunsCache {
-  const newRun: AdminBackgroundJobRun = {
-    id: data.runId,
-    jobType: data.jobType,
-    status: "running",
-    startedAt: data.startedAt,
-    finishedAt: null,
-    processedCount: 0,
-    updatedCount: 0,
-    repairedCount: 0,
-    alreadyCurrentCount: 0,
-    bootstrapRequiredCount: 0,
-    failedCount: 0,
-    errorSummary: null,
-    metadata: {},
-    createdAt: data.startedAt,
-  };
-  return { runs: [newRun, ...(current?.runs ?? []).filter((run) => run.id !== data.runId)] };
-}
-
-function applyJobProgressToRuns(current: JobRunsCache | undefined, data: AdminJobProgressEvent["data"]): JobRunsCache | undefined {
-  if (!current) return current;
-  return {
-    runs: current.runs.map((run) =>
-      run.id === data.runId
-        ? { ...run, processedCount: data.processed, updatedCount: data.updated, repairedCount: data.repaired, failedCount: data.failed }
-        : run
-    ),
-  };
-}
-
-function applyJobTerminalToRuns(
-  current: JobRunsCache | undefined,
-  data: (AdminJobCompletedEvent | AdminJobFailedEvent)["data"]
-): JobRunsCache | undefined {
-  if (!current) return current;
-  return {
-    runs: current.runs.map((run) =>
-      run.id === data.runId
-        ? {
-            ...run,
-            status: data.status,
-            finishedAt: data.finishedAt,
-            ...("processed" in data
-              ? { processedCount: data.processed, updatedCount: data.updated, repairedCount: data.repaired, failedCount: data.failed }
-              : { failedCount: data.failed }),
-          }
-        : run
-    ),
-  };
-}
-
-function applyJobStartedToSchedules(current: SchedulesCache | undefined, data: AdminJobStartedEvent["data"]): SchedulesCache | undefined {
-  if (!current) return current;
-  return {
-    schedules: current.schedules.map((schedule) =>
-      schedule.jobType === data.jobType
-        ? {
-            ...schedule,
-            lastRun: { status: "running", startedAt: data.startedAt, finishedAt: null, processedCount: 0, updatedCount: 0, repairedCount: 0, failedCount: 0 },
-          }
-        : schedule
-    ),
-  };
-}
-
-function applyJobProgressToSchedules(current: SchedulesCache | undefined, data: AdminJobProgressEvent["data"]): SchedulesCache | undefined {
-  if (!current) return current;
-  return {
-    schedules: current.schedules.map((schedule) =>
-      schedule.jobType === data.jobType && schedule.lastRun
-        ? {
-            ...schedule,
-            lastRun: { ...schedule.lastRun, processedCount: data.processed, updatedCount: data.updated, repairedCount: data.repaired, failedCount: data.failed },
-          }
-        : schedule
-    ),
-  };
-}
-
-function applyJobTerminalToSchedules(
-  current: SchedulesCache | undefined,
-  data: (AdminJobCompletedEvent | AdminJobFailedEvent)["data"]
-): SchedulesCache | undefined {
-  if (!current) return current;
-  return {
-    schedules: current.schedules.map((schedule) =>
-      schedule.jobType === data.jobType && schedule.lastRun
-        ? { ...schedule, lastRun: { ...schedule.lastRun, status: data.status, finishedAt: data.finishedAt } }
-        : schedule
-    ),
-  };
-}
-
-function applyWorkerStatus(_current: WorkersCache | undefined, data: AdminWorkerStatusEvent["data"]): WorkersCache {
-  return { workers: [{ name: data.name, status: data.status, lastHeartbeat: data.lastHeartbeat, startedAt: null }] };
 }
 
 export function AdminMarketDataPage() {
   const queryClient = useQueryClient();
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState(() => dateFilterValue(new Date().toISOString()));
+  const [jobTypeFilter, setJobTypeFilter] = useState("all");
   const workersQuery = useAdminMarketDataWorkers();
   const healthQuery = useAdminMarketDataHealth();
   const jobRunsQuery = useAdminMarketDataJobRuns();
-  const schedulesQuery = useAdminMarketDataSchedules();
+  const providerJobsQuery = useAdminJobs();
+  const operationsQuery = useAdminMarketDataOperations();
+  const collectionsQuery = useAdminMarketCollections();
+  const providerSyncMutation = useSyncAdminDataProvider();
+  const priceRefreshMutation = useSyncAdminMarketDataPrices();
+  const sectorSyncMutation = useSyncAdminSectorClassification();
+  const indexBackfillMutation = useBackfillAdminIndexCandles();
 
-  const reconcile = () => {
+  const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataWorkers });
     void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataHealth });
     void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataJobRuns });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataSchedules });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataOperations });
   };
+
+  const reconcileMutation = useMutation({ mutationFn: reconcileAdminMarketData, onSuccess: refresh });
+  const catchUpMutation = useMutation({ mutationFn: catchUpAdminMarketData, onSuccess: refresh });
 
   useAdminMarketDataStream({
     onEvent: (event: AdminMarketDataEvent) => {
-      if (event.type === "worker:status") {
-        queryClient.setQueryData<WorkersCache>(queryKeys.admin.marketDataWorkers, (current) => applyWorkerStatus(current, event.data));
-        return;
-      }
-      if (event.type === "market-data:job-started") {
-        queryClient.setQueryData<JobRunsCache>(queryKeys.admin.marketDataJobRuns, (current) => applyJobStarted(current, event.data));
-        queryClient.setQueryData<SchedulesCache>(queryKeys.admin.marketDataSchedules, (current) => applyJobStartedToSchedules(current, event.data));
-        return;
-      }
       if (event.type === "market-data:job-progress") {
-        queryClient.setQueryData<JobRunsCache>(queryKeys.admin.marketDataJobRuns, (current) => applyJobProgressToRuns(current, event.data));
-        queryClient.setQueryData<SchedulesCache>(queryKeys.admin.marketDataSchedules, (current) => applyJobProgressToSchedules(current, event.data));
+        queryClient.setQueryData<JobRunsCache>(queryKeys.admin.marketDataJobRuns, (current) => applyJobProgress(current, event.data));
         return;
       }
-      if (event.type === "market-data:job-completed" || event.type === "market-data:job-failed") {
-        queryClient.setQueryData<JobRunsCache>(queryKeys.admin.marketDataJobRuns, (current) => applyJobTerminalToRuns(current, event.data));
-        queryClient.setQueryData<SchedulesCache>(queryKeys.admin.marketDataSchedules, (current) => applyJobTerminalToSchedules(current, event.data));
-        reconcile();
-      }
+      refresh();
     },
-    onReconnected: reconcile,
+    onReconnected: refresh,
   });
 
   const worker = workersQuery.data?.workers[0] ?? null;
   const health = healthQuery.data ?? null;
-  const liveFeed = health?.liveDelayedFeed?.[0] ?? null;
-  const gdfCapability = health?.providerCapabilities?.find((capability) => capability.provider === "global-datafeeds" && capability.exchange === "BSE") ?? null;
-  const runs = jobRunsQuery.data?.runs ?? [];
-  const schedules = schedulesQuery.data?.schedules ?? [];
-  const scheduleByType = new Map(schedules.map((schedule) => [schedule.jobType, schedule]));
-
+  const collectionNames = new Map((collectionsQuery.data?.collections ?? []).map((collection) => [collection.id, collection.name]));
+  const runs: AdminJobDisplay[] = [
+    ...(jobRunsQuery.data?.runs ?? [])
+      .filter((run) => run.jobType !== "chart_ensure_fresh")
+      .map((run) => ({
+        ...run,
+        progress: run.status === "completed" ? 100 : run.status === "running" && (run.totalExpected ?? 0) > 0
+          ? Math.round((run.processedCount / (run.totalExpected ?? 1)) * 100)
+          : run.status === "pending" || run.status === "queued" ? 0 : null,
+        source: "run" as const,
+        exchange: run.exchange ?? null,
+        tradingDate: run.tradingDate ?? null,
+        collectionId: null,
+        scope: run.exchange ?? "System",
+      })),
+    ...(providerJobsQuery.data?.jobs ?? [])
+      .filter((job) => PROVIDER_ACTION_TYPES.has(job.type))
+      .map((job) => {
+        const display = toProviderJobDisplay(job);
+        return display.collectionId
+          ? { ...display, scope: collectionNames.get(display.collectionId) ?? "Unknown segment" }
+          : display;
+      }),
+  ].sort((left, right) => new Date(right.startedAt ?? 0).getTime() - new Date(left.startedAt ?? 0).getTime());
+  const operations = operationsQuery.data;
   const lastFailedRun = runs.find((run) => run.failedCount > 0);
+  const missingCount = operations?.coverage.reduce((total, item) => total + item.missing, 0) ?? 0;
+  const attentionCount = missingCount || lastFailedRun?.failedCount || 0;
+  const jobTypeOptions = [
+    { value: "all", label: "All job types" },
+    ...[...new Set(runs.map((run) => run.jobType))]
+      .sort((left, right) => (JOB_TYPE_LABEL[left] ?? left).localeCompare(JOB_TYPE_LABEL[right] ?? right))
+      .map((jobType) => ({ value: jobType, label: JOB_TYPE_LABEL[jobType] ?? jobType })),
+  ];
+  const filteredRuns = runs.filter((run) =>
+    (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
+    && (!dateFilter || dateFilterValue(run.startedAt) === dateFilter)
+  );
+  const retryJob = (run: AdminJobDisplay) => {
+    setRetryingJobId(run.id);
+    const options = { onSettled: () => setRetryingJobId(null) };
+    if (run.source === "run") {
+      if (run.exchange && run.tradingDate) {
+        catchUpMutation.mutate({ exchange: run.exchange, tradingDate: run.tradingDate }, options);
+      } else {
+        setRetryingJobId(null);
+      }
+      return;
+    }
+    const exchange = run.exchange ?? "BSE";
+    if (run.jobType === "market-data.instrument-sync") providerSyncMutation.mutate({ exchange }, options);
+    else if (run.jobType === "market-data.price-refresh") priceRefreshMutation.mutate({ exchange }, options);
+    else if (run.jobType === "market-data.sector-classification-sync") sectorSyncMutation.mutate(undefined, options);
+    else if (run.jobType === "market-data.index-candle-backfill") indexBackfillMutation.mutate({ exchange }, options);
+    else setRetryingJobId(null);
+  };
 
   return (
-    <div className="flex w-full max-w-6xl flex-col gap-6">
-      <div>
-        <p className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Market Data
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-foreground">Workers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Worker health, candle-sync scheduling, and data freshness for the market data pipeline.
-        </p>
+    <div className="flex w-full max-w-6xl flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-foreground">Market Data Jobs</h1>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Input
+            type="date"
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            aria-label="Filter jobs by date"
+            className="h-9 w-38"
+          />
+          <Select
+            value={jobTypeFilter}
+            options={jobTypeOptions}
+            onValueChange={setJobTypeFilter}
+            className="w-48"
+            triggerClassName="h-9"
+          />
+          <Button type="button" size="sm" variant="outline" disabled={reconcileMutation.isPending} onClick={() => reconcileMutation.mutate()}>
+            <RefreshCw className={cn("size-4", reconcileMutation.isPending && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="Market Data Worker"
+          icon={Activity}
+          label="Worker"
           value={worker ? (worker.status === "online" ? "Online" : "Offline") : "-"}
-          sub={worker?.lastHeartbeat ? `Heartbeat: ${formatDateTime(worker.lastHeartbeat)}` : undefined}
+          sub={worker?.lastHeartbeat ? formatJobDateTime(worker.lastHeartbeat) : undefined}
+          tone={worker?.status === "online" ? "green" : "rose"}
         />
-        <StatCard label="Latest Expected Candle" value={health ? formatDate(health.latestExpectedTradingDate) : "-"} />
         <StatCard
-          label="Fresh Symbols"
+          icon={Database}
+          label="Fresh symbols"
           value={health ? `${health.fresh} / ${health.activeSymbols}` : "-"}
+          sub={health?.latestExpectedTradingDate ? `Through ${formatDate(health.latestExpectedTradingDate)}` : undefined}
+          tone="cyan"
         />
-        <StatCard label="Stale" value={health ? String(health.stale) : "-"} />
-        <StatCard label="Failed Last Run" value={lastFailedRun ? String(lastFailedRun.failedCount) : "0"} />
         <StatCard
-          label="Last Successful Refresh"
-          value={health?.lastSuccessfulRefresh ? formatDateTime(health.lastSuccessfulRefresh) : "-"}
-          sub={health?.mechanisms.historicalDailySync}
+          icon={AlertTriangle}
+          label="Needs attention"
+          value={String(attentionCount)}
+          sub={missingCount > 0 ? "Missing candles" : "Latest run failures"}
+          tone={attentionCount > 0 ? "rose" : "green"}
+        />
+        <StatCard
+          icon={Clock3}
+          label="Last success"
+          value={health?.lastSuccessfulRefresh ? formatJobDateTime(health.lastSuccessfulRefresh) : "-"}
+          tone="amber"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-        <StatCard
-          label="GDF Stream"
-          value={liveFeed ? (liveFeed.connected ? "Connected" : "Disconnected") : "-"}
-          sub={health?.mechanisms.liveFeed ?? (liveFeed ? `${liveFeed.provider}${liveFeed.exchange ? ` · ${liveFeed.exchange}` : ""}` : undefined)}
-        />
-        <StatCard
-          label="Feed Last Message"
-          value={liveFeed?.lastMessageTime ? formatDateTime(liveFeed.lastMessageTime) : "-"}
-        />
-        <StatCard
-          label="Feed Subscriptions"
-          value={liveFeed ? String(liveFeed.activeSubscriptions) : "-"}
-        />
-        <StatCard
-          label="Current-Day Candles"
-          value={liveFeed ? String(liveFeed.currentDayCandlesInMemory) : "-"}
-          sub={health?.mechanisms.currentPriceSnapshot}
-        />
-        <StatCard
-          label="Feed Last Error"
-          value={liveFeed?.lastError ?? "-"}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard
-          label="GDF Current-Day Feed"
-          value={
-            gdfCapability
-              ? gdfCapability.currentDayCandle === "available"
-                ? "Available"
-                : gdfCapability.currentDayCandle === "unavailable"
-                  ? "Unavailable"
-                  : "Unknown"
-              : "-"
-          }
-          sub={gdfCapability?.reason ?? undefined}
-        />
-        <StatCard
-          label="Completed Daily History"
-          value={
-            gdfCapability
-              ? gdfCapability.completedDailyHistory === "available"
-                ? "Available"
-                : gdfCapability.completedDailyHistory === "unavailable"
-                  ? "Unavailable"
-                  : "Unknown"
-              : "-"
-          }
-        />
-        <StatCard
-          label="Last Capability Check"
-          value={gdfCapability?.lastCheckedAt ? formatDateTime(gdfCapability.lastCheckedAt) : "-"}
-          sub={gdfCapability?.retryAfter ? `Retry after ${formatDateTime(gdfCapability.retryAfter)}` : undefined}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <ScheduleCard label="Morning Sync" schedule={scheduleByType.get("daily_candle_morning")} />
-        <ScheduleCard label="Post-Market Sync" schedule={scheduleByType.get("daily_candle_post_market")} />
-        <ScheduleCard label="Retry Sync" schedule={scheduleByType.get("daily_candle_retry")} />
-        <ScheduleCard label="Evening Sync" schedule={scheduleByType.get("daily_candle_evening")} />
-      </div>
-
-      <div>
-        <h2 className="mb-2 text-sm font-semibold text-foreground">Recent Runs</h2>
-        {jobRunsQuery.isLoading ? (
-          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Spinner size="sm" /> Loading...
-          </div>
+      <section className="min-h-[60vh]">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground">Job runs</h2>
+        </div>
+        {jobRunsQuery.isLoading || providerJobsQuery.isLoading ? (
+          <div className="grid min-h-40 place-items-center"><Spinner size="lg" className="text-primary" /></div>
         ) : jobRunsQuery.isError ? (
-          <p className="text-sm text-danger">Couldn&apos;t load recent job runs.</p>
-        ) : runs.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">No job runs recorded yet.</p>
+          <p className="text-sm text-danger">Couldn&apos;t load job runs.</p>
+        ) : filteredRuns.length === 0 ? (
+          <p className="py-6 text-sm text-muted-foreground">No jobs match these filters.</p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <Table>
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
+            <Table className="[&_td+td]:border-l [&_th+th]:border-l [&_td+td]:border-border [&_th+th]:border-border">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
+                  <TableHead className="w-16 text-center">Sr. No.</TableHead>
                   <TableHead>Job</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Finished</TableHead>
-                  <TableHead className="text-right">Processed</TableHead>
-                  <TableHead className="text-right">Updated</TableHead>
-                  <TableHead className="text-right">Repaired</TableHead>
-                  <TableHead className="text-right">Failed</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Scope</TableHead>
+                  <TableHead className="text-center">Started</TableHead>
+                  <TableHead className="text-center">Finished</TableHead>
+                  <TableHead className="text-center">Progress</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="w-16 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {runs.map((run) => (
-                  <JobRunRow key={run.id} run={run} />
-                ))}
-              </TableBody>
+              <TableBody>{filteredRuns.map((run, index) => <JobRunRow key={run.id} run={run} index={index} onRetry={retryJob} retrying={retryingJobId === run.id} />)}</TableBody>
             </Table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

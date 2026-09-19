@@ -5,9 +5,11 @@ import { queryKeys } from "@/features/api";
 import { useIsAdminReady } from "@/features/auth";
 import {
   getAdminMarketDataHealth,
+  getAdminMarketDataOperations,
   getAdminMarketDataJobRuns,
   getAdminMarketDataSchedules,
   getAdminMarketDataWorkers,
+  getAdminJobs,
 } from "../api/admin-api";
 
 const MARKET_DATA_STATUS_REFETCH_MS = 30_000;
@@ -49,12 +51,36 @@ export function useAdminMarketDataJobRuns() {
   });
 }
 
+export function useAdminJobs() {
+  const enabled = useIsAdmin();
+
+  return useQuery({
+    queryKey: queryKeys.admin.jobs,
+    queryFn: getAdminJobs,
+    enabled,
+    refetchInterval: (query) =>
+      query.state.data?.jobs.some((job) => job.status === "queued" || job.status === "running")
+        ? 2_000
+        : MARKET_DATA_STATUS_REFETCH_MS,
+  });
+}
+
 export function useAdminMarketDataSchedules() {
   const enabled = useIsAdmin();
 
   return useQuery({
     queryKey: queryKeys.admin.marketDataSchedules,
     queryFn: getAdminMarketDataSchedules,
+    enabled,
+    refetchInterval: MARKET_DATA_STATUS_REFETCH_MS,
+  });
+}
+
+export function useAdminMarketDataOperations() {
+  const enabled = useIsAdmin();
+  return useQuery({
+    queryKey: queryKeys.admin.marketDataOperations,
+    queryFn: getAdminMarketDataOperations,
     enabled,
     refetchInterval: MARKET_DATA_STATUS_REFETCH_MS,
   });

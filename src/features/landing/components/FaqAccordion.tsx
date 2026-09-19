@@ -22,7 +22,7 @@ const FAQ_ITEMS = [
   {
     question: "Which markets does Stock Harvesting support?",
     answer:
-      "Stock Harvesting is being built across NSE, BSE and US market coverage, with broader worldwide exchange support expanding over time.",
+      "Stock Harvesting currently covers BSE, with broader exchange support planned over time.",
   },
   {
     question: "Can I use Stock Harvesting on smaller screens?",

@@ -3,6 +3,7 @@ import { DEFAULT_EXCHANGE, JOB_NAMES } from "../../shared/constants";
 import { getErrorMessage } from "../../shared/errors";
 import { logger } from "../../shared/logger";
 import { normalizeSymbol } from "../../shared/normalize";
+import { recordChartEnsureFreshResultIfNeeded } from "../jobs/background-job-runs.service";
 import { getMarketDataQueue, getMarketDataQueueEvents } from "../jobs/queues";
 import { refreshDailyCandles, type DailyCandleSyncResult, type DailyCandleSyncStatus } from "./market-data.candle-sync";
 import { getLatestExpectedTradingDay } from "./trading-calendar";
@@ -56,6 +57,7 @@ function runInMemoryFallback(input: { symbol: string; exchange: string }, key: s
   const promise = refreshDailyCandles(input)
     .then((result) => {
       inMemoryResults.set(key, result);
+      void recordChartEnsureFreshResultIfNeeded(result, input.symbol, input.exchange);
       return result;
     })
     .catch((error) => {
@@ -96,14 +98,20 @@ async function waitForJobWithinBudget(
 export async function ensureFreshDailyCandles(input: {
   symbol: string;
   exchange?: string;
+  waitForCompletion?: boolean;
 }): Promise<EnsureFreshDailyCandlesResult> {
   const symbol = normalizeSymbol(input.symbol);
   const exchange = input.exchange ?? DEFAULT_EXCHANGE;
   const latestExpectedDate = getLatestExpectedTradingDay(exchange);
   const jobId = buildEnsureFreshKey(exchange, symbol, latestExpectedDate);
+  const waitForCompletion = input.waitForCompletion ?? true;
 
   const queue = getMarketDataQueue();
   if (!queue) {
+    if (!waitForCompletion) {
+      void runInMemoryFallback({ symbol, exchange }, jobId);
+      return toResult("in-progress", latestExpectedDate);
+    }
     return withTimeoutOrInProgress(runInMemoryFallback({ symbol, exchange }, jobId), latestExpectedDate);
   }
 
@@ -117,13 +125,14 @@ export async function ensureFreshDailyCandles(input: {
       const state = await existingJob.getState();
       if (state === "completed") {
         const returnValue = existingJob.returnvalue as DailyCandleSyncResult | undefined;
-        if (returnValue && returnValue.status !== "failed") {
+        if (returnValue && returnValue.status !== "failed" && returnValue.status !== "bootstrap-required") {
           return toResult(returnValue.status, latestExpectedDate);
         }
         await existingJob.remove().catch(() => undefined);
       } else if (state === "failed") {
         await existingJob.remove().catch(() => undefined);
       } else {
+        if (!waitForCompletion) return toResult("in-progress", latestExpectedDate);
         return waitForJobWithinBudget(existingJob, latestExpectedDate);
       }
     }
@@ -141,6 +150,7 @@ export async function ensureFreshDailyCandles(input: {
       ENSURE_FRESH_QUEUE_LOOKUP_TIMEOUT_MS,
       "Timed out enqueueing the chart candle ensure-fresh job"
     );
+    if (!waitForCompletion) return toResult("in-progress", latestExpectedDate);
     return waitForJobWithinBudget(newJob, latestExpectedDate);
   } catch (error) {
     logger.warn(

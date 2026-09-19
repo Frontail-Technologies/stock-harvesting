@@ -14,15 +14,14 @@ import {
   type CandleTimeframe,
 } from "../../shared/constants";
 import { normalizeSymbol } from "../../shared/normalize";
-import {
-  getEodhdDataProviderAdapter,
-  getProviderStatus,
-} from "../data-provider/data-provider.service";
+import { getEodhdDataProviderAdapter } from "../data-provider/data-provider.service";
 import { isProviderEnabled } from "../data-provider/data-provider-settings.service";
-import { NSE_INDEX_EXCHANGE } from "../data-provider/adapters/zerodha-data-provider.adapter";
+import { RETIRED_EXCHANGE_CODES } from "../data-provider/data-provider.registry";
+import { activeUniverseFilter } from "./market-data.universe";
+import { GLOBAL_DATAFEEDS_INDEX_EXCHANGE } from "../data-provider/adapters/global-datafeeds/global-datafeeds.constants";
 import type { ProviderDailyCandle, ProviderExchange } from "../data-provider/data-provider.types";
 import { aggregateMonthlyCandles, aggregateWeeklyCandles } from "./candle-aggregation";
-import { getWeekEndingFriday } from "./trading-calendar";
+import { getWeekEndingFriday, isCompletedTradingWeek } from "./trading-calendar";
 import {
   readCandleHistoryRange,
   readChartCandles,
@@ -141,30 +140,66 @@ export async function getChartHistoryRange(input: {
 // call. Candle freshness/gap repair is the daily sync job's job
 // (syncDailyCandlesForActiveInstruments / refreshDailyCandles in
 // market-data.candle-sync.ts), not this read.
+export type ChartCandlesResult = {
+  candles: ReturnType<typeof toChartCandleResponse>[];
+  dataThrough: string | null;
+  nextBefore?: string | null;
+  hasMore?: boolean;
+};
+
+// dataThrough is always the latest ACTUAL underlying 1D trading-day candle
+// date - never a weekly/monthly bucket label (see toChartCandleResponse's
+// Friday relabeling for 1W). For 1D it's the last daily row itself; for
+// 1W/1M it's still the last DAILY row, not the aggregated candle's own
+// timestamp, since the weekly/monthly bucket can legitimately be labeled
+// at a future-within-its-own-week date (the week-ending Friday) before
+// that date's own trading day has actually completed.
 export async function getChartCandles(input: {
   symbol: string;
   timeframe: CandleTimeframe;
   from?: string;
   to?: string;
+  before?: string;
+  limit?: number;
   exchange?: string;
-}) {
+}): Promise<ChartCandlesResult> {
   const symbol = normalizeSymbol(input.symbol);
   const exchange = input.exchange ?? DEFAULT_EXCHANGE;
 
   const instrument = (await getInstrumentsBySymbol([symbol], exchange)).get(symbol);
+  const sourceLimit = input.limit
+    ? input.limit * (input.timeframe === CANDLE_TIMEFRAME.day ? 1 : input.timeframe === CANDLE_TIMEFRAME.week ? 6 : 23)
+    : undefined;
   const dailyRows = instrument
     ? await readChartCandles({
         instrumentId: instrument.id,
         timeframe: CANDLE_TIMEFRAME.day,
         from: input.from,
         to: input.to,
+        before: input.before,
+        limit: sourceLimit,
       })
     : [];
 
   if (dailyRows.length > 0) {
-    return deriveChartCandlesFromDailyRows(dailyRows, input.timeframe).map((row) =>
+    const candles = deriveChartCandlesFromDailyRows(dailyRows, input.timeframe).map((row) =>
       toChartCandleResponse(row, input.timeframe)
     );
+    const completedCandles = excludeIncompleteWeeklyCandle(candles, input.timeframe, exchange);
+    const pageCandles = input.limit ? completedCandles.slice(-input.limit) : completedCandles;
+    return {
+      candles: pageCandles,
+      dataThrough: dailyRows[dailyRows.length - 1].time,
+      ...(input.limit
+        ? {
+            nextBefore:
+              pageCandles.length > 0
+                ? getCandlePageCursor(pageCandles[0].time, input.timeframe)
+                : dailyRows[0].time,
+            hasMore: dailyRows.length === sourceLimit,
+          }
+        : {}),
+    };
   }
 
   if (input.timeframe !== CANDLE_TIMEFRAME.day && instrument) {
@@ -175,11 +210,43 @@ export async function getChartCandles(input: {
       to: input.to,
     });
     if (legacyRows.length > 0) {
-      return legacyRows.map((row) => toChartCandleResponse(row, input.timeframe));
+      const candles = legacyRows.map((row) => toChartCandleResponse(row, input.timeframe));
+      return {
+        candles: excludeIncompleteWeeklyCandle(candles, input.timeframe, exchange),
+        dataThrough: null,
+      };
     }
   }
 
-  return [];
+  return { candles: [], dataThrough: null };
+}
+
+function getCandlePageCursor(time: string, timeframe: CandleTimeframe) {
+  const date = new Date(`${time}T00:00:00.000Z`);
+  if (timeframe === CANDLE_TIMEFRAME.week) {
+    date.setUTCDate(date.getUTCDate() - 4);
+    return date.toISOString().slice(0, 10);
+  }
+  if (timeframe === CANDLE_TIMEFRAME.month) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  }
+  return time;
+}
+
+// The 1W chart must only ever show COMPLETED weeks (see
+// trading-calendar.ts's isCompletedTradingWeek) - an in-progress week's
+// candle is dropped entirely, never shown early under a future
+// week-ending Friday label. Checked on the already-Friday-labeled time
+// (toChartCandleResponse), which isCompletedTradingWeek handles
+// correctly since getWeekEndingFriday is idempotent for a Friday input.
+// 1D and 1M are untouched.
+function excludeIncompleteWeeklyCandle<T extends { time: string }>(
+  candlesList: T[],
+  timeframe: CandleTimeframe,
+  exchange: string
+): T[] {
+  if (timeframe !== CANDLE_TIMEFRAME.week) return candlesList;
+  return candlesList.filter((candle) => isCompletedTradingWeek(candle.time, exchange));
 }
 
 function deriveChartCandlesFromDailyRows(
@@ -306,10 +373,10 @@ export {
   syncDailyCandlesForActiveInstruments,
 };
 
-// Global (not collection-scoped) ranking of one index exchange's indices against each other - reuses computeAllRelativeStrengthMetrics, each index as its own row. Defaults to NSE_IDX; pass BSE_IDX for the BSE index box. Reads a persisted snapshot (scope "index_exchange", keyed by exchange code since indices aren't members of any market_collection) and derives the limited/sorted view from it; on a miss it computes once and persists.
+// Global (not collection-scoped) ranking of one index exchange's indices against each other - reuses computeAllRelativeStrengthMetrics, each index as its own row. Defaults to BSE_IDX. Reads a persisted snapshot (scope "index_exchange", keyed by exchange code since indices aren't members of any market_collection) and derives the limited/sorted view from it; on a miss it computes once and persists.
 export async function getIndexRelativeStrength(
   limit: number,
-  exchange: string = NSE_INDEX_EXCHANGE
+  exchange: string = GLOBAL_DATAFEEDS_INDEX_EXCHANGE
 ): Promise<{ metrics: RelativeStrengthMetricRow[]; asOfDate: string }> {
   const cached = await readDashboardSnapshotWithMeta<RelativeStrengthMetricRow[]>(
     "index_exchange",
@@ -328,7 +395,7 @@ export async function getIndexRelativeStrength(
       exchange: instruments.exchange,
     })
     .from(instruments)
-    .where(and(eq(instruments.exchange, exchange), eq(instruments.active, true)));
+    .where(activeUniverseFilter(exchange));
 
   const allMetrics = await computeAllRelativeStrengthMetrics(indexInstruments, exchange);
   const { asOfDate } = await writeDashboardSnapshot({
@@ -342,12 +409,6 @@ export async function getIndexRelativeStrength(
   return { metrics: pickTopRelativeStrengthRows(allMetrics, limit), asOfDate };
 }
 
-const NSE_PROVIDER_EXCHANGE: ProviderExchange = {
-  code: "NSE",
-  name: "India (NSE)",
-  currency: "INR",
-  country: "India",
-};
 const GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES: ProviderExchange[] = [
   {
     code: "BSE",
@@ -363,52 +424,25 @@ const GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES: ProviderExchange[] = [
   },
 ];
 
-// "Enabled" (isProviderEnabled) only means an admin hasn't explicitly
-// turned the provider off - it defaults to true and says nothing about
-// whether the provider is actually connected or has ever synced any real
-// data. Reuses the same canonical connection check the admin Data
-// Providers page itself uses (getProviderStatus), rather than duplicating
-// OAuth/connection-state logic here. Any failure to determine connection
-// state is treated as "not connected" - ambiguous must never advertise an
-// exchange that might be empty.
-async function isZerodhaConnected(): Promise<boolean> {
-  try {
-    const status = await getProviderStatus(DATA_PROVIDER_KEY.zerodha);
-    return status.connected;
-  } catch (error) {
-    logger.warn(
-      { message: getErrorMessage(error, "Unknown provider error") },
-      "Unable to determine Zerodha connection status for exchange availability"
-    );
-    return false;
-  }
-}
-
-// EODHD's exchange list is the source of truth for everything except NSE (Zerodha-only). Cached 24h since exchange metadata rarely changes; data-provider-settings.service.ts invalidates this cache prefix on every admin toggle, so disable/enable still takes effect immediately.
+// NSE was Zerodha-only; that integration is retired, so NSE (and its index
+// exchange) is never advertised - not even if EODHD's own exchange list
+// happens to include it (see RETIRED_EXCHANGE_CODES).
+// GlobalDataFeeds owns BSE/BSE_IDX; EODHD's exchange list is the source of truth for everything else. Cached 24h since exchange metadata rarely changes; data-provider-settings.service.ts invalidates this cache prefix on every admin toggle, so disable/enable still takes effect immediately.
 export async function listSupportedExchanges(): Promise<ProviderExchange[]> {
   return getOrSetCache("supportedExchanges", SUPPORTED_EXCHANGES_CACHE_TTL_MS, async () => {
     const eodhdAdapter = getEodhdDataProviderAdapter();
-    const [nseEnabled, globalDatafeedsEnabled, eodhdEnabled] = await Promise.all([
-      isProviderEnabled(DATA_PROVIDER_KEY.zerodha),
+    const [globalDatafeedsEnabled, eodhdEnabled] = await Promise.all([
       isProviderEnabled(DATA_PROVIDER_KEY.globalDatafeeds),
       isProviderEnabled(eodhdAdapter.providerKey),
     ]);
 
     // An exchange is only genuinely usable - and only then advertised -
-    // when it's enabled AND (for NSE specifically) actually connected AND
-    // has at least one real active instrument. Enabled-but-unconnected or
-    // enabled-but-empty must never be offered: a caller who then searches
+    // when it's enabled AND has at least one real active instrument.
+    // Enabled-but-empty must never be offered: a caller who then searches
     // that exchange would get nothing back.
-    const [nseAvailable, bseAvailable] = await Promise.all([
-      nseEnabled
-        ? isZerodhaConnected().then(
-            (connected) => connected && hasActiveInstruments("NSE", DATA_PROVIDER_KEY.zerodha)
-          )
-        : Promise.resolve(false),
-      globalDatafeedsEnabled
-        ? hasActiveInstruments("BSE", DATA_PROVIDER_KEY.globalDatafeeds)
-        : Promise.resolve(false),
-    ]);
+    const bseAvailable = globalDatafeedsEnabled
+      ? await hasActiveInstruments("BSE", DATA_PROVIDER_KEY.globalDatafeeds)
+      : false;
 
     let eodhdExchanges: ProviderExchange[] = [];
     if (eodhdEnabled) {
@@ -422,21 +456,19 @@ export async function listSupportedExchanges(): Promise<ProviderExchange[]> {
       }
     }
 
-    const fixedExchanges = [
-      ...(nseAvailable ? [NSE_PROVIDER_EXCHANGE] : []),
-      ...(globalDatafeedsEnabled
-        ? GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES.filter((exchange) => exchange.code !== "BSE" || bseAvailable)
-        : []),
-    ];
+    const fixedExchanges = globalDatafeedsEnabled
+      ? GLOBAL_DATAFEEDS_PROVIDER_EXCHANGES.filter((exchange) => exchange.code !== "BSE" || bseAvailable)
+      : [];
     const fixedCodes = new Set(fixedExchanges.map((exchange) => exchange.code));
 
     return [
       ...fixedExchanges,
-      ...eodhdExchanges.filter((exchange) => !fixedCodes.has(exchange.code)),
+      ...eodhdExchanges.filter(
+        (exchange) => !fixedCodes.has(exchange.code) && !RETIRED_EXCHANGE_CODES.has(exchange.code)
+      ),
     ];
   });
 }
-
 
 // Implementations live in market-data.candle-sync.ts; re-exported here so existing imports (admin.service.ts, worker.ts) keep working.
 export { refreshAllLatestInstrumentPrices };

@@ -7,7 +7,6 @@ const flagUri = (code: string) =>
   `data:image/svg+xml,${encodeURIComponent(FLAG_SVG[code])}`;
 
 const MARKET_STATUS = [
-  { market: "NSE", region: "India", flag: "IN", stocks: "2,300+", status: "Available", active: true },
   { market: "BSE", region: "India", flag: "IN", stocks: "5,000+", status: "Available", active: true },
   { market: "US Markets", region: "United States", flag: "US", stocks: "6,000+", status: "Available", active: true },
   { market: "Japan", region: "Asia", flag: "JP", stocks: "3,800+", status: "Expanding", active: false },

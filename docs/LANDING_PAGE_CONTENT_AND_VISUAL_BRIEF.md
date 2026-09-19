@@ -278,7 +278,7 @@ Current positioning (verify against [PROVIDERS.md](./PROVIDERS.md) before
 publishing):
 
 - US data through EODHD
-- NSE data through Zerodha Kite where connected
+- NSE data: not currently offered (the Zerodha integration was retired 2026-09-19)
 - BSE data through GlobalDataFeeds
 - Additional exchanges can be added through provider adapters
 

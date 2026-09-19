@@ -6,13 +6,13 @@ type SpinnerSize = "sm" | "md" | "lg";
 const SIZE_PX: Record<SpinnerSize, number> = {
   sm: 16,
   md: 24,
-  lg: 40,
+  lg: 48,
 };
 
 const THICKNESS_PX: Record<SpinnerSize, number> = {
   sm: 2,
   md: 2.5,
-  lg: 3.5,
+  lg: 4,
 };
 
 type SpinnerProps = {

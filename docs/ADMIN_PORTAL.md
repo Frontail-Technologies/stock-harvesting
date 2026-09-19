@@ -31,7 +31,6 @@ visible form — every admin `Link`/redirect must use it.
 | `/ads` | `admin/ads/page.tsx` | Renders `AdminMonetizationPage` |
 | `/data-providers` | `admin/data-providers/page.tsx` | |
 | `/data-provider` | `admin/data-provider/page.tsx` | Dead — redirects to `/data-providers` (legacy) |
-| `/data-provider/callback` | `admin/data-provider/callback/page.tsx` | Zerodha OAuth callback |
 | `/jobs` | `admin/jobs/page.tsx` | Dead — redirects to `/users`; `AdminJobsPage` component is orphaned |
 | `/market-collections` | `admin/market-collections/page.tsx` | |
 | `/market-collections/[id]` | `admin/market-collections/[id]/page.tsx` | Collection detail: members, versions, import, weekly-strong-backtest status |

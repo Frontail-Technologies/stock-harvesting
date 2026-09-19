@@ -47,8 +47,8 @@ an `instruments` row exists for every requested symbol:
 2. If none are missing, it returns immediately — no provider call at all.
 3. Otherwise it checks the exchange's `instrument_search`-capable provider
    **once**, then branches: if the provider supports targeted search, it
-   searches each missing symbol individually; if not (e.g. Zerodha has no
-   per-symbol search for NSE), it runs **one** full `syncProviderInstruments`
+   searches each missing symbol individually; if not (an adapter without a
+   per-symbol search API), it runs **one** full `syncProviderInstruments`
    pull for the whole exchange, never one per missing symbol.
 4. A second batched lookup re-checks the originally-missing symbols.
 5. Whatever's still unresolved goes through the existing fallback-instrument
@@ -168,39 +168,26 @@ unchanged this phase).
 
 ## Supported exchange discovery — `listSupportedExchanges`
 
-`backend/src/modules/market-data/market-data.service.ts`. NSE and BSE are
-only ever advertised (in `GET /api/market-data/exchanges`, which drives
-every exchange picker including the global stock search modal) when they
-are genuinely usable, not merely "not explicitly disabled":
+`backend/src/modules/market-data/market-data.service.ts`. BSE is only ever
+advertised (in `GET /api/market-data/exchanges`, which drives every exchange
+picker including the global stock search modal) when it is genuinely usable,
+not merely "not explicitly disabled":
 
-- **NSE**: `isProviderEnabled(zerodha)` **and** Zerodha actually connected
-  (`getProviderStatus(zerodha).connected` — the same canonical
-  connection-state check the admin Data Providers page itself uses, not a
-  duplicated OAuth check) **and** at least one active `provider = 'zerodha'`
-  instrument row exists for `NSE`.
 - **BSE**: `isProviderEnabled(global-datafeeds)` **and** at least one
   active `provider = 'global-datafeeds'` instrument row exists for `BSE`.
   No connection check — GlobalDataFeeds is a server-side API-key provider
   (`requiresConnection: false`), not OAuth.
+- **NSE / NSE_IDX are retired** (Zerodha was their only provider, removed
+  2026-09-19). They are never advertised — including when EODHD's own
+  exchange list contains them (`RETIRED_EXCHANGE_CODES` in
+  `data-provider.registry.ts`).
 - `BSE_IDX` is intentionally **not** gated by this — it's index data with
   its own, separately-audited population semantics, out of scope here.
 
 `isProviderEnabled` defaults to `true` when an admin has never touched the
 provider's settings row — it says nothing about whether the provider was
-ever actually connected or synced. Before this existed, `listSupportedExchanges`
-advertised NSE whenever Zerodha was merely enabled (the default), even in
-an environment where Zerodha was never connected and zero NSE instruments
-existed — production offered NSE in every exchange picker while
-`/stocks/search?exchange=NSE` silently returned nothing. The global search
-modal (`GlobalStockSearchModal.tsx`) defaults its India-exchange filter to
-`indiaExchanges[0].code`, and NSE was always listed before BSE, so this
-also meant the search modal silently defaulted to a dead exchange in that
-environment — fixed here with no frontend change needed, since the
-frontend already just defers to whatever this function reports.
-
-Any failure to determine Zerodha's connection state (the `getProviderStatus`
-call throws) is treated as "not connected" — ambiguous must never advertise
-a possibly-empty exchange. The instrument-existence check
+ever actually synced, which is why the instrument-existence check exists.
+The instrument-existence check
 (`hasActiveInstruments`, `market-data.instruments.ts`) is deliberately a
 plain existence check, not routed through `buildStockFilters`/`countStockRows`
 — those apply search-listing shaping (price > 0 unless `includeUnpriced`,
@@ -317,25 +304,20 @@ connection is live).
 subscribe(symbols) → resolveInstrumentsForSymbols(symbols) → provider token/identifier mapping → subscribe
 ```
 
-Both realtime providers that need a DB-side instrument lookup — Kite
-(`providers/kite-market-stream.provider.ts`, NSE only) and GlobalDataFeeds
-(`providers/global-datafeeds-market-stream.provider.ts`, BSE + BSE_IDX) —
-resolve their whole batch of subscribed symbols through one shared call,
+GlobalDataFeeds (`providers/global-datafeeds-market-stream.provider.ts`,
+BSE + BSE_IDX) resolves their whole batch of subscribed symbols through one shared call,
 `resolveInstrumentsForSymbols` (`market-data.instruments.ts`): one query
 per distinct exchange in the batch, not one query per symbol. It groups
 the requested `(exchange, symbol)` pairs by exchange, runs the existing
 single-exchange batch lookup (`getInstrumentsBySymbol`) once per group,
 and returns a `Map` keyed `exchange:symbol` — the same key shape
 `market-stream.utils.ts`'s `streamSymbolKey` already uses. In practice
-this is one query for Kite (always NSE) and at most two for GlobalDataFeeds
-(BSE and/or BSE_IDX in the same batch).
+this is at most two queries for GlobalDataFeeds (BSE and/or BSE_IDX in the
+same batch).
 
-Provider responsibility stays provider-specific: Kite maps a resolved row
-to its numeric `instrumentToken` and skips (logs once, doesn't fail the
-batch) a symbol with no usable token; GlobalDataFeeds maps to its own
-`instrumentIdentifier` string and falls back to the raw symbol when no row
-resolves, matching each provider's existing behavior from before this
-change.
+Provider responsibility stays provider-specific: GlobalDataFeeds maps to its
+own `instrumentIdentifier` string and falls back to the raw symbol when no
+row resolves.
 
 ## Collection preparation's candle coverage check
 

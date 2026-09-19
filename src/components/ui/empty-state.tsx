@@ -112,7 +112,13 @@ export function EmptyState({
       </div>
 
       {(primaryAction || secondaryAction) && (
-        <div className="flex flex-col items-center gap-2 sm:flex-row">
+        // Row layout at sm: is a viewport breakpoint, not a container one -
+        // compact is used inside narrow, resizable panels (e.g. the Scanner
+        // watchlist sidebar) whose width has nothing to do with the
+        // viewport, so a wide viewport can force two actions into a row
+        // that's actually too narrow for them. Compact always stacks;
+        // default (used in genuinely wide areas) keeps the row at sm:.
+        <div className={cn("flex flex-col items-center gap-2", !isCompact && "sm:flex-row")}>
           {primaryAction && <PrimaryAction action={primaryAction} />}
           {secondaryAction && <SecondaryAction action={secondaryAction} />}
         </div>

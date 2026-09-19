@@ -1,9 +1,12 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { adminPath } from "@/utils/seo";
 import { formatAdminDate } from "../../lib/admin-formatters";
 import {
   useAdminWeeklyStrongBacktestHistoricalStatus,
@@ -13,6 +16,7 @@ import {
 } from "../../hooks/use-admin-market-collections";
 
 export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId: string }) {
+  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
   const statusQuery = useAdminWeeklyStrongBacktestStatus(collectionId);
   const generate = useGenerateAdminWeeklyStrongBacktest();
   const status = statusQuery.data?.status;
@@ -22,10 +26,16 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
   const historicalStatus = historicalStatusQuery.data?.status;
 
   const handleGenerate = () => {
-    generate.mutate({ id: collectionId });
+    generate.mutate(
+      { id: collectionId },
+      { onSuccess: () => setQueuedMessage("Backtest queued.") }
+    );
   };
   const handleRebuildHistorical = () => {
-    rebuildHistorical.mutate({ id: collectionId });
+    rebuildHistorical.mutate(
+      { id: collectionId },
+      { onSuccess: () => setQueuedMessage("Historical backtest queued.") }
+    );
   };
 
   const isBusy = status?.state === "generating" || generate.isPending;
@@ -38,6 +48,17 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 text-sm">
+      {queuedMessage && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-success/25 bg-success/10 px-3 py-2 text-xs text-success">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="size-3.5 shrink-0" />
+            {queuedMessage}
+          </span>
+          <Link href={adminPath("/admin/jobs")} className="shrink-0 font-semibold underline underline-offset-2">
+            Go to Jobs
+          </Link>
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Current-Membership Backtest</h2>
@@ -79,7 +100,7 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
           onClick={handleGenerate}
           className="w-fit gap-1.5"
         >
-          {isBusy && <Loader2 className="size-3.5 animate-spin" />}
+          {generate.isPending && <Loader2 className="size-3.5 animate-spin" />}
           {status?.state === "ready" ? "Rebuild Backtest" : "Generate Backtest"}
         </Button>
       </div>
@@ -139,7 +160,7 @@ export function AdminWeeklyStrongBacktestStatus({ collectionId }: { collectionId
           onClick={handleRebuildHistorical}
           className="w-fit gap-1.5"
         >
-          {isHistoricalBusy && <Loader2 className="size-3.5 animate-spin" />}
+          {rebuildHistorical.isPending && <Loader2 className="size-3.5 animate-spin" />}
           {historicalStatus?.state === "ready" ? "Rebuild Historical Backtest" : "Generate Historical Backtest"}
         </Button>
       </div>

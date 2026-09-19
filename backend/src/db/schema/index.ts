@@ -1,6 +1,7 @@
 export * from "./admin";
 export * from "./ai";
 export * from "./auth";
+export * from "./background-jobs";
 export * from "./dashboard-snapshots";
 export * from "./data-provider";
 export * from "./drawings";
@@ -16,3 +17,4 @@ export * from "./scanner";
 export * from "./users";
 export * from "./watchlists";
 export * from "./weekly-strong-backtest";
+export * from "./widget-preferences";

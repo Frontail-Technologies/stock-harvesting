@@ -86,7 +86,7 @@ export function AdminCollectionMembersTable({ collectionId }: { collectionId: st
                 <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                   {membersQuery.isLoading ? (
                     <span className="inline-flex items-center gap-2">
-                      <Spinner size="sm" />
+                      <Spinner size="md" className="text-primary" />
                       Loading constituents...
                     </span>
                   ) : (

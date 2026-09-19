@@ -5,6 +5,7 @@ import { KeyRound, Loader2, Save, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   useAdminAiKeyStatus,
   useAdminAiSettings,
@@ -29,16 +30,11 @@ export function AdminAiSettingsPage() {
   const modelIsDirty = Boolean(draftModel) && draftModel !== currentModel;
 
   return (
-    <div className="flex w-full flex-col gap-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">AI Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage the chart AI model selection and provider key access.
-        </p>
-      </div>
+    <div className="flex w-full flex-col gap-4">
+      <h1 className="text-2xl font-semibold text-foreground">AI Settings</h1>
 
-      <div className="grid max-w-5xl gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card p-5">
+      <div className="grid max-w-5xl gap-3 lg:grid-cols-2">
+        <section className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">
@@ -47,11 +43,11 @@ export function AdminAiSettingsPage() {
           </div>
 
           {aiSettingsQuery.isLoading ? (
-            <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+            <div className="grid min-h-48 place-items-center"><Spinner size="lg" className="text-primary" /></div>
           ) : aiSettingsQuery.isError ? (
             <p className="mt-4 text-sm text-danger">Couldn&apos;t load AI settings.</p>
           ) : (
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="mt-3 flex flex-col gap-3">
               <AdminSelect
                 label="Model"
                 value={selectedModel}
@@ -96,7 +92,7 @@ export function AdminAiSettingsPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-5">
+        <section className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <KeyRound className="size-4 text-muted-foreground" />
@@ -115,7 +111,7 @@ export function AdminAiSettingsPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col gap-2.5">
             <div className="rounded-lg border border-border bg-background/60 px-3 py-2">
               <div className="text-xs text-muted-foreground">Current key</div>
               <div className="mt-1 text-sm font-medium text-foreground">

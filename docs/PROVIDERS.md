@@ -1,39 +1,42 @@
 # Providers
 
-`backend/src/modules/data-provider/*` — an adapter abstraction over three
-market-data vendors. No secrets/API keys below — see
+`backend/src/modules/data-provider/*` — an adapter abstraction over two
+market-data vendors (Zerodha was retired 2026-09-19 — see `backend/docs/DECISIONS.md`). No secrets/API keys below — see
 `docs/ENVIRONMENT-VARIABLES.md` for variable names only.
 
 ## Adapters
 
 | Adapter | Path | Markets | Role |
 |---|---|---|---|
-| **EODHD** | `adapters/eodhd-data-provider.adapter.ts` | ~70 exchanges globally | Default/fallback provider — historical + latest daily candles, instrument sync. Lowest priority (see below), used wherever nothing more specific applies |
-| **Zerodha (Kite)** | `adapters/zerodha-data-provider.adapter.ts` | `NSE`, `NSE_IDX` | OAuth-connected (`requiresConnection: true`); also has a market-stream (WebSocket) realtime provider |
-| **GlobalDataFeeds** | `adapters/global-datafeeds/*` | `BSE`, `BSE_IDX` | REST + WebSocket (`GLOBAL_DATAFEEDS_WS_URL`); separate "Fundamentals" REST product (`global-datafeeds-fundamentals/*`) for sector/industry classification, its own access key/base URL, independent of the WS feed |
+| **EODHD** | `adapters/eodhd-data-provider.adapter.ts` | ~70 exchanges globally | Provider for exchanges outside BSE (e.g. US) — historical + latest daily candles, instrument sync. Not a fallback for BSE market data |
+| **GlobalDataFeeds** | `adapters/global-datafeeds/*` | `BSE`, `BSE_IDX` | The sole production market-data source for BSE: `GetHistory` (Delayed) = canonical daily candles, `GetSnapshot` (Delayed) = current-day provisional candle, `SubscribeSnapshot` (Delayed) = passive current-day updates. WebSocket (`GLOBAL_DATAFEEDS_WS_URL`); separate "Fundamentals" REST product (`global-datafeeds-fundamentals/*`) for sector/industry classification, its own access key/base URL, independent of the WS feed |
 
 ## Resolver / priority
 
 Two-step resolution:
 
 1. **`getDataProviderAdapterForExchange`** (`data-provider.registry.ts`) —
-   a hardcoded 1:1 exchange→provider map: `NSE`/`NSE_IDX` → Zerodha,
-   `BSE`/`BSE_IDX` → GlobalDataFeeds, everything else → EODHD.
+   a hardcoded 1:1 exchange→provider map: `BSE`/`BSE_IDX` → GlobalDataFeeds,
+   everything else → EODHD. The retired `NSE`/`NSE_IDX` (`RETIRED_EXCHANGE_CODES`)
+   resolve to no provider at all.
    `adapterSupportsCapability()` gates by `ProviderCapability`
    (`instrument_sync`, `historical_daily_candles`, `latest_daily_candles`,
-   `instrument_search`, `instrument_token`, `exchange_list`, `realtime_ws`).
+   `instrument_search`, `instrument_token`, `exchange_list`, `realtime_ws`,
+   `current_price_snapshot`).
 2. **`resolveEligibleProviders({exchange, capability})`**
    (`data-provider.service.ts`) — the real decision point. Checks, per
    candidate: DB-stored `enabled` flag and `priority`
    (`data_provider_settings` table, via `data-provider-settings.service.ts`),
-   plus a 15s-cached "ready to use" check (`isConfigured()`, and for
-   Zerodha specifically, live OAuth connection status).
+   plus a 15s-cached "ready to use" check (`isConfigured()`, and for a
+   provider with `requiresConnection`, its stored connection status — none
+   active today).
    `getEligibleProviderAdapter()` returns the first enabled+ready
    candidate sorted ascending by `priority` (lower = higher priority).
 
 **Seed priorities** (`DATA_PROVIDER_SETTINGS_SEEDS`,
-`backend/src/shared/constants/domain.ts`): Zerodha `1`, GlobalDataFeeds
-`1`, EODHD `100` — EODHD is the intentional lowest-priority fallback.
+`backend/src/shared/constants/domain.ts`): GlobalDataFeeds `1`, EODHD `100`.
+A `data_provider_settings` row for the retired `zerodha` key may still exist in
+the DB; it is retained, ignored, and not shown in the admin UI logic.
 Admins can change `enabled`/`priority` per provider via
 Admin → Data Providers (`/admin/data-providers`).
 
@@ -41,9 +44,7 @@ Admin → Data Providers (`/admin/data-providers`).
 
 | Provider | Key vars |
 |---|---|
-| Default selection | `DATA_PROVIDER` |
 | EODHD | `EODHD_API_TOKEN`, `EODHD_EXCHANGE_CODE` |
-| Zerodha | `ZERODHA_API_KEY`, `ZERODHA_API_SECRET`, `ZERODHA_REDIRECT_URL` |
 | GlobalDataFeeds (WS feed) | `GLOBAL_DATAFEEDS_ENABLED`, `GLOBAL_DATAFEEDS_API_KEY`, `GLOBAL_DATAFEEDS_WS_URL`, `GLOBAL_DATAFEEDS_EXCHANGES`, `GLOBAL_DATAFEEDS_SYMBOL_LIMIT` |
 | GlobalDataFeeds Fundamentals | `GLOBAL_DATAFEEDS_FUNDAMENTALS_ENABLED`, `GLOBAL_DATAFEEDS_FUNDAMENTALS_ACCESS_KEY`, `GLOBAL_DATAFEEDS_FUNDAMENTALS_BASE_URL`, `GLOBAL_DATAFEEDS_FUNDAMENTALS_EXCHANGE` (note: vendor account emails call this product "BSE-FD", but the API itself only accepts `BSE` as the value) |
 
@@ -55,7 +56,7 @@ Admin → Data Providers (`/admin/data-providers`).
   `GetHistory`/`fetchDailyCandles` — not the 30s default used by every
   other GlobalDataFeeds request type). A worst-case bad attempt now costs
   ~9-10s instead of ~30s+ before its retry kicks in.
-- **Credential/connection failure** (e.g. Zerodha OAuth expired): that
+- **Credential/connection failure**: that
   provider drops out of `resolveEligibleProviders`'s candidate list;
   whatever's next by priority for that exchange (if any) takes over. If no
   candidate is eligible, the calling code (`getEligibleProviderAdapter`
@@ -71,12 +72,10 @@ Admin → Data Providers (`/admin/data-providers`).
     only, **zero external provider calls**, so it resolves in a few ms.
     Returns per provider: `providerConfigured` (`adapter.isConfigured()`),
     `enabled`, `priority`, `requiresConnection`, `connected` / `status`
-    (DB-derived for OAuth Zerodha via its stored connection row + token
-    expiry; mirrors `providerConfigured` for non-OAuth providers, which
+    (DB-derived via a stored connection row + token
+    expiry for a `requiresConnection` provider — none active; mirrors `providerConfigured` for non-OAuth providers, which
     have no connection concept), `lastSyncedAt`, `errorMessage` (stored
-    connection error). The singular `GET /api/admin/data-provider/status`
-    is the same, scoped to Zerodha. Frontend: `useAdminDataProviderStatus`
-    / `useAdminDataProviderStatuses`, `retry: 1`, `AbortSignal.timeout` 8s.
+    connection error). Frontend: `useAdminDataProviderStatuses`, `retry: 1`, `AbortSignal.timeout` 8s.
   - **External health** — `GET /api/admin/data-provider/health/:provider` →
     `getProviderHealth` → `checkConnectionWithTimeout(adapter)`. This is the
     only path that runs `adapter.checkConnection()` (GDF WS `GetInstruments`

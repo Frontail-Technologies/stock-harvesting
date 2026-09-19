@@ -5,10 +5,7 @@ import { queryKeys } from "@/features/api";
 import { useIsAdminReady } from "@/features/auth";
 import {
   backfillAdminIndexCandles,
-  connectAdminDataProvider,
-  getAdminDataProviderConnectUrl,
   getAdminDataProviderHealth,
-  getAdminDataProviderStatus,
   getAdminDataProviderStatuses,
   syncAdminDataProvider,
   syncAdminMarketDataPrices,
@@ -25,17 +22,6 @@ const PROVIDER_STATUS_QUERY_OPTIONS = {
   retryDelay: 1_000,
   staleTime: 30_000,
 } as const;
-
-export function useAdminDataProviderStatus() {
-  const isAdminReady = useIsAdminReady();
-
-  return useQuery({
-    ...PROVIDER_STATUS_QUERY_OPTIONS,
-    queryKey: queryKeys.admin.dataProviderStatus,
-    queryFn: getAdminDataProviderStatus,
-    enabled: isAdminReady,
-  });
-}
 
 export function useAdminDataProviderStatuses() {
   const isAdminReady = useIsAdminReady();
@@ -66,25 +52,6 @@ export function useAdminDataProviderHealth(provider: string) {
   });
 }
 
-export function useCreateAdminDataProviderConnectUrl() {
-  return useMutation({
-    mutationFn: getAdminDataProviderConnectUrl,
-  });
-}
-
-export function useConnectAdminDataProvider() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: connectAdminDataProvider,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.admin.dataProviderStatus,
-      });
-    },
-  });
-}
-
 export function useSyncAdminDataProvider() {
   const queryClient = useQueryClient();
 
@@ -92,7 +59,7 @@ export function useSyncAdminDataProvider() {
     mutationFn: syncAdminDataProvider,
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.admin.dataProviderStatus,
+        queryKey: queryKeys.admin.dataProviderStatuses,
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
     },

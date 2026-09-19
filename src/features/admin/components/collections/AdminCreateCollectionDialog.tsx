@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_MARKET_EXCHANGE, useMarketExchanges } from "@/features/market";
+import { useMarketExchanges } from "@/features/market";
 import { adminPath } from "@/utils/seo";
 import { useCreateAdminMarketCollection } from "../../hooks/use-admin-market-collections";
 import { AdminSelect } from "../users/AdminSelect";
@@ -26,13 +26,14 @@ export function AdminCreateCollectionDialog() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [exchange, setExchange] = useState<string>(DEFAULT_MARKET_EXCHANGE);
+  const [chosenExchange, setExchange] = useState<string>("");
+  const exchange = chosenExchange || exchanges[0]?.code || "";
   const [description, setDescription] = useState("");
 
   const resetForm = () => {
     setCode("");
     setName("");
-    setExchange(DEFAULT_MARKET_EXCHANGE);
+    setExchange("");
     setDescription("");
     createMutation.reset();
   };
@@ -60,7 +61,7 @@ export function AdminCreateCollectionDialog() {
     );
   };
 
-  const canSubmit = code.trim().length > 0 && name.trim().length > 0;
+  const canSubmit = code.trim().length > 0 && name.trim().length > 0 && exchange.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

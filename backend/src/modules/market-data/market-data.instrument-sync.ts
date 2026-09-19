@@ -8,27 +8,19 @@ import { logger } from "../../shared/logger";
 import { normalizeSymbol } from "../../shared/normalize";
 import { getActiveProviderAccessToken, getEligibleProviderAdapter } from "../data-provider/data-provider.service";
 import { recordProviderFailure, recordProviderSuccess } from "../data-provider/data-provider-settings.service";
+import { enqueueCandleBootstrapJobs } from "../jobs/queues";
 import { createFallbackInstrument, getInstrumentsBySymbol, upsertInstruments } from "./market-data.instruments";
 
 // Instrument existence -> provider search -> full-sync fallback -> fallback creation -> default hydration; owns "make sure an instrument row exists" end to end. Deliberately does NOT own candle backfill/sync/refresh orchestration (still in market-data.service.ts) - this module only depends on market-data.instruments.ts and neutral data-provider services, never market-data.service.ts, avoiding an import cycle.
 
-const DEFAULT_MARKET_SYMBOLS_BY_EXCHANGE: Record<string, readonly string[]> = {
-  US: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM", "V", "UNH", "XOM", "AVGO"],
-  NSE: [
-    "RELIANCE",
-    "TCS",
-    "INFY",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
-    "BHARTIARTL",
-    "ITC",
-    "LT",
-    "HINDUNILVR",
-    "KOTAKBANK",
-    "AXISBANK",
-  ],
-};
+function scheduleCandleBootstrap(exchange: string, symbols: string[]) {
+  void enqueueCandleBootstrapJobs(exchange, symbols).catch((error) => {
+    logger.warn(
+      { exchange, symbolCount: symbols.length, message: getErrorMessage(error, "Unknown error") },
+      "Failed to enqueue initial candle bootstrap",
+    );
+  });
+}
 
 export async function getOrCreateInstrument(
   symbol: string,
@@ -80,7 +72,7 @@ export async function ensureInstrumentsForSymbols(symbols: string[], exchange: s
 
 export async function syncProviderInstrumentSearch(query: string, exchange: string = DEFAULT_EXCHANGE) {
   const searchQuery = normalizeSymbol(query);
-  // No eligible provider AND "eligible but doesn't implement search" (e.g. Zerodha for NSE) both land here - either way the fallback is a full instrument sync through this exchange's own (independently eligibility-gated) primary provider.
+  // No eligible provider AND "eligible but doesn't implement search" (e.g. an adapter without a search API) both land here - either way the fallback is a full instrument sync through this exchange's own (independently eligibility-gated) primary provider.
   const adapter = await getEligibleProviderAdapter({ exchange, capability: "instrument_search" });
   if (!adapter || !adapter.searchInstruments) {
     await syncProviderInstruments(exchange);
@@ -103,11 +95,12 @@ export async function syncProviderInstrumentSearch(query: string, exchange: stri
   }
 
   await upsertInstruments(providerInstruments, adapter.providerKey);
+  scheduleCandleBootstrap(exchange, providerInstruments.map((instrument) => instrument.symbol));
 
   return { count: providerInstruments.length };
 }
 
-export async function syncProviderInstruments(exchange: string = DEFAULT_EXCHANGE) {
+export async function syncProviderInstruments(exchange: string) {
   const adapter = await getEligibleProviderAdapter({ exchange, capability: "instrument_sync" });
   if (!adapter) return { count: 0 };
 
@@ -124,7 +117,12 @@ export async function syncProviderInstruments(exchange: string = DEFAULT_EXCHANG
     throw error;
   }
 
+  const existing = await getInstrumentsBySymbol(providerInstruments.map((instrument) => instrument.symbol), exchange);
   await upsertInstruments(providerInstruments, adapter.providerKey);
+  scheduleCandleBootstrap(
+    exchange,
+    providerInstruments.map((instrument) => instrument.symbol).filter((symbol) => !existing.has(symbol)),
+  );
 
   return { count: providerInstruments.length };
 }
@@ -134,40 +132,18 @@ export async function canCreateFallbackInstrument(exchange: string) {
   return Boolean(adapter?.getInstrumentToken);
 }
 
-export async function hydrateDefaultFallbackInstruments(exchange: string = DEFAULT_EXCHANGE) {
-  if (!(await canCreateFallbackInstrument(exchange))) return { count: 0 };
-
-  // Only a curated list for this exact exchange is safe to seed - falling back to DEFAULT_EXCHANGE's list would silently seed US tickers onto an unrelated exchange. The primary path (full syncProviderInstruments pull) already handles real seeding; this fallback only exists for exchanges with a hand-picked list.
-  const defaultSymbols = DEFAULT_MARKET_SYMBOLS_BY_EXCHANGE[exchange];
-  if (!defaultSymbols) return { count: 0 };
-
-  let count = 0;
-
-  for (const symbol of defaultSymbols) {
-    try {
-      const result = await syncProviderInstrumentSearch(symbol, exchange);
-      count += result.count;
-    } catch {
-      await createFallbackInstrument(symbol, exchange);
-      count++;
-    }
-  }
-
-  return { count };
-}
-
-export async function hydrateDefaultMarketInstruments(exchange: string = DEFAULT_EXCHANGE) {
+// Populates an exchange's instruments from its own provider - the only source
+// of the instrument universe. There is deliberately no static symbol list to
+// fall back to: if the provider sync fails or returns nothing, the exchange
+// simply stays as it is.
+export async function hydrateMarketInstruments(exchange: string) {
   try {
-    const result = await syncProviderInstruments(exchange);
-    if (result.count > 0) return result;
+    return await syncProviderInstruments(exchange);
   } catch (error) {
-    // Best-effort by design: falls back to the static default list rather than failing the request, but still worth a low-noise trace so a persistently-failing provider sync isn't completely invisible.
     logger.warn(
       { exchange, message: getErrorMessage(error) },
-      "Provider instrument sync failed; falling back to default instrument list"
+      "Provider instrument sync failed during hydration"
     );
-    return hydrateDefaultFallbackInstruments(exchange);
+    return { count: 0 };
   }
-
-  return hydrateDefaultFallbackInstruments(exchange);
 }

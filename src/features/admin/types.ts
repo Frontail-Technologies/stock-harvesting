@@ -100,14 +100,6 @@ export type AdminDataProviderHealthResult = {
   errorMessage: string | null;
 };
 
-export type AdminDataProviderConnectUrlResponse = {
-  url: string;
-};
-
-export type AdminDataProviderConnectResponse = {
-  connected: boolean;
-};
-
 export type MonetizationMode = "off" | "preview" | "live";
 
 export type AdminAdPlacementKey =
@@ -180,7 +172,8 @@ export type AdminWorkerStatus = {
 
 export type AdminMarketDataHealth = {
   exchange: string;
-  latestExpectedTradingDate: string;
+  exchanges: string[];
+  latestExpectedTradingDate: string | null;
   activeSymbols: number;
   fresh: number;
   stale: number;
@@ -212,7 +205,7 @@ export type AdminMarketDataHealth = {
   };
 };
 
-export type AdminBackgroundJobRunStatus = "running" | "completed" | "partial" | "failed";
+export type AdminBackgroundJobRunStatus = "pending" | "queued" | "running" | "completed" | "partial" | "failed" | "missed";
 
 export type AdminFailedSymbolDetail = {
   instrumentId: string | null;
@@ -224,7 +217,16 @@ export type AdminBackgroundJobRun = {
   id: string;
   jobType: string;
   status: AdminBackgroundJobRunStatus;
-  startedAt: string;
+  startedAt: string | null;
+  tradingDate?: string | null;
+  exchange?: string | null;
+  scheduledAt?: string | null;
+  attemptCount?: number;
+  totalExpected?: number;
+  completedCount?: number;
+  missingCount?: number;
+  backtestStatus?: string | null;
+  backtestThrough?: string | null;
   finishedAt: string | null;
   processedCount: number;
   updatedCount: number;
@@ -237,16 +239,62 @@ export type AdminBackgroundJobRun = {
   createdAt: string;
 };
 
+export type AdminAnalytics = {
+  summary: {
+    totalUsers: number;
+    verifiedUsers: number;
+    newUsers30d: number;
+    activeSegments: number;
+    totalMembers: number;
+    activeJobs: number;
+    jobSuccessRate: number;
+  };
+  userGrowth: Array<{ day: string; users: number }>;
+  plans: Array<{ name: string; value: number }>;
+  jobs: Array<{ day: string; successful: number; failed: number }>;
+  segmentReadiness: Array<{ name: string; value: number }>;
+};
+
+export type AdminAnalyticsPeriod = "all" | "today" | "7d" | "30d" | "90d";
+
+export type AdminSyncJob = {
+  id: string;
+  type: string;
+  status: "queued" | "running" | "completed" | "failed";
+  payload: Record<string, unknown>;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminScheduledJobStatus = {
   jobType: string;
   nextRunAt: string | null;
   lastRun: {
     status: AdminBackgroundJobRunStatus;
-    startedAt: string;
+    startedAt: string | null;
     finishedAt: string | null;
     processedCount: number;
     updatedCount: number;
     repairedCount: number;
     failedCount: number;
   } | null;
+};
+
+export type AdminMarketDataOperations = {
+  checkedAt: string;
+  expectedCompletedTradingDate: string | null;
+  historicalThrough: string | null;
+  backtestsThrough: string | null;
+  productionProvider: string;
+  coverage: Array<{
+    tradingDate: string;
+    exchange: string;
+    totalExpected: number;
+    completed: number;
+    missing: number;
+    coveragePct: number;
+    missingSymbols: string[];
+  }>;
+  jobs: AdminBackgroundJobRun[];
 };

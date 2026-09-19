@@ -20,7 +20,7 @@ export function AdminCollectionMetadataForm({
     name.trim() !== collection.name || description.trim() !== (collection.description ?? "");
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 lg:col-span-2">
+    <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-semibold text-foreground">Segment metadata</h2>
 
       <div className="flex flex-col gap-1.5">

@@ -1,6 +1,6 @@
 # Stock Harvesting
 
-Stock Harvesting is a UI-first prototype for an India-only stock scanner and charting platform. The current app uses mock data only; real authentication, Zerodha integration, persistence, billing, and production scanner automation are intentionally out of scope for this phase.
+Stock Harvesting is a UI-first prototype for an India-only stock scanner and charting platform. The current app uses mock data only; real authentication, persistence, billing, and production scanner automation are intentionally out of scope for this phase.
 
 ## Stack
 

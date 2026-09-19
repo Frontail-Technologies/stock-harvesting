@@ -81,7 +81,7 @@ export function AdminUsersPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-5">
+    <div className="flex w-full flex-col gap-4">
       <AdminUsersHeader
         totalUsers={pagination.total}
         refreshing={usersQuery.isFetching}
@@ -92,26 +92,32 @@ export function AdminUsersPage() {
       />
 
       <section className="flex flex-col gap-3 text-foreground">
-        <AdminUsersFilters
-          filters={filters}
-          activeFilterCount={activeFilterCount}
-          filtersAreDefault={filtersAreDefault}
-          onFilterChange={setFilter}
-          onReset={resetFilters}
-        />
-        <AdminUsersPagination
-          filters={filters}
-          pagination={pagination}
-          loading={usersQuery.isFetching}
-          onFilterChange={setFilter}
-        />
-        <AdminUsersTable
-          users={users}
-          loading={usersQuery.isLoading}
-          error={usersQuery.error}
-          startIndex={(pagination.page - 1) * pagination.limit}
-          onEditUser={handleEditUser}
-        />
+        <div className="order-1">
+          <AdminUsersFilters
+            filters={filters}
+            activeFilterCount={activeFilterCount}
+            filtersAreDefault={filtersAreDefault}
+            onFilterChange={setFilter}
+            onReset={resetFilters}
+          />
+        </div>
+        <div className="order-2">
+          <AdminUsersTable
+            users={users}
+            loading={usersQuery.isLoading}
+            error={usersQuery.error}
+            startIndex={(pagination.page - 1) * pagination.limit}
+            onEditUser={handleEditUser}
+          />
+        </div>
+        <div className="order-3">
+          <AdminUsersPagination
+            filters={filters}
+            pagination={pagination}
+            loading={usersQuery.isFetching}
+            onFilterChange={setFilter}
+          />
+        </div>
       </section>
 
       <AdminUserSheet
@@ -138,5 +144,3 @@ export function AdminUsersPage() {
     </div>
   );
 }
-
-

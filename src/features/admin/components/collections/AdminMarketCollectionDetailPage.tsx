@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarClock, Database, Loader2, RotateCcw, Trash2, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { adminPath } from "@/utils/seo";
@@ -28,6 +29,20 @@ const PREPARATION_STATUS_LABEL = {
   partial: "Partial",
   failed: "Failed",
 } as const;
+
+function CollectionStat({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: string; value: string | number; tone: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3">
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", tone)}>
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-muted-foreground">{label}</span>
+        <span className="block truncate text-sm font-semibold text-foreground">{value}</span>
+      </span>
+    </div>
+  );
+}
 
 export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
   const router = useRouter();
@@ -141,33 +156,14 @@ export function AdminMarketCollectionDetailPage({ id }: { id: string }) {
         onDeleted={() => router.push(adminPath("/admin/market-collections"))}
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-lg border border-border bg-card p-4 text-sm">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Source metadata</h2>
-          <dl className="flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Members</dt>
-              <dd className="font-medium text-foreground">{collection.memberCount}</dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Source name</dt>
-              <dd className="font-medium text-foreground">{collection.sourceName ?? "-"}</dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Source date</dt>
-              <dd className="font-medium text-foreground">
-                {collection.sourceDate ? formatAdminDate(collection.sourceDate) : "-"}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Last import</dt>
-              <dd className="font-medium text-foreground">
-                {collection.lastImportedAt ? formatAdminDate(collection.lastImportedAt) : "Never"}
-              </dd>
-            </div>
-          </dl>
-        </section>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CollectionStat icon={Users} label="Members" value={collection.memberCount} tone="bg-cyan-500/10 text-cyan-700 dark:text-cyan-300" />
+        <CollectionStat icon={Database} label="Source" value={collection.sourceName ?? "Not provided"} tone="bg-violet-500/10 text-violet-700 dark:text-violet-300" />
+        <CollectionStat icon={CalendarClock} label="Source date" value={collection.sourceDate ? formatAdminDate(collection.sourceDate) : "Not provided"} tone="bg-amber-500/10 text-amber-700 dark:text-amber-300" />
+        <CollectionStat icon={CalendarClock} label="Last import" value={collection.lastImportedAt ? formatAdminDate(collection.lastImportedAt) : "Never"} tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" />
+      </div>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <AdminCollectionMetadataForm key={collection.id} collection={collection} />
         <AdminWeeklyStrongBacktestStatus collectionId={collection.id} />
       </div>

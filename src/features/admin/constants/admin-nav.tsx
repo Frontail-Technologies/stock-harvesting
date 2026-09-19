@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Activity, ImageIcon, Layers, Megaphone, Radio, Sparkles, Users } from "lucide-react";
+import { Activity, ChartNoAxesCombined, Layers, Megaphone, Radio, Sparkles, Users } from "lucide-react";
 
 export type AdminNavItem = {
   label: string;
@@ -9,6 +9,7 @@ export type AdminNavItem = {
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
+  { label: "Analytics", href: "/admin/analytics", icon: <ChartNoAxesCombined className="size-4" /> },
   { label: "Users", href: "/admin/users", icon: <Users className="size-4" /> },
   {
     label: "AI Settings",
@@ -34,11 +35,5 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: "Ads",
     href: "/admin/ads",
     icon: <Megaphone className="size-4" />,
-  },
-  {
-    label: "Branding",
-    href: "/admin/branding",
-    icon: <ImageIcon className="size-4" />,
-    disabled: true,
   },
 ];

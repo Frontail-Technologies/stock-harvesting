@@ -48,7 +48,6 @@ a bug fix.
 | `/admin/ads` | `/ads` | `admin/ads/page.tsx` | Renders `AdminMonetizationPage` — route says "ads", component says "monetization" |
 | `/admin/data-providers` | `/data-providers` | `admin/data-providers/page.tsx` | |
 | `/admin/data-provider` | `/data-provider` | `admin/data-provider/page.tsx` | **Dead** — always `redirect(adminPath("/admin/data-providers"))`, legacy singular→plural |
-| `/admin/data-provider/callback` | `/data-provider/callback` | `admin/data-provider/callback/page.tsx` | Zerodha OAuth callback landing |
 | `/admin/jobs` | `/jobs` | `admin/jobs/page.tsx` | Redirect stub — always `redirect(adminPath("/admin/users"))`. `AdminJobsPage` component (formerly orphaned) was deleted |
 | `/admin/market-collections` | `/market-collections` | `admin/market-collections/page.tsx` | |
 | `/admin/market-collections/[id]` | `/market-collections/[id]` | `admin/market-collections/[id]/page.tsx` | |

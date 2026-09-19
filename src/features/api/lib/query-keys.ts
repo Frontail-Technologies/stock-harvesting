@@ -111,6 +111,7 @@ export const queryKeys = {
       ["scanner", "backtest", input] as const,
   },
   admin: {
+    analytics: (period: string) => ["admin", "analytics", period] as const,
     usersRoot: ["admin", "users"] as const,
     users: (input: {
       q?: string;
@@ -122,11 +123,9 @@ export const queryKeys = {
       direction: string;
     }) => ["admin", "users", input] as const,
     branding: ["admin", "branding"] as const,
-    dataProviderStatus: ["admin", "data-provider-status"] as const,
     dataProviderStatuses: ["admin", "data-provider-statuses"] as const,
     dataProviderHealth: (provider: string) =>
       ["admin", "data-provider-health", provider] as const,
-    dataProviderConnect: ["admin", "data-provider-connect"] as const,
     aiSettings: ["admin", "ai-settings"] as const,
     aiSettingsKey: ["admin", "ai-settings", "key"] as const,
     jobs: ["admin", "jobs"] as const,
@@ -136,6 +135,7 @@ export const queryKeys = {
     marketDataHealth: ["admin", "market-data", "health"] as const,
     marketDataJobRuns: ["admin", "market-data", "job-runs"] as const,
     marketDataSchedules: ["admin", "market-data", "schedules"] as const,
+    marketDataOperations: ["admin", "market-data", "operations"] as const,
   },
   watchlists: {
     list: ["watchlists", "list"] as const,

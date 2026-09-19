@@ -32,7 +32,6 @@ import { WeeklyStrongStockTable } from "./WeeklyStrongStockTable";
 const GROUP_RANKING_LIMIT = 100;
 
 const INDEX_EXCHANGE_BY_EQUITY_EXCHANGE: Record<string, string> = {
-  NSE: "NSE_IDX",
   BSE: "BSE_IDX",
 };
 
@@ -55,7 +54,7 @@ export function DashboardSegmentContent({ code, exchange }: { code: string; exch
     groupBy: "industry",
   });
 
-  const indexExchange = INDEX_EXCHANGE_BY_EQUITY_EXCHANGE[exchange] ?? "NSE_IDX";
+  const indexExchange = INDEX_EXCHANGE_BY_EQUITY_EXCHANGE[exchange] ?? "BSE_IDX";
   const indexQuery = useIndexRelativeStrength(150, indexExchange);
   const [harvestLookback, setHarvestLookback] =
     useState<ScannerLookbackMultiplier>(DEFAULT_SCANNER_LOOKBACK);

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import type { DbOrTx } from "../../db/client";
+import { invalidateCacheByPrefix } from "../../shared/cache";
 import {
   buildStockFilters,
   buildStockOrderBy,
@@ -10,6 +11,10 @@ import {
   searchChartEligibleBseStocks,
   toStockListResponse,
 } from "./market-data.stocks";
+
+beforeEach(() => {
+  invalidateCacheByPrefix("searchChartEligibleBseStocks");
+});
 
 /**
  * No behavior coverage existed for this responsibility before this
@@ -81,19 +86,15 @@ describe("buildStockOrderBy", () => {
 });
 
 describe("buildStockFilters", () => {
-  it("applies NSE-only symbol-pattern filters (provider=zerodha, normal-equity regex, debt/non-eq exclusions) only for exchange=NSE", () => {
-    const nseCondition = buildStockFilters({ exchange: "NSE" });
-    const nseText = renderText(nseCondition);
-    const nseParams = paramValues(nseCondition);
-    expect(nseParams).toContain("provider");
-    expect(nseParams).toContain("zerodha");
-    expect(nseText.match(/~/g)?.length).toBe(3); // 3 regex predicates
+  it("scopes the universe to the exchange's production provider - retired NSE matches nothing, and no symbol-pattern filters remain", () => {
+    const bse = buildStockFilters({ exchange: "BSE" });
+    expect(paramValues(bse)).toContain("global-datafeeds");
+    expect(renderText(bse).match(/~/g)).toBeNull();
 
-    const bseCondition = buildStockFilters({ exchange: "BSE" });
-    const bseText = renderText(bseCondition);
-    const bseParams = paramValues(bseCondition);
-    expect(bseParams).not.toContain("provider");
-    expect(bseText.match(/~/g)).toBeNull();
+    const nse = buildStockFilters({ exchange: "NSE" });
+    expect(paramValues(nse)).not.toContain("zerodha");
+    expect(paramValues(nse)).not.toContain("global-datafeeds");
+    expect(renderText(nse).match(/~/g)).toBeNull();
   });
 
   it("omits the latestClose > 0 filter when includeUnpriced is true, includes it otherwise", () => {
@@ -203,6 +204,54 @@ describe("searchChartEligibleBseStocks query shape", () => {
 
     await searchChartEligibleBseStocks({ q: "x", limit: 7 }, fakeDb as unknown as DbOrTx);
     expect(capturedLimit).toBe(7);
+  });
+
+  it("caches repeat calls for the same q/limit - the DB is not hit twice", async () => {
+    let dbCallCount = 0;
+    const fakeDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({
+              limit: async () => {
+                dbCallCount += 1;
+                return [{ symbol: "RELIANCE" }];
+              },
+            }),
+          }),
+        }),
+      }),
+    };
+
+    const first = await searchChartEligibleBseStocks({ q: "REL", limit: 25 }, fakeDb as unknown as DbOrTx);
+    const second = await searchChartEligibleBseStocks({ q: "REL", limit: 25 }, fakeDb as unknown as DbOrTx);
+
+    expect(dbCallCount).toBe(1);
+    expect(second).toEqual(first);
+  });
+
+  it("does not share a cache entry across different q/limit values", async () => {
+    let dbCallCount = 0;
+    const fakeDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({
+              limit: async () => {
+                dbCallCount += 1;
+                return [];
+              },
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await searchChartEligibleBseStocks({ q: "REL", limit: 25 }, fakeDb as unknown as DbOrTx);
+    await searchChartEligibleBseStocks({ q: "TCS", limit: 25 }, fakeDb as unknown as DbOrTx);
+    await searchChartEligibleBseStocks({ q: "REL", limit: 10 }, fakeDb as unknown as DbOrTx);
+
+    expect(dbCallCount).toBe(3);
   });
 });
 

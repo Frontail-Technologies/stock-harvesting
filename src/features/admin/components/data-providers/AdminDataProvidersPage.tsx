@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
+  Activity,
   CheckCircle2,
+  Clock3,
   Database,
-  ExternalLink,
   Loader2,
   Radio,
   RefreshCw,
+  Settings2,
   XCircle,
+  Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +25,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/utils/cn";
 import {
   Table,
   TableBody,
@@ -31,17 +46,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type {
-  AdminDataProviderHealth,
   AdminDataProviderHealthResult,
   AdminDataProviderSettingsRow,
   AdminDataProviderStatusEntry,
 } from "../../types";
 import {
   useAdminDataProviderHealth,
-  useAdminDataProviderStatus,
   useAdminDataProviderStatuses,
   useBackfillAdminIndexCandles,
-  useCreateAdminDataProviderConnectUrl,
   useSyncAdminDataProvider,
   useSyncAdminMarketDataPrices,
   useSyncAdminSectorClassification,
@@ -50,30 +62,7 @@ import {
   useAdminDataProviders,
   useUpdateAdminDataProviderSettings,
 } from "../../hooks/use-admin-data-providers";
-
-const CAPABILITY_LABELS: Record<string, string> = {
-  instrument_sync: "Instruments",
-  historical_daily_candles: "Historical candles",
-  latest_daily_candles: "Latest candles",
-  instrument_search: "Search",
-  instrument_token: "Symbol lookup",
-  exchange_list: "Exchange list",
-  realtime_ws: "Realtime",
-};
-
-function healthBadgeClassName(health: AdminDataProviderHealth) {
-  if (health === "healthy") return "border-primary/30 bg-primary/10 text-primary";
-  if (health === "error") return "border-danger/30 bg-danger/10 text-danger";
-  if (health === "unknown") return "border-border bg-card text-foreground";
-  return "border-border bg-muted text-muted-foreground";
-}
-
-function healthLabel(health: AdminDataProviderHealth) {
-  if (health === "healthy") return "Healthy";
-  if (health === "error") return "Error";
-  if (health === "unknown") return "Unknown";
-  return "Disabled";
-}
+import { useAdminJobs } from "../../hooks/use-admin-market-data";
 
 function formatRelativeTime(iso: string | null) {
   if (!iso) return "—";
@@ -90,16 +79,12 @@ function formatRelativeTime(iso: string | null) {
 
 export function AdminDataProvidersPage() {
   const settingsQuery = useAdminDataProviders();
+  const jobsQuery = useAdminJobs();
   const providers = settingsQuery.data?.providers ?? [];
+  const enabledProviders = providers.filter((provider) => provider.enabled);
+  const globalDatafeedsSettings = providers.find((provider) => provider.key === "global-datafeeds");
 
-  const zerodhaConnectionQuery = useAdminDataProviderStatus();
-  const connectUrlMutation = useCreateAdminDataProviderConnectUrl();
-  const syncMutation = useSyncAdminDataProvider();
-  const priceRefreshMutation = useSyncAdminMarketDataPrices();
   const sectorClassificationMutation = useSyncAdminSectorClassification();
-
-  const indexSyncMutation = useSyncAdminDataProvider();
-  const indexBackfillMutation = useBackfillAdminIndexCandles();
 
   const bseSyncMutation = useSyncAdminDataProvider();
   const bseIndexSyncMutation = useSyncAdminDataProvider();
@@ -107,540 +92,133 @@ export function AdminDataProvidersPage() {
   const bseIndexBackfillMutation = useBackfillAdminIndexCandles();
 
   const statusesQuery = useAdminDataProviderStatuses();
-  const eodhdStatus = statusesQuery.data?.providers.find((entry) => entry.provider === "eodhd");
-  const globalDatafeedsStatus = statusesQuery.data?.providers.find(
-    (entry) => entry.provider === "global-datafeeds"
-  );
   const globalDatafeedsHealthQuery = useAdminDataProviderHealth("global-datafeeds");
+  const activeJobTypes = new Set(
+    (jobsQuery.data?.jobs ?? [])
+      .filter((job) => job.status === "queued" || job.status === "running")
+      .map((job) => job.type)
+  );
 
-  const zerodhaConnection = zerodhaConnectionQuery.data;
-  const callbackUrl = useMemo(() => {
-    if (typeof window === "undefined") return "/admin/data-provider/callback";
-    return `${window.location.origin}/admin/data-provider/callback`;
-  }, []);
-
-  const handleConnect = () => {
-    connectUrlMutation.mutate(undefined, {
-      onSuccess: ({ url }) => {
-        window.location.href = url;
-      },
-    });
-  };
-
-  const handleSync = () => syncMutation.mutate({ exchange: "NSE" });
-  const handlePriceRefresh = () => priceRefreshMutation.mutate({ exchange: "NSE" });
   const handleSectorClassificationSync = () => sectorClassificationMutation.mutate();
-  const handleIndexSync = () => indexSyncMutation.mutate({ exchange: "NSE_IDX" });
-  const handleIndexBackfill = () => indexBackfillMutation.mutate({ exchange: "NSE_IDX" });
   const handleBseSync = () => bseSyncMutation.mutate({ exchange: "BSE" });
   const handleBseIndexSync = () => bseIndexSyncMutation.mutate({ exchange: "BSE_IDX" });
   const handleBsePriceRefresh = () => bsePriceRefreshMutation.mutate({ exchange: "BSE" });
   const handleBseIndexBackfill = () => bseIndexBackfillMutation.mutate({ exchange: "BSE_IDX" });
+  const handleConnectionCheck = () => {
+    void Promise.all([globalDatafeedsHealthQuery.refetch(), statusesQuery.refetch()]);
+  };
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-6">
-      <div>
-        <p className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Market Data
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-foreground">Data Providers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Control which market-data providers Stock Harvesting can use, and manage each
-          provider&apos;s connection.
-        </p>
+    <div className="flex w-full max-w-5xl flex-col gap-5">
+      <h1 className="text-2xl font-semibold text-foreground">Data Providers</h1>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ProviderStat icon={Zap} label="Enabled" value={`${enabledProviders.length} / ${providers.length}`} tone="amber" />
+        <ProviderStat
+          icon={Activity}
+          label="Production Feed"
+          value={globalDatafeedsHealthQuery.isFetching ? "Checking" : globalDatafeedsHealthQuery.data?.connected ? "Connected" : "Unavailable"}
+          tone={globalDatafeedsHealthQuery.isFetching ? "amber" : globalDatafeedsHealthQuery.data?.connected ? "green" : "rose"}
+        />
+        <ProviderStat
+          icon={Database}
+          label="Configured"
+          value={String(enabledProviders.filter((provider) => provider.configured).length)}
+          tone="violet"
+        />
+        <ProviderStat
+          icon={Clock3}
+          label="Last Success"
+          value={formatRelativeTime(globalDatafeedsSettings?.lastSuccessAt ?? null)}
+          tone="cyan"
+        />
       </div>
 
       {settingsQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <div className="grid min-h-72 place-items-center"><Spinner size="lg" className="text-primary" /></div>
       ) : settingsQuery.isError ? (
         <p className="text-sm text-danger">Couldn&apos;t load data providers.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
                 <TableHead>Provider</TableHead>
                 <TableHead>Enabled</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Configuration</TableHead>
-                <TableHead>Health</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Last success</TableHead>
+                <TableHead className="w-16 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {providers.map((provider) => (
-                <ProviderRow key={provider.key} provider={provider} />
+                <ProviderRow
+                  key={provider.key}
+                  provider={provider}
+                  status={statusesQuery.data?.providers.find((entry) => entry.provider === provider.key)}
+                  health={provider.key === "global-datafeeds" ? globalDatafeedsHealthQuery.data : undefined}
+                  healthLoading={provider.key === "global-datafeeds" && globalDatafeedsHealthQuery.isFetching}
+                  healthError={provider.key === "global-datafeeds" && globalDatafeedsHealthQuery.isError}
+                  onCheckConnection={handleConnectionCheck}
+                  onSyncBse={handleBseSync}
+                  onSyncBsePrices={handleBsePriceRefresh}
+                  onSyncBseIndices={handleBseIndexSync}
+                  onBackfillIndices={handleBseIndexBackfill}
+                  onSyncSectors={handleSectorClassificationSync}
+                  actionsPending={
+                    bseSyncMutation.isPending ||
+                    bsePriceRefreshMutation.isPending ||
+                    bseIndexSyncMutation.isPending ||
+                    bseIndexBackfillMutation.isPending ||
+                    sectorClassificationMutation.isPending
+                  }
+                  activeJobTypes={activeJobTypes}
+                />
               ))}
             </TableBody>
           </Table>
         </div>
       )}
 
-      <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Database className="size-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-semibold text-foreground">Zerodha Kite</h2>
-                <ConnectionBadge
-                  loading={zerodhaConnectionQuery.isLoading}
-                  connected={zerodhaConnection?.connected ?? false}
-                  status={zerodhaConnection?.status}
-                />
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                NSE market data uses this connection. Provider tokens are stored encrypted on
-                the backend.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={zerodhaConnectionQuery.isFetching}
-              onClick={() => void zerodhaConnectionQuery.refetch()}
-            >
-              <RefreshCw className="size-3.5" />
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!zerodhaConnection?.connected || syncMutation.isPending}
-              onClick={handleSync}
-            >
-              {syncMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync NSE
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!zerodhaConnection?.connected || priceRefreshMutation.isPending}
-              onClick={handlePriceRefresh}
-              title="Refresh latest close/change%/volume for every known NSE instrument, without re-syncing instrument metadata"
-            >
-              {priceRefreshMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync all prices
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!zerodhaConnection?.connected || indexSyncMutation.isPending}
-              onClick={handleIndexSync}
-              title="Sync NSE indices (NIFTY AUTO, BANKNIFTY, NIFTY IT, ...) as instruments, filtered out of the regular equity sync - run this before Backfill Index History"
-            >
-              {indexSyncMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync Indices
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!zerodhaConnection?.connected || indexBackfillMutation.isPending}
-              onClick={handleIndexBackfill}
-              title="Backfill full price history for every synced NSE index - needed before the dashboard's Index Harvest box has real data"
-            >
-              {indexBackfillMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Backfill Index History
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="gap-1.5"
-              disabled={
-                zerodhaConnectionQuery.isLoading ||
-                connectUrlMutation.isPending ||
-                zerodhaConnection?.providerConfigured === false
-              }
-              onClick={handleConnect}
-            >
-              {connectUrlMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <ExternalLink className="size-3.5" />
-              )}
-              {zerodhaConnection?.connected ? "Reconnect" : "Connect Zerodha"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <StatusRow
-            label="Provider config"
-            value={providerConfigValue({
-              isLoading: zerodhaConnectionQuery.isLoading,
-              isError: zerodhaConnectionQuery.isError,
-              providerConfigured: zerodhaConnection?.providerConfigured,
-            })}
-          />
-          <StatusRow
-            label="Connection"
-            value={
-              zerodhaConnectionQuery.isLoading
-                ? "Checking..."
-                : zerodhaConnectionQuery.isError && !zerodhaConnection
-                  ? "Unable to check"
-                  : zerodhaConnection?.connected
-                    ? "Connected"
-                    : "Not connected"
-            }
-          />
-          <StatusRow
-            label="Last synced"
-            value={
-              zerodhaConnection?.lastSyncedAt
-                ? new Date(zerodhaConnection.lastSyncedAt).toLocaleString()
-                : "Not synced yet"
-            }
-          />
-          <StatusRow label="Callback URL" value={callbackUrl} />
-        </div>
-
-        {zerodhaConnection?.errorMessage ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {zerodhaConnection.errorMessage}
-          </div>
-        ) : null}
-        {zerodhaConnection?.providerConfigured === false ? (
-          <div className="mt-4 rounded-lg border border-border bg-background/70 px-3 py-2 text-sm text-muted-foreground">
-            Add `ZERODHA_API_KEY` and `ZERODHA_API_SECRET` in backend env, then restart the
-            backend.
-          </div>
-        ) : null}
-        {connectUrlMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            Could not create Kite login URL. Check backend env and admin session.
-          </div>
-        ) : null}
-        {syncMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            NSE instrument sync started.
-          </div>
-        ) : null}
-        {syncMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            NSE instrument sync failed. Check the backend log for the provider message.
-          </div>
-        ) : null}
-        {priceRefreshMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            Price refresh started for every known NSE instrument. This can take a while for
-            the full market - check Jobs for progress.
-          </div>
-        ) : null}
-        {priceRefreshMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            Price refresh failed to start. Check the backend log for the provider message.
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Database className="size-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-semibold text-foreground">
-                  GlobalDataFeeds (BSE)
-                </h2>
-                <ConnectionBadge
-                  loading={globalDatafeedsHealthQuery.isLoading}
-                  isError={globalDatafeedsHealthQuery.isError}
-                  connected={globalDatafeedsHealthQuery.data?.connected ?? false}
-                  status={globalDatafeedsHealthQuery.data?.status}
-                />
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                BSE market data and indices use this connection. No OAuth required - just the
-                API keys already configured in backend env.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!globalDatafeedsStatus?.connected || bseSyncMutation.isPending}
-              onClick={handleBseSync}
-              title="Sync BSE equity instruments from GlobalDataFeeds"
-            >
-              {bseSyncMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync BSE
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!globalDatafeedsStatus?.connected || bsePriceRefreshMutation.isPending}
-              onClick={handleBsePriceRefresh}
-              title="Refresh latest close/change%/volume for every known BSE instrument"
-            >
-              {bsePriceRefreshMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync BSE Prices
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!globalDatafeedsStatus?.connected || bseIndexSyncMutation.isPending}
-              onClick={handleBseIndexSync}
-              title="Sync BSE indices as instruments - run before Backfill BSE Index History"
-            >
-              {bseIndexSyncMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Sync BSE Indices
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={!globalDatafeedsStatus?.connected || bseIndexBackfillMutation.isPending}
-              onClick={handleBseIndexBackfill}
-              title="Backfill full price history for every synced BSE index - needed before the BSE dashboard's Index Harvest box has real data"
-            >
-              {bseIndexBackfillMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              Backfill BSE Index History
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/50 px-3 py-3">
-          <div className="min-w-55 flex-1">
-            <p className="text-sm font-medium text-foreground">Sector &amp; industry classification</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Powered by GlobalDataFeeds Fundamentals. One pass classifies both NSE and BSE
-              instruments and repopulates the &quot;BSE - Classified Universe&quot; dashboard
-              segment. Not tied to any single exchange feed.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={sectorClassificationMutation.isPending}
-            onClick={handleSectorClassificationSync}
-            title="Pull real sector/industry classification from GlobalDataFeeds Fundamentals and match it onto NSE and BSE instruments"
-          >
-            {sectorClassificationMutation.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="size-3.5" />
-            )}
-            Sync Sector Data
-          </Button>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <StatusRow
-            label="Provider config"
-            value={providerConfigValue({
-              isLoading: statusesQuery.isLoading,
-              isError: statusesQuery.isError,
-              providerConfigured: globalDatafeedsStatus?.providerConfigured,
-            })}
-          />
-          <StatusRow
-            label="Health"
-            value={providerHealthValue(globalDatafeedsHealthQuery)}
-          />
-          <StatusRow
-            label="Last synced"
-            value={
-              globalDatafeedsStatus?.lastSyncedAt
-                ? new Date(globalDatafeedsStatus.lastSyncedAt).toLocaleString()
-                : "Not synced yet"
-            }
-          />
-        </div>
-
-        {globalDatafeedsHealthQuery.data?.errorMessage ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {globalDatafeedsHealthQuery.data.errorMessage}
-          </div>
-        ) : null}
-        {sectorClassificationMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            Sector data sync started. It classifies NSE and BSE instruments in one pass - check
-            Jobs for progress.
-          </div>
-        ) : null}
-        {sectorClassificationMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            Sector data sync failed to start. Check the backend log for the provider message.
-          </div>
-        ) : null}
-        {bseSyncMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            BSE instrument sync started.
-          </div>
-        ) : null}
-        {bseSyncMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            BSE instrument sync failed. Check the backend log for the provider message.
-          </div>
-        ) : null}
-        {bsePriceRefreshMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            BSE price refresh started.
-          </div>
-        ) : null}
-        {bsePriceRefreshMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            BSE price refresh failed to start. Check the backend log for the provider message.
-          </div>
-        ) : null}
-        {bseIndexSyncMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            BSE index sync started.
-          </div>
-        ) : null}
-        {bseIndexSyncMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            BSE index sync failed. Check the backend log for the provider message.
-          </div>
-        ) : null}
-        {bseIndexBackfillMutation.isSuccess ? (
-          <div className="mt-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-            BSE index history backfill started.
-          </div>
-        ) : null}
-        {bseIndexBackfillMutation.isError ? (
-          <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            BSE index history backfill failed to start. Check the backend log for the
-            provider message.
-          </div>
-        ) : null}
-      </section>
-
-      <EodhdSection
-        status={eodhdStatus}
-        loading={statusesQuery.isLoading}
-        isError={statusesQuery.isError}
-      />
     </div>
   );
 }
 
-function EodhdSection({
+function ProviderRow({
+  provider,
   status,
-  loading,
-  isError,
+  health,
+  healthLoading,
+  healthError,
+  onCheckConnection,
+  onSyncBse,
+  onSyncBsePrices,
+  onSyncBseIndices,
+  onBackfillIndices,
+  onSyncSectors,
+  actionsPending,
+  activeJobTypes,
 }: {
-  status: AdminDataProviderStatusEntry | undefined;
-  loading: boolean;
-  isError: boolean;
+  provider: AdminDataProviderSettingsRow;
+  status?: AdminDataProviderStatusEntry;
+  health?: AdminDataProviderHealthResult;
+  healthLoading: boolean;
+  healthError: boolean;
+  onCheckConnection: () => void;
+  onSyncBse: () => void;
+  onSyncBsePrices: () => void;
+  onSyncBseIndices: () => void;
+  onBackfillIndices: () => void;
+  onSyncSectors: () => void;
+  actionsPending: boolean;
+  activeJobTypes: Set<string>;
 }) {
-  // External health loads independently of the local status props above, so a
-  // slow/failing EODHD check never delays "Provider config" / "Last synced".
-  const healthQuery = useAdminDataProviderHealth("eodhd");
-
-  return (
-    <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Database className="size-5" />
-        </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground">EODHD</h2>
-            <ConnectionBadge
-              loading={healthQuery.isLoading}
-              isError={healthQuery.isError}
-              connected={healthQuery.data?.connected ?? false}
-              status={healthQuery.data?.status}
-            />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Default fallback for exchanges outside NSE/BSE - used automatically, no manual
-            sync action required.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <StatusRow
-          label="Provider config"
-          value={providerConfigValue({
-            isLoading: loading,
-            isError,
-            providerConfigured: status?.providerConfigured,
-          })}
-        />
-        <StatusRow label="Health" value={providerHealthValue(healthQuery)} />
-        <StatusRow
-          label="Last synced"
-          value={status?.lastSyncedAt ? new Date(status.lastSyncedAt).toLocaleString() : "Not synced yet"}
-        />
-      </div>
-
-      {healthQuery.data?.errorMessage ? (
-        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {healthQuery.data.errorMessage}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function ProviderRow({ provider }: { provider: AdminDataProviderSettingsRow }) {
   const updateSettings = useUpdateAdminDataProviderSettings();
   const [confirmingDisable, setConfirmingDisable] = useState(false);
   const [priorityDraft, setPriorityDraft] = useState(String(provider.priority));
+  const [editingPriority, setEditingPriority] = useState(false);
 
   const handleToggle = (nextEnabled: boolean) => {
     if (!nextEnabled) {
@@ -661,9 +239,11 @@ function ProviderRow({ provider }: { provider: AdminDataProviderSettingsRow }) {
     const parsed = Number(priorityDraft);
     if (!Number.isFinite(parsed) || parsed === provider.priority) {
       setPriorityDraft(String(provider.priority));
+      setEditingPriority(false);
       return;
     }
     updateSettings.mutate({ key: provider.key, priority: Math.round(parsed) });
+    setEditingPriority(false);
   };
 
   return (
@@ -671,24 +251,14 @@ function ProviderRow({ provider }: { provider: AdminDataProviderSettingsRow }) {
       <TableRow>
         <TableCell>
           <div className="font-semibold text-foreground">{provider.displayName}</div>
-          <div className="mt-0.5 flex flex-wrap gap-1">
-            {provider.capabilities.map((capability) => (
-              <span
-                key={capability}
-                className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[0.625rem] text-muted-foreground"
-              >
-                {CAPABILITY_LABELS[capability] ?? capability}
-              </span>
-            ))}
-          </div>
           {provider.disabledReason && (
             <div className="mt-1 text-xs text-muted-foreground">
               Reason: {provider.disabledReason}
             </div>
           )}
-          {provider.lastError && (
-            <div className="mt-1 max-w-xs truncate text-xs text-danger" title={provider.lastError}>
-              {provider.lastError}
+          {(health?.errorMessage ?? (!health && provider.health === "error" ? provider.lastError : null)) && (
+            <div className="mt-1 max-w-xs truncate text-xs text-danger" title={health?.errorMessage ?? provider.lastError ?? undefined}>
+              {health?.errorMessage ?? provider.lastError}
             </div>
           )}
         </TableCell>
@@ -700,23 +270,39 @@ function ProviderRow({ provider }: { provider: AdminDataProviderSettingsRow }) {
           />
         </TableCell>
         <TableCell>
-          <Input
-            value={priorityDraft}
-            onChange={(event) => setPriorityDraft(event.target.value)}
-            onBlur={commitPriority}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-            }}
-            inputMode="numeric"
-            className="h-8 w-16 text-center text-sm"
-          />
+          {editingPriority ? (
+            <Input
+              autoFocus
+              value={priorityDraft}
+              onChange={(event) => setPriorityDraft(event.target.value)}
+              onBlur={commitPriority}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") {
+                  setPriorityDraft(String(provider.priority));
+                  setEditingPriority(false);
+                }
+              }}
+              inputMode="numeric"
+              className="h-8 w-16 text-center text-sm"
+            />
+          ) : (
+            <button
+              type="button"
+              className="h-8 min-w-10 rounded-md px-2 text-sm tabular-nums text-foreground hover:bg-muted"
+              onClick={() => setEditingPriority(true)}
+              aria-label={`Edit priority for ${provider.displayName}`}
+            >
+              {provider.priority}
+            </button>
+          )}
         </TableCell>
         <TableCell>
           <Badge
             variant="outline"
             className={
               provider.configured
-                ? "border-primary/30 bg-primary/10 text-primary"
+                ? "border-success/35 bg-success/12 text-success"
                 : "border-border bg-muted text-muted-foreground"
             }
           >
@@ -724,12 +310,44 @@ function ProviderRow({ provider }: { provider: AdminDataProviderSettingsRow }) {
           </Badge>
         </TableCell>
         <TableCell>
-          <Badge variant="outline" className={healthBadgeClassName(provider.health)}>
-            {healthLabel(provider.health)}
-          </Badge>
+          {provider.enabled ? (
+            <ConnectionBadge
+              loading={healthLoading}
+              connected={health?.connected ?? status?.connected ?? false}
+              status={health?.status ?? (status?.connected ? "connected" : "disconnected")}
+              isError={healthError}
+            />
+          ) : <span className="text-sm text-muted-foreground">-</span>}
         </TableCell>
         <TableCell className="text-sm text-muted-foreground">
           {formatRelativeTime(provider.lastSuccessAt)}
+        </TableCell>
+        <TableCell className="text-right">
+          {provider.enabled && provider.key === "global-datafeeds" ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label={`Actions for ${provider.displayName}`}>
+                    {actionsPending ? <Loader2 className="size-4 animate-spin" /> : <Settings2 className="size-4" />}
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Provider actions</DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <ProviderActionItem label="Check connection" onClick={onCheckConnection} disabled={healthLoading} />
+                <DropdownMenuSeparator />
+                <ProviderActionItem label="Sync BSE instruments" onClick={onSyncBse} disabled={actionsPending || !status?.connected || activeJobTypes.has("market-data.instrument-sync")} />
+                <ProviderActionItem label="Sync BSE prices" onClick={onSyncBsePrices} disabled={actionsPending || !status?.connected || activeJobTypes.has("market-data.price-refresh")} />
+                <ProviderActionItem label="Sync BSE indices" onClick={onSyncBseIndices} disabled={actionsPending || !status?.connected || activeJobTypes.has("market-data.instrument-sync")} />
+                <ProviderActionItem label="Backfill index history" onClick={onBackfillIndices} disabled={actionsPending || !status?.connected || activeJobTypes.has("market-data.index-candle-backfill")} />
+                <DropdownMenuSeparator />
+                <ProviderActionItem label="Sync sector data" onClick={onSyncSectors} disabled={actionsPending || activeJobTypes.has("market-data.sector-classification-sync")} />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </TableCell>
       </TableRow>
 
@@ -813,48 +431,51 @@ function ConnectionBadge({
   );
 }
 
-// "Provider config" reflects local backend env/config presence only. It must
-// resolve to a deterministic string: "Checking..." only while the very first
-// request is in flight, "Unable to check" once that request has failed (so the
-// row never sits on "Checking..." forever), otherwise Configured / Missing.
-// Stale data from an earlier successful fetch still wins over "Unable to check".
-function providerConfigValue({
-  isLoading,
-  isError,
-  providerConfigured,
+function ProviderActionItem({
+  label,
+  onClick,
+  disabled,
 }: {
-  isLoading: boolean;
-  isError: boolean;
-  providerConfigured: boolean | undefined;
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
 }) {
-  if (providerConfigured === undefined) {
-    if (isError) return "Unable to check";
-    if (isLoading) return "Checking...";
-    return "Unknown";
-  }
-  return providerConfigured ? "Configured" : "Missing env keys";
-}
-
-// The independent external-health query for a provider card. "Checking..."
-// only while that background request is in flight; a failed request (or an
-// adapter check that timed out server-side) resolves to a deterministic
-// non-pending label so the row never sticks.
-function providerHealthValue(query: {
-  isLoading: boolean;
-  isError: boolean;
-  data: AdminDataProviderHealthResult | undefined;
-}) {
-  if (query.isLoading) return "Checking...";
-  if (query.isError || !query.data) return "Unknown";
-  if (query.data.status === "error") return "Error";
-  return query.data.connected ? "Healthy" : "Unknown";
-}
-
-function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-background/60 px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 break-words text-sm font-semibold text-foreground">{value}</div>
+    <DropdownMenuItem disabled={disabled} onClick={onClick} className="gap-2">
+      <RefreshCw className="size-3.5" />
+      {label}
+    </DropdownMenuItem>
+  );
+}
+
+const PROVIDER_STAT_TONES = {
+  amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  cyan: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+} as const;
+
+function ProviderStat({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  tone: keyof typeof PROVIDER_STAT_TONES;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3">
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", PROVIDER_STAT_TONES[tone])}>
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-muted-foreground">{label}</span>
+        <span className="block truncate text-base font-semibold text-foreground">{value}</span>
+      </span>
     </div>
   );
 }

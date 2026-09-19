@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -106,20 +105,13 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {step === "upload" && "Import constituents"}
             {step === "preview" && "Dry-run preview"}
             {step === "result" && "Import complete"}
           </DialogTitle>
-          <DialogDescription>
-            {step === "upload" &&
-              "Upload a CSV of constituent symbols. First column is used; a header row is auto-detected."}
-            {step === "preview" &&
-              "Review the changes below before confirming. Nothing has been applied yet."}
-            {step === "result" && "Membership has been synchronized."}
-          </DialogDescription>
         </DialogHeader>
 
         {step === "upload" && (
@@ -147,11 +139,6 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
                 value={effectiveFrom}
                 onChange={(event) => setEffectiveFrom(event.target.value)}
               />
-              <p className="text-[0.6875rem] text-muted-foreground">
-                The date this constituent list becomes authoritative for historical backtesting. Confirming
-                the import creates an immutable membership snapshot dated here — it can never be silently
-                overwritten by a later upload.
-              </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -161,7 +148,7 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
               <Input
                 value={sourceName}
                 onChange={(event) => setSourceName(event.target.value)}
-                placeholder="e.g. NSE indices CSV"
+                placeholder="e.g. index constituents CSV"
               />
             </div>
 
@@ -187,8 +174,7 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
         {step === "preview" && previewReport && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-muted-foreground">
-              Effective from <span className="font-medium text-foreground">{effectiveFrom}</span> — confirming
-              will create a new immutable membership version dated here.
+              Effective from <span className="font-medium text-foreground">{effectiveFrom}</span>
             </p>
             <AdminCollectionImportReportView report={previewReport} />
           </div>
@@ -205,14 +191,12 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
               <div className="flex flex-col gap-1 rounded-lg border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary">
                 {resultReport.invalidatedCurrentMembershipRuns > 0 && (
                   <p>
-                    Active membership changed — the current-membership backtest ({resultReport.invalidatedCurrentMembershipRuns}{" "}
-                    week(s)) was invalidated and needs regenerating below.
+                    Regenerate the current backtest ({resultReport.invalidatedCurrentMembershipRuns} week(s)).
                   </p>
                 )}
                 {resultReport.invalidatedHistoricalWeeks.length > 0 && (
                   <p>
-                    {resultReport.invalidatedHistoricalWeeks.length} historical-membership week(s) fell inside this
-                    version&apos;s window and were invalidated — rebuild historical backtest below.
+                    Rebuild {resultReport.invalidatedHistoricalWeeks.length} historical week(s).
                   </p>
                 )}
               </div>
@@ -238,7 +222,7 @@ export function AdminCollectionImportDialog({ collectionId }: { collectionId: st
               {previewMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : null}
-              Run dry-run preview
+              Preview
             </Button>
           )}
 

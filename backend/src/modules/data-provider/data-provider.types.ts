@@ -18,7 +18,7 @@ export type ProviderHealthStatus = Pick<
 
 // Local/DB-derived provider status only - resolves without ANY external
 // provider request. `connected`/`status` are DB-derived for OAuth providers
-// (Zerodha's stored connection row + token expiry); for non-OAuth providers
+// (a stored connection row + token expiry - no provider uses this today); for non-OAuth providers
 // they mirror `providerConfigured` (there is no connection concept - real
 // reachability comes from the separate health check). See getProviderHealth
 // for the external `adapter.checkConnection()` path.
@@ -48,6 +48,16 @@ export type ProviderDailyCandle = {
 
 export type ProviderSymbolDailyCandle = ProviderDailyCandle & {
   symbol: string;
+};
+
+export type ProviderSymbolSnapshot = {
+  symbol: string;
+  tradeTime: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
 };
 
 export type ProviderInstrument = {
@@ -97,4 +107,9 @@ export interface DataProviderAdapter {
     symbols?: string[];
     exchangeCode?: string;
   }): Promise<ProviderSymbolDailyCandle[]>;
+  fetchDelayedSnapshot?(input: {
+    accessToken?: string;
+    symbols: string[];
+    exchangeCode?: string;
+  }): Promise<ProviderSymbolSnapshot[]>;
 }

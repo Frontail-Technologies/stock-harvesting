@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import type { AdminAdPlacement, MonetizationMode } from "../../types";
 import {
@@ -145,24 +146,16 @@ export function AdminMonetizationPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-5">
-      <div>
-        <p className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Monetization
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-foreground">Ads</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Control where advertising appears across Stock Harvesting.
-        </p>
-      </div>
+    <div className="flex w-full flex-col gap-4">
+      <h1 className="text-2xl font-semibold text-foreground">Ads</h1>
 
       {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <div className="grid min-h-72 place-items-center"><Spinner size="lg" className="text-primary" /></div>
       ) : query.isError ? (
         <p className="text-sm text-danger">Couldn&apos;t load monetization settings.</p>
       ) : (
-        <div className="flex max-w-3xl flex-col gap-4">
-          <section className="rounded-lg border border-border bg-card p-5">
+        <div className="grid max-w-5xl gap-3 lg:grid-cols-2">
+          <section className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Megaphone className="size-4 text-muted-foreground" />
@@ -173,7 +166,7 @@ export function AdminMonetizationPage() {
               </Badge>
             </div>
 
-            <div className="mt-4 flex flex-col gap-1.5">
+            <div className="mt-3 flex flex-col gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Mode</span>
               <Select
                 value={mode}
@@ -199,9 +192,9 @@ export function AdminMonetizationPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-5">
+          <section className="rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold text-foreground">AdSense configuration</h2>
-            <div className="mt-4 flex flex-col gap-1.5">
+            <div className="mt-3 flex flex-col gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Publisher ID</span>
               <Input
                 value={publisherId}
@@ -216,16 +209,16 @@ export function AdminMonetizationPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-5">
+          <section className="rounded-lg border border-border bg-card p-4 lg:col-span-2">
             <h2 className="text-sm font-semibold text-foreground">Placements</h2>
-            <div className="mt-4 flex flex-col divide-y divide-border">
+            <div className="mt-2 grid gap-x-6 sm:grid-cols-2">
               {placements.map((placement) => {
                 const draft = effectivePlacement(placement);
                 const status = getPlacementStatus(mode, publisherId.trim() || null, draft.enabled, draft.slotId.trim() || null);
                 const slotError = placementSlotErrors[placement.key];
 
                 return (
-                  <div key={placement.key} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+                  <div key={placement.key} className="flex flex-col gap-2 border-b border-border py-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="text-sm font-semibold text-foreground">{placement.label}</div>
@@ -266,7 +259,7 @@ export function AdminMonetizationPage() {
             </div>
           </section>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 lg:col-span-2">
             <Button
               type="button"
               className="gap-1.5"

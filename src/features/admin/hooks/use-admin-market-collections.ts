@@ -208,6 +208,7 @@ export function useGenerateAdminWeeklyStrongBacktest() {
   return useMutation({
     mutationFn: generateAdminWeeklyStrongBacktest,
     onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.marketCollections.admin.weeklyStrongBacktestStatus(variables.id),
       });
@@ -234,6 +235,7 @@ export function useRebuildAdminWeeklyStrongBacktestHistorical() {
   return useMutation({
     mutationFn: rebuildAdminWeeklyStrongBacktestHistorical,
     onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.jobs });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.marketCollections.admin.weeklyStrongBacktestHistoricalStatus(variables.id),
       });

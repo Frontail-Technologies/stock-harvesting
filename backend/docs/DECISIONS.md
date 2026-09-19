@@ -10,6 +10,24 @@ Each entry stays until explicitly superseded by a new dated entry.
 - 2026-09-12 — BSE is the target market.
 - 2026-09-12 — Zerodha should be removed.
 - 2026-09-12 — NSE-specific functionality should be removed.
+- 2026-09-19 — Zerodha market-data integration retired. GlobalDataFeeds
+  delayed APIs are the sole production market-data source (GetHistory =
+  canonical daily candles, GetSnapshot = current-day provisional candle,
+  SubscribeSnapshot = passive current-day updates). Removed: Zerodha
+  adapter, Kite market-stream provider, OAuth connect-url/connect admin
+  endpoints and callback page, NSE/NSE_IDX provider routing,
+  `ZERODHA_*` and `DATA_PROVIDER` env vars. NSE and NSE_IDX now resolve
+  to no provider (never a fallback) and are never advertised. DB columns
+  and historical rows (`instruments.provider = 'zerodha'`,
+  `data_provider_settings`/`data_provider_connections` rows) are retained
+  untouched - no destructive migration. `instruments.instrument_token` is
+  provider-generic (GlobalDataFeeds uses it too) and stays.
+- 2026-09-19 — The production instrument universe is one definition:
+  active instruments stamped with their exchange's routed provider
+  (`activeUniverseFilter`), on an exchange whose provider is enabled and
+  configured. No hardcoded exchange or stock lists; legacy rows stay as
+  history and never match. Instrument discovery additionally covers
+  GlobalDataFeeds-configured exchanges so a new exchange can be populated.
 - 2026-09-12 — Fewer DB tables/schemas are preferred over more.
 - 2026-09-12 — Drizzle is the default DB access approach.
 - 2026-09-12 — Zero explanatory comments in touched production code
@@ -582,3 +600,211 @@ Each entry stays until explicitly superseded by a new dated entry.
   unconfigured-in-dev-is-a-no-op / required-in-production behavior as the
   webhook it replaced. One shared `sendEmail` helper now backs both
   `sendRegistrationOtpEmail` and `sendPasswordResetEmail`.
+- 2026-09-15 — Phase 4C: the daily candle sync schedule is three fires a
+  day, not two - morning `40 9 * * 1-5` IST (repair before the session
+  continues), post-market `50 15 * * 1-5` IST (was `45 15`, moved 5
+  minutes later per explicit request), retry `0 17 * * 1-5` IST
+  (unchanged). All three call the exact same
+  `syncDailyCandlesForActiveInstruments`/`refreshDailyCandles`
+  (Phase 4A) - the 5-day incremental overlap and 35-day repair window are
+  unchanged, and no second sync algorithm was introduced.
+- 2026-09-15 — Durable job-run history for scheduled market-data jobs did
+  not exist before this phase: `sync_jobs` only ever gets a row when an
+  admin-triggered action explicitly passes a `syncJobId` in the job data,
+  which the repeatable cron jobs never did. A new, small
+  `background_job_runs` table was added (one row per run, not per symbol)
+  rather than extending `sync_jobs` with candle-sync-specific count
+  columns that would be meaningless for `sync_jobs`' other job types
+  (weekly-strong backfill, collection prepare, etc).
+- 2026-09-15 — `background_job_runs.status` is `running` ->
+  `completed`/`partial`/`failed`. `partial` means the run itself executed
+  and produced isolated per-symbol failures (including the edge case of
+  every symbol failing - the run still executed); `failed` is reserved for
+  the wrapper's own catch block, when the job function throws before
+  producing any summary at all (e.g. a DB connection loss).
+- 2026-09-15 — Chart ensure-fresh (self-heal and manual refresh) is
+  tracked in the same `background_job_runs` table, but only when an
+  actual provider refresh executed or failed. `already-current`,
+  `bootstrap-required`, and `provider-empty` never call the provider (or,
+  for bootstrap-required, deliberately skip the call) and are never
+  persisted - a normal chart open must not spam this table. One shared
+  gate, `recordChartEnsureFreshResultIfNeeded`, is used by both the BullMQ
+  worker job path and the in-memory single-instance fallback path (the
+  fallback this sandbox's unreachable-but-configured Redis actually
+  exercises), so tracking doesn't silently disappear depending on which
+  path is active.
+- 2026-09-15 — Worker heartbeat is Redis-only, reusing the existing
+  `market-data` BullMQ queue's own Redis connection
+  (`Queue.client`/`Worker.client`, both already-existing BullMQ
+  properties) - no new Redis client dependency, no DB heartbeat row. The
+  worker writes `{startedAt, lastHeartbeat}` every 20s with a 90s Redis
+  TTL. Online/offline is decided by an explicit timestamp comparison in
+  the reader (`lastHeartbeat` within 90s), not solely by whether the
+  Redis key still exists - this makes staleness a genuine, testable rule
+  rather than an implicit side effect of Redis key expiry timing.
+- 2026-09-15 — Data health (`getMarketDataHealth`) is DB-only, computed
+  from `instruments.latestPriceAt` (already maintained by every candle
+  write path via `refreshLatestInstrumentStats`/`getLatestStockStats` as
+  "this instrument's latest stored 1D candle date," confirmed by reading
+  both functions) compared against `getLatestExpectedTradingDay`. No join
+  against `candles`, no provider call. This intentionally only detects
+  "is the latest candle current," not every historical middle gap -
+  Phase 4A's scheduled repair already owns closing recent gaps.
+- 2026-09-15 — The previously-stub `/admin/jobs` route (a bare redirect to
+  `/admin/users`, not linked from the sidebar at all) is reused as the new
+  "Market Data / Workers" admin page rather than creating a new route -
+  it was already reserved for exactly this purpose and unused.
+- 2026-09-15 — Manual chart Refresh reuses the existing
+  `POST /market-data/candles/ensure-fresh` endpoint and its existing
+  BullMQ-job-id dedupe (Phase 4B) verbatim - no new backend endpoint for
+  the button, no market-wide manual trigger added (out of this phase's
+  explicit scope: single-symbol only).
+- 2026-09-15 — Found and fixed a real regression in the chart-open
+  self-heal path: `useCandles`'s `queryFn` called `ensureFreshCandles(...)`
+  without awaiting it, then immediately fetched and returned candles from
+  `getCandles(...)`, discarding the ensure-fresh result entirely. The
+  ensure-fresh request and the backend repair both genuinely executed;
+  nothing in the frontend ever consumed the result or invalidated the
+  candle query, so a chart open never rendered the repaired data without
+  a separate, unrelated page reload. This directly explains
+  "only updates after a manual refresh" reports, and contradicts what
+  `docs/PROGRESS.md`'s own prior Phase 4B entry described as already
+  fixed. Fixed by awaiting `ensureFreshCandles(...)` before
+  `getCandles(...)`, restoring the single-request-lifecycle design that
+  was originally intended.
+- 2026-09-15 — Found and fixed a second real bug during this phase's own
+  live verification: `getMarketDataQueueRedisClient` awaited BullMQ's
+  `queue.client` with no bound. Against a Redis that is configured but
+  unreachable (this sandbox's actual state, and a plausible production
+  degraded state), that await hangs indefinitely rather than resolving to
+  "queue unavailable." Bounded with the same 3s timeout-race pattern this
+  file already uses for `addJobWithTimeout` - the failure path this was
+  missing already existed and already degrades to an `offline` worker
+  status; the fix only makes sure that path is actually reached instead
+  of hanging first.
+- 2026-09-16 — Phase 4D: WebSocket infrastructure is not duplicated - the
+  existing raw `ws` gateway (`market-stream` module, `/ws/market`) is
+  reused for admin job/worker events and chart symbol-refresh
+  notifications alike, not a second Socket.IO/WS server. `ioredis` is
+  added as an explicit dependency (it already existed nested under
+  `bullmq` but was not directly importable) specifically because Redis
+  pub/sub requires a dedicated subscriber connection that cannot also run
+  BullMQ's own queue commands.
+- 2026-09-16 — The worker process and the API process communicate job/
+  worker-status events via Redis pub/sub (`modules/jobs/realtime-events.ts`),
+  never a process-local EventEmitter alone - a worker-only signal would
+  never reach the API process's WS clients otherwise. The API process's
+  own in-memory ensure-fresh fallback (used when Redis is unreachable for
+  BullMQ) also publishes through this same path when it can, so there is
+  one event-emission code path regardless of which process performed the
+  repair.
+- 2026-09-16 — The market-stream gateway's WebSocket auth previously
+  verified only the USER-portal token audience - an admin-portal access
+  token could never authenticate on `/ws/market` at all. This phase adds
+  a second verification attempt against the ADMIN-portal audience before
+  falling back to the USER-portal one (unchanged for existing chart
+  clients), and records which portal a connection authenticated under -
+  required so `admin.subscribe` can check portal AND role together
+  (mirroring `requireAdminAuth`+`requireAdmin`'s existing combined check
+  used elsewhere), never role alone.
+- 2026-09-16 — Admin operational events (job lifecycle, worker status) are
+  fanned out only to sockets that explicitly sent `admin.subscribe` and
+  passed the portal+role check - never broadcast to all connected
+  clients. Chart symbol-refresh events reuse the existing exchange+symbol
+  live-tick subscription matching already in the hub - no new per-symbol
+  room concept was introduced for that case, since the existing
+  mechanism already provides exactly the required scoping.
+- 2026-09-16 — Job-progress events are WebSocket-only and never persisted
+  - only `job-started` (on the existing `running` DB insert) and the
+  terminal `job-completed`/`job-failed` events are tied to a durable
+  `background_job_runs` write, and the terminal event is always published
+  strictly after that write commits, never before.
+- 2026-09-16 — `symbol-refreshed` is published only for `updated`/
+  `repaired` chart-refresh outcomes, reusing the exact gate Phase 4C
+  already built (`recordChartEnsureFreshResultIfNeeded`) for deciding
+  when a chart refresh is durable-history-worthy - an `already-current`
+  cache hit produces neither a DB row nor a WebSocket event.
+- 2026-09-16 — Phase 4D.1 process-boundary audit: the live market-stream
+  WebSocket provider, provisional current-day candle memory, chart WS
+  gateway, and current-day candle HTTP endpoint all run in the API
+  process (`server.ts`). The separate worker process handles background
+  jobs only. In-memory provisional candles are valid for the current
+  single API/WS deployment; Redis is only required if API/WS is later
+  split across multiple API processes or replicas.
+- 2026-09-16 — Found and fixed a real bug in `publishRealtimeEvent`:
+  resolving the Redis publisher client happened outside its own
+  try/catch, so a synchronous connection failure there rejected the
+  function's promise; every call site uses it fire-and-forget
+  (`void publishRealtimeEvent(...)`), making this a genuine unhandled-
+  rejection risk, reproduced live in this session via the existing
+  `market-data.chart-ensure-fresh.test.ts` suite. Fixed by wrapping the
+  whole function body in try/catch, so a publish failure can never
+  propagate to (or block) the caller, matching the explicit requirement
+  that WebSocket publishing must never make a successful candle refresh
+  fail.
+- 2026-09-16 — Phase 4D.2: root-caused why the live-stream current-day
+  capability had been observed returning "Function not enabled" against
+  our GlobalDataFeeds account (`market-stream.capabilities.ts`'s
+  cooldown tracking exists because of this). Confirmed against provider
+  documentation that our account holds GDF's 15-minute-**delayed**
+  entitlement, and that entitlement's WebSocket message types are
+  `GetSnapshot`/`SubscribeSnapshot`/`GetExchangeSnapshot` - distinct
+  message types from the full-realtime `GetLastQuote`/`SubscribeRealtime`
+  the code had been using, which our account is not entitled to. Fixed
+  by switching `GlobalDatafeedsMarketStreamProvider` from
+  `SubscribeRealtime` to `SubscribeSnapshot` (Periodicity MINUTE, Period
+  1) and adding a new `GetSnapshot`-based `fetchDelayedSnapshot` adapter
+  method (new `current_price_snapshot` provider capability) as the
+  primary current-day-price mechanism, with the passive stream state as
+  fallback. `GetHistory` (canonical daily candle sync) already used the
+  correct message type - GDF's own docs confirm delayed variants reuse
+  the identical `GetHistory` request/response shape, delay applied
+  server-side, so that path was left untouched.
+- 2026-09-16 — Live-verified during real BSE market hours (10:17 IST):
+  `GetSnapshot` for TCS/RELIANCE returned real OHLC with an observed
+  `LastTradeTime` delay of ~19 minutes versus request time, consistent
+  with the account's 15-minute-delayed entitlement (some extra latency
+  is expected from the 1-minute snapshot periodicity plus request/queue
+  time). `GetExchangeSnapshot` for BSE also succeeded, returning 1,627
+  instruments (including TCS/RELIANCE, correctly identifier-matched) in
+  a single request - materially fewer round trips than batching
+  `GetSnapshot` 25-at-a-time for a full-exchange refresh. Per the task's
+  explicit instruction this is a diagnostic finding only, not adopted -
+  whole-exchange refresh still uses the existing per-symbol
+  `GetHistory`/`GetSnapshot` paths. Recommended as a candidate for a
+  future phase, pending payload-size/rate-limit testing at full
+  ~5,800-instrument BSE universe scale (this diagnostic used the live
+  default response, not the full universe).
+- 2026-09-17 — Stock search (`symbol`/`name` `ILIKE '%q%'`) was slow because
+  a leading-wildcard ILIKE cannot use a plain B-tree index - confirmed via
+  `EXPLAIN` that it was a sequential scan. Added the `pg_trgm` extension
+  plus GIN trigram indexes on `instruments.symbol`/`instruments.name`
+  (`drizzle/0024_green_paladin.sql`) - `EXPLAIN` after the migration shows
+  a `Bitmap Index Scan` on the new index for the same query. A results
+  cache was considered instead (the user's original suggestion) but
+  rejected as the primary fix: it only helps repeated identical queries,
+  while the index fixes every query including first-time ones, with no
+  staleness risk. `searchChartEligibleBseStocks` (the navbar Ctrl+K
+  search) additionally got the same 20s in-memory `getOrSetCache` wrapper
+  `listStocks` already used - it previously had no caching layer at all
+  and also ran a correlated `EXISTS` subquery per matching row.
+- 2026-09-17 — Security audit found two real gaps in the IP-keyed rate
+  limiter (`shared/middleware/rate-limit.ts`, applied to auth/login/
+  registration/password-reset routes): (1) `app.ts` never called
+  `app.set("trust proxy", ...)`, so `req.ip` would resolve to the
+  reverse proxy's address (not the real client's) the moment this runs
+  behind any load balancer/CDN in production - collapsing every user
+  into one shared rate-limit bucket. Fixed by adding a `TRUST_PROXY_HOPS`
+  env var (default `0` - trust nothing, matching today's actual behavior
+  unchanged for local/undeployed setups) that must be set to the real
+  hop count in production; deliberately not guessed or hardcoded since
+  setting it wrong in the other direction (trusting a hop that doesn't
+  exist) lets clients spoof their own IP via X-Forwarded-For, which is
+  worse than the gap it fixes. (2) The limiter's in-memory bucket Map
+  had no eviction - every unique IP+email key seen stayed in memory for
+  the life of the process, unbounded. Fixed with the same periodic sweep
+  `shared/cache.ts` already uses (5-minute interval, unref'd). Also
+  confirmed: no application-level rate limiting exists outside auth
+  routes, and classic network-flood DDoS protection is out of scope for
+  application code (belongs at a CDN/WAF layer, which this repo has no
+  visibility into) - not something addressed by this fix.
