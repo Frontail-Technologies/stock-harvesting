@@ -177,15 +177,16 @@ function dateFilterValue(value: string | null) {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function StatCard({ icon: Icon, label, value, sub, tone }: {
+function StatCard({ icon: Icon, label, value, sub, tone, title }: {
   icon: LucideIcon;
   label: string;
   value: string;
   sub?: string;
   tone: keyof typeof STAT_TONES;
+  title?: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3">
+    <div title={title} className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3">
       <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-md", STAT_TONES[tone])}>
         <Icon className="size-4" />
       </span>
@@ -363,6 +364,11 @@ export function AdminMarketDataPage() {
         : `Refresh Weekly Strong backtests for every segment (${backtestTargets.map((item) => item.exchange).join(", ")}) through ${formatDate(expectedDate)}`;
   const lastFailedRun = runs.find((run) => run.failedCount > 0);
   const missingCount = operations?.coverage.reduce((total, item) => total + item.missing, 0) ?? 0;
+  const noHistoryCount = expectedCoverage.reduce((total, item) => total + (item.exempt ?? 0), 0);
+  const withDataCount = expectedCoverage.reduce((total, item) => total + item.completed, 0);
+  const coverageTitle = expectedDate
+    ? `${formatDate(expectedDate)} - With data: ${withDataCount} | No history: ${noHistoryCount} | Missing / failed: ${expectedCoverage.reduce((total, item) => total + item.missing, 0)}. No history: GlobalDataFeeds returned a successful empty historical response.`
+    : undefined;
   const attentionCount = missingCount || lastFailedRun?.failedCount || 0;
   const jobTypeOptions = [
     { value: "all", label: "All job types" },
@@ -460,7 +466,14 @@ export function AdminMarketDataPage() {
           icon={AlertTriangle}
           label="Needs attention"
           value={String(attentionCount)}
-          sub={missingCount > 0 ? "Missing candles" : "Latest run failures"}
+          sub={
+            missingCount > 0
+              ? `Missing candles${noHistoryCount > 0 ? ` · ${noHistoryCount} no history` : ""}`
+              : noHistoryCount > 0
+                ? `${noHistoryCount} no history (exempt)`
+                : "Latest run failures"
+          }
+          title={coverageTitle}
           tone={attentionCount > 0 ? "rose" : "green"}
         />
         <StatCard

@@ -293,6 +293,8 @@ export type AdminMarketDataOperations = {
     totalExpected: number;
     completed: number;
     missing: number;
+    // Instruments GlobalDataFeeds confirmed (successful empty response) have no history; not counted as missing.
+    exempt?: number;
     coveragePct: number;
     missingSymbols: string[];
   }>;
