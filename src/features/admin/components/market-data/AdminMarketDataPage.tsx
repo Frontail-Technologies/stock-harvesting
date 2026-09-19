@@ -66,6 +66,8 @@ export type AdminJobDisplay = {
   jobType: string;
   status: AdminBackgroundJobRunStatus;
   startedAt: string | null;
+  scheduledAt?: string | null;
+  createdAt?: string | null;
   finishedAt: string | null;
   processedCount: number;
   updatedCount: number;
@@ -101,6 +103,12 @@ function applyJobProgress(current: JobRunsCache | undefined, data: AdminJobProgr
       totalExpected: data.total,
     } : run),
   };
+}
+
+// A queued or pending run has no startedAt yet, so date filtering and ordering fall back to when it was
+// scheduled or created; otherwise it stays hidden until a worker picks it up.
+function jobActivityTime(run: Pick<AdminJobDisplay, "startedAt" | "scheduledAt" | "createdAt">) {
+  return run.startedAt ?? run.scheduledAt ?? run.createdAt ?? null;
 }
 
 function payloadNumber(payload: Record<string, unknown>, ...keys: string[]) {
@@ -361,7 +369,7 @@ export function AdminMarketDataPage() {
           ? { ...display, scope: collectionNames.get(display.collectionId) ?? "Unknown segment" }
           : display;
       }),
-  ].sort((left, right) => new Date(right.startedAt ?? 0).getTime() - new Date(left.startedAt ?? 0).getTime());
+  ].sort((left, right) => new Date(jobActivityTime(right) ?? 0).getTime() - new Date(jobActivityTime(left) ?? 0).getTime());
   const operations = operationsQuery.data;
   const expectedDate = operations?.expectedCompletedTradingDate ?? null;
   const expectedCoverage = operations?.coverage.filter((item) => item.tradingDate === expectedDate) ?? [];
@@ -399,7 +407,7 @@ export function AdminMarketDataPage() {
   ];
   const filteredRuns = runs.filter((run) =>
     (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
-    && (!dateFilter || dateFilterValue(run.startedAt) === dateFilter)
+    && (!dateFilter || dateFilterValue(jobActivityTime(run)) === dateFilter)
   );
   const deleteJob = (run: AdminJobDisplay) => {
     if (!window.confirm(`Delete this ${JOB_TYPE_LABEL[run.jobType] ?? run.jobType} job from the history? This can't be undone.`)) return;
