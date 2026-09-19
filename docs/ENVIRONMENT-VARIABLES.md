@@ -29,6 +29,7 @@ max-connections calculation before raising `DB_POOL_MAX`).
 | Variable | Default | Purpose |
 |---|---|---|
 | `DB_POOL_MAX` | `10` | Max connections per process |
+| `WORKER_CONCURRENCY` | `1` | Market-data jobs one worker process runs at once (1-4). `2` stops a long job such as instrument sync from blocking Refresh candles |
 | `DB_CONNECTION_TIMEOUT_MS` | `5000` | Time to wait for a pool connection before failing |
 | `DB_IDLE_TIMEOUT_MS` | `10000` | How long an idle connection stays open before closing |
 | `DB_STATEMENT_TIMEOUT_MS` | `30000` | Postgres server-side `statement_timeout` |

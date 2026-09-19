@@ -588,7 +588,7 @@ export function AdminMarketDataPage() {
         />
       </div>
 
-      <section className="min-h-[60vh]">
+      <section>
         <div className="mb-2 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Job runs</h2>
         </div>
