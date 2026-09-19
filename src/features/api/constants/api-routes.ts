@@ -92,6 +92,7 @@ export const API_ROUTES = {
     marketDataCatchUp: "/api/admin/market-data/catch-up",
     marketDataRefreshBacktests: "/api/admin/market-data/refresh-backtests",
     jobs: "/api/admin/jobs",
+    jobById: (id: string) => `/api/admin/jobs/${encodeURIComponent(id)}`,
     aiSettings: "/api/admin/ai-settings",
     aiSettingsKey: "/api/admin/ai-settings/key",
     marketCollections: "/api/admin/market-collections",

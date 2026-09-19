@@ -230,6 +230,12 @@ export function getAdminJobs() {
   return adminApiFetch<{ jobs: AdminSyncJob[] }>(API_ROUTES.admin.jobs);
 }
 
+export function deleteAdminJob(input: { id: string; source: "run" | "provider" }) {
+  return adminApiFetch<{ id: string }>(`${API_ROUTES.admin.jobById(input.id)}?source=${input.source}`, {
+    method: "DELETE",
+  });
+}
+
 export function getAdminMarketDataOperations() {
   return adminApiFetch<AdminMarketDataOperations>(API_ROUTES.admin.marketDataOperations);
 }

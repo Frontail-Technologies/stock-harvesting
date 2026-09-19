@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Clock3, Database, RefreshCw, RotateCcw } from "lucide-react";
+import { Activity, AlertTriangle, Clock3, Database, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import type { AdminJobProgressEvent, AdminMarketDataEvent } from "@/features/mar
 import { cn } from "@/utils/cn";
 import {
   catchUpAdminMarketData,
+  deleteAdminJob,
   reconcileAdminMarketData,
   refreshAdminMarketDataBacktests,
 } from "../../api/admin-api";
@@ -216,9 +217,10 @@ export function JobStatusBadge({ status }: { status: AdminBackgroundJobRunStatus
   );
 }
 
-function JobRunRow({ run, index, onRetry, retrying }: { run: AdminJobDisplay; index: number; onRetry: (run: AdminJobDisplay) => void; retrying: boolean }) {
+function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run: AdminJobDisplay; index: number; onRetry: (run: AdminJobDisplay) => void; retrying: boolean; onDelete: (run: AdminJobDisplay) => void; deleting: boolean }) {
   const router = useRouter();
   const openDetails = () => router.push(`/admin/jobs/${run.id}`);
+  const canDelete = run.status !== "pending" && run.status !== "queued" && run.status !== "running";
   const canRetry = (run.source === "provider" && !run.jobType.includes("backtest")) || Boolean(run.exchange && run.tradingDate);
 
   return (
@@ -247,6 +249,7 @@ function JobRunRow({ run, index, onRetry, retrying }: { run: AdminJobDisplay; in
       </TableCell>
       <TableCell className="text-center"><JobStatusBadge status={run.status} /></TableCell>
       <TableCell className="text-center">
+        <div className="flex items-center justify-center gap-1">
         {canRetry && (run.status === "failed" || run.status === "missed" || run.status === "partial") && (
           <Button
             type="button"
@@ -262,6 +265,22 @@ function JobRunRow({ run, index, onRetry, retrying }: { run: AdminJobDisplay; in
             <RotateCcw className={cn("size-4", retrying && "animate-spin")} />
           </Button>
         )}
+        {canDelete && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Delete ${JOB_TYPE_LABEL[run.jobType] ?? run.jobType}`}
+            disabled={deleting}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(run);
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -270,6 +289,7 @@ function JobRunRow({ run, index, onRetry, retrying }: { run: AdminJobDisplay; in
 export function AdminMarketDataPage() {
   const queryClient = useQueryClient();
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState(() => dateFilterValue(new Date().toISOString()));
   const [jobTypeFilter, setJobTypeFilter] = useState("all");
   const workersQuery = useAdminMarketDataWorkers();
@@ -293,6 +313,7 @@ export function AdminMarketDataPage() {
 
   const reconcileMutation = useMutation({ mutationFn: reconcileAdminMarketData, onSuccess: refresh });
   const catchUpMutation = useMutation({ mutationFn: catchUpAdminMarketData, onSuccess: refresh });
+  const deleteJobMutation = useMutation({ mutationFn: deleteAdminJob, onSuccess: refresh });
   const refreshCandlesMutation = useMutation({
     mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
       Promise.all(targets.map((target) => catchUpAdminMarketData(target))),
@@ -380,6 +401,11 @@ export function AdminMarketDataPage() {
     (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
     && (!dateFilter || dateFilterValue(run.startedAt) === dateFilter)
   );
+  const deleteJob = (run: AdminJobDisplay) => {
+    if (!window.confirm(`Delete this ${JOB_TYPE_LABEL[run.jobType] ?? run.jobType} job from the history? This can't be undone.`)) return;
+    setDeletingJobId(run.id);
+    deleteJobMutation.mutate({ id: run.id, source: run.source }, { onSettled: () => setDeletingJobId(null) });
+  };
   const retryJob = (run: AdminJobDisplay) => {
     setRetryingJobId(run.id);
     const options = { onSettled: () => setRetryingJobId(null) };
@@ -506,10 +532,10 @@ export function AdminMarketDataPage() {
                   <TableHead className="text-center">Finished</TableHead>
                   <TableHead className="text-center">Progress</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="w-16 text-center">Actions</TableHead>
+                  <TableHead className="w-24 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>{filteredRuns.map((run, index) => <JobRunRow key={run.id} run={run} index={index} onRetry={retryJob} retrying={retryingJobId === run.id} />)}</TableBody>
+              <TableBody>{filteredRuns.map((run, index) => <JobRunRow key={run.id} run={run} index={index} onRetry={retryJob} retrying={retryingJobId === run.id} onDelete={deleteJob} deleting={deletingJobId === run.id} />)}</TableBody>
             </Table>
           </div>
         )}
