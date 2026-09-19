@@ -12,6 +12,7 @@ import type {
 } from "@/features/market-collections";
 import type { WeeklyStrongBacktestStatus } from "@/features/weekly-strong-backtest";
 import type {
+  AdminMarketDataQueue,
   AdminAdPlacementKey,
   AdminAnalytics,
   AdminAnalyticsPeriod,
@@ -234,6 +235,10 @@ export function deleteAdminJob(input: { id: string; source: "run" | "provider" }
   return adminApiFetch<{ id: string }>(`${API_ROUTES.admin.jobById(input.id)}?source=${input.source}`, {
     method: "DELETE",
   });
+}
+
+export function getAdminMarketDataQueue() {
+  return adminApiFetch<AdminMarketDataQueue>(API_ROUTES.admin.marketDataQueue);
 }
 
 export function getAdminMarketDataOperations() {

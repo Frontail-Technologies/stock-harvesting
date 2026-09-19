@@ -88,6 +88,7 @@ export const API_ROUTES = {
     marketDataJobRuns: "/api/admin/market-data/job-runs",
     marketDataSchedules: "/api/admin/market-data/schedules",
     marketDataOperations: "/api/admin/market-data/operations",
+    marketDataQueue: "/api/admin/market-data/queue",
     marketDataReconcile: "/api/admin/market-data/reconcile",
     marketDataCatchUp: "/api/admin/market-data/catch-up",
     marketDataRefreshBacktests: "/api/admin/market-data/refresh-backtests",

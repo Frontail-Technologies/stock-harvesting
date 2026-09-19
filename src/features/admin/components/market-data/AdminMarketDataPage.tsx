@@ -33,16 +33,18 @@ import {
   useAdminJobs,
   useAdminMarketDataJobRuns,
   useAdminMarketDataOperations,
+  useAdminMarketDataQueue,
   useAdminMarketDataWorkers,
 } from "../../hooks/use-admin-market-data";
 import { useAdminMarketCollections } from "../../hooks/use-admin-market-collections";
-import type { AdminBackgroundJobRunStatus, AdminSyncJob } from "../../types";
+import type { AdminBackgroundJobRunStatus, AdminMarketDataQueue, AdminSyncJob } from "../../types";
 
 export const JOB_TYPE_LABEL: Record<string, string> = {
   daily_candle_morning: "Morning Sync",
   daily_candle_post_market: "Post-Market Sync",
   daily_candle_retry: "Retry Sync",
   daily_candle_evening: "Evening Sync",
+  daily_candle_catch_up: "Catch-up (Refresh candles)",
   chart_ensure_fresh: "Chart Ensure-Fresh",
   "market-data.instrument-sync": "Instrument Sync",
   "market-data.price-refresh": "Price Refresh",
@@ -243,7 +245,7 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
       <TableCell className="w-16 text-center tabular-nums text-muted-foreground">{index + 1}</TableCell>
       <TableCell className="font-medium text-foreground">{JOB_TYPE_LABEL[run.jobType] ?? run.jobType}</TableCell>
       <TableCell className="text-center text-muted-foreground">{run.scope}</TableCell>
-      <TableCell className="text-center">{formatJobDateTime(run.startedAt)}</TableCell>
+      <TableCell className="text-center">{formatJobDateTime(run.startedAt)}{!run.startedAt && run.scheduledAt ? <span className="block text-[11px] text-muted-foreground">scheduled {formatJobDateTime(run.scheduledAt)}</span> : null}</TableCell>
       <TableCell className="text-center">{formatJobDateTime(run.finishedAt)}</TableCell>
       <TableCell className="min-w-28 text-center">
         {run.progress === null ? (
@@ -294,6 +296,73 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
   );
 }
 
+const QUEUE_JOB_LABEL: Record<string, string> = {
+  "instrument-sync": "Instrument Sync",
+  "price-refresh": "Price Refresh",
+  "sector-classification-sync": "Sector Classification",
+  "index-candle-backfill": "Index History Backfill",
+  "daily-candle-sync": "Daily Candle Sync",
+  "market-data-catch-up": "Catch-up (Refresh candles)",
+  "chart-candle-ensure-fresh": "Chart Ensure-Fresh",
+  "candle-bootstrap-reconcile": "Candle Bootstrap Reconcile",
+  "weekly-strong-backtest-backfill": "Current Backtest",
+  "weekly-strong-backtest-historical-rebuild": "Historical Backtest",
+  "collection-prepare": "Segment Preparation",
+};
+
+const QUEUE_STATE_LABEL = { active: "Running", waiting: "Waiting", delayed: "Scheduled" } as const;
+
+// The worker runs one job at a time. Many jobs (scheduled instrument sync, bootstrap reconcile) never get
+// a row in the Job runs table, so this reads the queue itself to show what the worker is actually doing.
+function QueuePanel({ queue, loading }: { queue: AdminMarketDataQueue | undefined; loading: boolean }) {
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-foreground">Worker queue</h2>
+        {queue?.available ? (
+          <p className="text-xs text-muted-foreground">
+            {queue.counts.active} running · {queue.counts.waiting} waiting · {queue.counts.delayed} scheduled
+          </p>
+        ) : null}
+      </div>
+      {loading ? (
+        <div className="grid min-h-20 place-items-center"><Spinner className="text-primary" /></div>
+      ) : !queue?.available ? (
+        <p className="text-sm text-muted-foreground">The queue can&apos;t be read right now (Redis unreachable).</p>
+      ) : queue.jobs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">The queue is empty.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <Table className="[&_td+td]:border-l [&_th+th]:border-l [&_td+td]:border-border [&_th+th]:border-border">
+            <TableHeader>
+              <TableRow className="bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
+                <TableHead>Job</TableHead>
+                <TableHead className="text-center">Scope</TableHead>
+                <TableHead className="text-center">State</TableHead>
+                <TableHead className="text-center">Started / runs at</TableHead>
+                <TableHead className="text-center">Attempts</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {queue.jobs.map((job) => (
+                <TableRow key={`${job.state}-${job.id}`}>
+                  <TableCell className="font-medium text-foreground">{QUEUE_JOB_LABEL[job.name] ?? job.name}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">{job.exchange ?? "System"}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant={job.state === "active" ? "default" : "secondary"}>{QUEUE_STATE_LABEL[job.state]}</Badge>
+                  </TableCell>
+                  <TableCell className="text-center">{formatJobDateTime(job.startedAt ?? job.runAt ?? job.addedAt)}</TableCell>
+                  <TableCell className="text-center tabular-nums text-muted-foreground">{job.attemptsMade}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AdminMarketDataPage() {
   const queryClient = useQueryClient();
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
@@ -305,6 +374,7 @@ export function AdminMarketDataPage() {
   const jobRunsQuery = useAdminMarketDataJobRuns();
   const providerJobsQuery = useAdminJobs();
   const operationsQuery = useAdminMarketDataOperations();
+  const queueQuery = useAdminMarketDataQueue();
   const collectionsQuery = useAdminMarketCollections();
   const providerSyncMutation = useSyncAdminDataProvider();
   const priceRefreshMutation = useSyncAdminMarketDataPrices();
@@ -548,6 +618,8 @@ export function AdminMarketDataPage() {
           </div>
         )}
       </section>
+
+      <QueuePanel queue={queueQuery.data} loading={queueQuery.isLoading} />
     </div>
   );
 }

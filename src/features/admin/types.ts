@@ -281,6 +281,23 @@ export type AdminScheduledJobStatus = {
   } | null;
 };
 
+export type AdminQueueJob = {
+  id: string;
+  name: string;
+  state: "active" | "waiting" | "delayed";
+  exchange: string | null;
+  attemptsMade: number;
+  addedAt: string | null;
+  startedAt: string | null;
+  runAt: string | null;
+};
+
+export type AdminMarketDataQueue = {
+  available: boolean;
+  counts: { active: number; waiting: number; delayed: number };
+  jobs: AdminQueueJob[];
+};
+
 export type AdminMarketDataOperations = {
   checkedAt: string;
   expectedCompletedTradingDate: string | null;

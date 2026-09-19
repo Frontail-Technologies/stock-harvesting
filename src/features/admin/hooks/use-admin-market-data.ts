@@ -6,6 +6,7 @@ import { useIsAdminReady } from "@/features/auth";
 import {
   getAdminMarketDataHealth,
   getAdminMarketDataOperations,
+  getAdminMarketDataQueue,
   getAdminMarketDataJobRuns,
   getAdminMarketDataSchedules,
   getAdminMarketDataWorkers,
@@ -73,6 +74,16 @@ export function useAdminMarketDataSchedules() {
     queryFn: getAdminMarketDataSchedules,
     enabled,
     refetchInterval: MARKET_DATA_STATUS_REFETCH_MS,
+  });
+}
+
+export function useAdminMarketDataQueue() {
+  const enabled = useIsAdmin();
+  return useQuery({
+    queryKey: queryKeys.admin.marketDataQueue,
+    queryFn: getAdminMarketDataQueue,
+    enabled,
+    refetchInterval: 10_000,
   });
 }
 
