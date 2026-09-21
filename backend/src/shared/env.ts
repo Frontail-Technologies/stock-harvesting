@@ -16,6 +16,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
+  // How many market-data jobs one worker process runs at once. 1 keeps jobs strictly sequential; 2 lets a
+  // long job (instrument sync) run alongside a manual Refresh candles instead of blocking it.
+  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
   DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   DB_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
@@ -50,6 +53,9 @@ const envSchema = z.object({
   EODHD_EXPIRES_AT: z.string().optional(),
   EODHD_EXCHANGE_CODE: z.string().trim().min(1).default("US"),
   GLOBAL_DATAFEEDS_ENABLED: z.coerce.boolean().default(false),
+  // "broker": one process (the worker) owns the single GDF session and the API relays through
+  // Redis. "direct": every process opens its own socket (only safe when one process runs).
+  GLOBAL_DATAFEEDS_SESSION_MODE: z.enum(["broker", "direct"]).default("broker"),
   GLOBAL_DATAFEEDS_API_KEY: z.string().optional(),
   GLOBAL_DATAFEEDS_EXPIRES_AT: z.string().optional(),
   GLOBAL_DATAFEEDS_WS_URL: z
@@ -57,6 +63,9 @@ const envSchema = z.object({
     .url()
     .default("wss://test.lisuns.com:4576"),
   GLOBAL_DATAFEEDS_EXCHANGES: z.string().default("BSE,BSE_IDX"),
+  // Client-side cap on GDF calls per rolling hour (0 = none). Set it to the account's real quota so a big
+  // catch-up stops itself instead of being refused ("Calls per hour are limited").
+  GLOBAL_DATAFEEDS_MAX_CALLS_PER_HOUR: z.coerce.number().int().min(0).default(0),
   GLOBAL_DATAFEEDS_SYMBOL_LIMIT: z.coerce
     .number()
     .int()

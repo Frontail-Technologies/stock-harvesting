@@ -28,6 +28,14 @@ Each entry stays until explicitly superseded by a new dated entry.
   configured. No hardcoded exchange or stock lists; legacy rows stay as
   history and never match. Instrument discovery additionally covers
   GlobalDataFeeds-configured exchanges so a new exchange can be populated.
+- 2026-09-19 — Bootstrap no-history state: a full-range GetHistory that GlobalDataFeeds
+  answers successfully with zero candles is stored as a success row (kind
+  `no-history-check`, candle_count 0) in `candle_bootstrap_checkpoints` - no new table.
+  Errors, timeouts and persistence failures never write it and stay retryable. Bootstrap
+  candidates exclude a confirmation younger than 7 days; after that one more full-range
+  check runs (admin per-symbol refresh rechecks immediately); the row is deleted when
+  candles are stored. Confirmed no-history instruments are exempt (not missing) in
+  historical coverage.
 - 2026-09-12 — Fewer DB tables/schemas are preferred over more.
 - 2026-09-12 — Drizzle is the default DB access approach.
 - 2026-09-12 — Zero explanatory comments in touched production code
@@ -808,3 +816,46 @@ Each entry stays until explicitly superseded by a new dated entry.
   routes, and classic network-flood DDoS protection is out of scope for
   application code (belongs at a CDN/WAF layer, which this repo has no
   visibility into) - not something addressed by this fix.
+
+- 2026-09-19 — Admin can delete a finished job from the Market Data job list:
+  `DELETE /api/admin/jobs/:id?source=run|provider` (`run` = `background_job_runs`,
+  `provider` = `sync_jobs`). Rows that are pending, queued or running are refused
+  with 409, both on a pre-check and inside the DELETE's own WHERE, so a job that
+  becomes active mid-request is never removed. Each delete writes a `job.deleted`
+  audit log. Deleting a ledger row for the current trading day lets the next
+  `ensureExpectedMarketDataJobs` pass recreate it; past-day rows stay deleted.
+
+- 2026-09-19 — One GlobalDataFeeds session per key: GDF refuses a second session
+  ("Access Denied. Key already in use by other session"), and the API and the worker each
+  opened their own socket, so whichever connected second timed out on every request. A
+  session broker (`global-datafeeds.session-broker.ts`) now makes exactly one process the
+  owner. The worker competes for a Redis lease (`gdf:session:owner`, 15 s TTL, renewed
+  every 5 s) and the winner opens the only socket. The API is a pure proxy: its
+  `globalDatafeedsClient.request()/send()` are executed by the owner over Redis pub/sub
+  (`gdf:rpc:request`, per-instance `gdf:rpc:response:<id>`), and the owner broadcasts quotes
+  and connection status (`gdf:quotes`, `gdf:status`) so the live stream keeps working. A
+  proxy fails immediately when no owner lease exists instead of waiting for a timeout. A
+  candidate that loses the lease acts as a proxy and takes over when the lease expires; a
+  restarted worker waits up to one TTL for a crashed predecessor's lease. Scripts and tests
+  that never start the broker keep the old direct socket (stop the worker before running
+  them). `GLOBAL_DATAFEEDS_SESSION_MODE=direct` restores per-process sockets.
+
+- 2026-09-20 — The market-data worker ran strictly one job at a time (BullMQ's default), so a long
+  scheduled instrument sync (45-80 minutes for BSE) blocked a manual Refresh candles catch-up
+  behind it. `WORKER_CONCURRENCY` (default 1, max 4) sets `concurrency` on the BullMQ Worker.
+  Production uses 2. This is safe with the single GDF session because every GDF request carries
+  its own tag and replies are matched by it; the database has lock headroom
+  (`max_locks_per_transaction` raised to 2560) and each process' pool is capped by
+  `DB_POOL_MAX`. Duplicate work is still prevented by deterministic job ids (for example
+  `market-data-catch-up:<exchange>:<date>`).
+
+- 2026-09-20 — GlobalDataFeeds enforces an hourly call quota and answers refused calls with an
+  untagged `RequestError` ("Calls per hour are limited."). Untagged, the reply could never be
+  matched to its request, so every affected `GetHistory` waited out its 30 s timeout and showed
+  up as a generic timeout; with 8 symbols in flight a catch-up kept burning calls. The client
+  now (1) recognises the reply and blocks all calls for a cooldown (5 min, doubling to 30 min
+  while it recurs, reset by any success), (2) rejects the waiting requests at once with
+  `ProviderRateLimitedError` (carried over the Redis broker with its cooldown), and (3) can
+  cap calls itself with `GLOBAL_DATAFEEDS_MAX_CALLS_PER_HOUR`. The daily candle sync stops
+  starting new symbols on that error, keeps the candles already saved and fails the run with
+  "retry in N minute(s)" instead of marking every remaining symbol failed.

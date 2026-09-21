@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, ilike, inArray, lt, or, sql } from "drizzle-or
 
 import { db } from "../../db/client";
 import {
+  backgroundJobRuns,
   brandingSettings,
   syncJobs,
   users,
@@ -707,7 +708,8 @@ export async function triggerCandleBackfill(input: {
 }
 
 export async function triggerDailyCandleRefresh(input: { actorUserId: string; symbol: string }) {
-  const result = await refreshDailyCandles({ symbol: input.symbol });
+  // An explicit admin refresh deliberately re-queries an instrument already confirmed as having no history.
+  const result = await refreshDailyCandles({ symbol: input.symbol, forceRecheck: true });
   await writeAuditLog({
     actorUserId: input.actorUserId,
     action: "market_data.daily_candles_refreshed",
@@ -718,9 +720,63 @@ export async function triggerDailyCandleRefresh(input: { actorUserId: string; sy
   return result;
 }
 
+// Job payloads can carry large arrays (e.g. every failed index symbol). The job table only needs
+// the scalar fields (exchange, counts, progress), so arrays and nested objects are dropped here.
+export function toJobListPayload(payload: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value === null || ["string", "number", "boolean"].includes(typeof value)),
+  );
+}
+
 export async function listJobs() {
   await failStaleSyncJobs();
-  return db.select().from(syncJobs).orderBy(desc(syncJobs.createdAt)).limit(50);
+  const rows = await db.select().from(syncJobs).orderBy(desc(syncJobs.createdAt)).limit(50);
+  return rows.map((row) => ({ ...row, payload: toJobListPayload(row.payload) }));
+}
+
+const ACTIVE_JOB_STATUSES = new Set<string>(["queued", "running"]);
+const STALE_JOB_DELETE_AFTER_MS = 10 * 60 * 1000;
+
+// Removes one row from the job history. A scheduled-but-not-yet-due ("pending") run is never
+// deleted. A queued or running job can only be deleted once it has shown no progress for
+// STALE_JOB_DELETE_AFTER_MS, so a live job's progress updates never target a deleted row while a
+// stuck or orphaned one (e.g. its queue entry is gone) can still be cleared by hand.
+export async function deleteJobHistoryEntry(input: { actorUserId: string; id: string; source: "run" | "provider"; now?: Date }) {
+  const now = input.now ?? new Date();
+  const staleBefore = new Date(now.getTime() - STALE_JOB_DELETE_AFTER_MS);
+  const table = input.source === "run" ? backgroundJobRuns : syncJobs;
+  const [existing] = await db
+    .select({ status: table.status, updatedAt: table.updatedAt })
+    .from(table)
+    .where(eq(table.id, input.id))
+    .limit(1);
+  if (!existing) throw notFound("Job not found");
+
+  const isPending = existing.status === "pending";
+  const isActive = ACTIVE_JOB_STATUSES.has(existing.status);
+  const isStale = existing.updatedAt.getTime() <= staleBefore.getTime();
+  if (isPending) throw conflict("This job is scheduled and hasn't started yet, so it can't be deleted.");
+  if (isActive && !isStale) {
+    throw conflict("This job is still active. It can be deleted once it has shown no progress for 10 minutes.");
+  }
+
+  const [deleted] = await db
+    .delete(table)
+    .where(and(
+      eq(table.id, input.id),
+      sql`(${table.status}::text NOT IN ('pending', 'queued', 'running') OR (${table.status}::text <> 'pending' AND ${table.updatedAt} <= ${staleBefore}))`,
+    ))
+    .returning({ id: table.id });
+  if (!deleted) throw conflict("This job is still active. It can be deleted once it has shown no progress for 10 minutes.");
+
+  await writeAuditLog({
+    actorUserId: input.actorUserId,
+    action: "job.deleted",
+    targetType: input.source === "run" ? "background_job_run" : "sync_job",
+    targetId: input.id,
+    metadata: { status: existing.status, stale: isActive },
+  });
+  return { id: deleted.id };
 }
 
 export async function getAdminAnalytics(input: { period: "all" | "today" | "7d" | "30d" | "90d" }) {

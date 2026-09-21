@@ -17,6 +17,7 @@ import {
   getExchangeTodayIfTradingDay,
   getLatestExpectedTradingDay,
 } from "../market-data/trading-calendar";
+import { listNoHistorySymbols } from "../market-data/market-data.no-history";
 import { addJobWithTimeout, getMarketDataQueue } from "./queues";
 
 const EXPECTED_SCHEDULES = [
@@ -137,7 +138,7 @@ export async function getHistoricalCoverage(exchange: string, tradingDate: strin
     return { tradingDate, exchange, totalExpected: 0, completed: 0, missing: 0, coveragePct: 0, missingSymbols: [], exempt: 0 };
   }
 
-  const [present, exemptionRows] = await Promise.all([
+  const [present, exemptionRows, noHistorySymbols] = await Promise.all([
     db
       .select({ instrumentId: candles.instrumentId })
       .from(candles)
@@ -154,11 +155,18 @@ export async function getHistoricalCoverage(exchange: string, tradingDate: strin
         eq(backgroundJobRuns.tradingDate, tradingDate),
         eq(backgroundJobRuns.jobType, BACKGROUND_JOB_TYPES.dailyCandleCatchUp),
       )),
+    listNoHistorySymbols(exchange),
   ]);
-  const exemptSymbols = exemptionRows.flatMap((row) => {
-    const value = row.metadata.coverageExemptSymbols;
-    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-  });
+  // Exempt = GlobalDataFeeds confirmed it has no history for the instrument (successful
+  // empty response). Provider errors, timeouts and persistence failures never land here,
+  // so those instruments stay counted as missing.
+  const exemptSymbols = [
+    ...exemptionRows.flatMap((row) => {
+      const value = row.metadata.coverageExemptSymbols;
+      return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+    }),
+    ...noHistorySymbols,
+  ];
   const calculated = calculateHistoricalCoverage(
     universe,
     present.map((row) => row.instrumentId),
@@ -170,6 +178,19 @@ export async function getHistoricalCoverage(exchange: string, tradingDate: strin
     exchange,
     ...calculated,
   };
+}
+
+const LIVE_BULLMQ_STATES = new Set(["waiting", "active", "delayed", "prioritized", "waiting-children"]);
+
+// True while BullMQ still holds the job in a state where it will run (or is running) - jobs are removed
+// on completion/failure, so a missing job means nothing is going to process the ledger row.
+export async function hasLiveCatchUpJob(
+  queue: { getJob: (jobId: string) => Promise<{ getState: () => Promise<string> } | undefined | null> },
+  jobId: string,
+) {
+  const job = await queue.getJob(jobId);
+  if (!job) return false;
+  return LIVE_BULLMQ_STATES.has(await job.getState());
 }
 
 export async function createAndQueueCatchUp(
@@ -216,14 +237,21 @@ export async function createAndQueueCatchUp(
     BACKGROUND_JOB_RUN_STATUS.partial,
     BACKGROUND_JOB_RUN_STATUS.missed,
   ]);
+  const bullmqJobId = `market-data-catch-up:${exchange}:${tradingDate}`;
   if (!ledger && !retryableStatuses.has(existing.status)) {
-    return existing.id;
+    // A run marked queued/running is only really in progress while its BullMQ job exists. If the job is
+    // gone (queue cleared, Redis restarted) the run is orphaned and would stay "queued" forever, so it
+    // is enqueued again instead of being skipped.
+    const mayBeOrphaned =
+      existing.status === BACKGROUND_JOB_RUN_STATUS.queued || existing.status === BACKGROUND_JOB_RUN_STATUS.running;
+    if (!mayBeOrphaned) return existing.id;
+    const orphanCheckQueue = getMarketDataQueue();
+    if (!orphanCheckQueue || (await hasLiveCatchUpJob(orphanCheckQueue, bullmqJobId))) return existing.id;
   }
   if (!ledger && "attemptCount" in existing && existing.attemptCount >= 3 && !options?.force) return existing.id;
 
   const queue = getMarketDataQueue();
   if (!queue) return existing.id;
-  const bullmqJobId = `market-data-catch-up:${exchange}:${tradingDate}`;
   try {
     await addJobWithTimeout(
       queue,
@@ -356,27 +384,36 @@ export async function listMarketDataLedger(limit = 50) {
     .limit(limit);
 }
 
+const RECENT_DATES_LOOKBACK_DAYS = 14;
+
+export function recentDatesLookbackStart(tradingDate: string, days = RECENT_DATES_LOOKBACK_DAYS) {
+  const start = new Date(`${tradingDate}T00:00:00.000Z`);
+  start.setUTCDate(start.getUTCDate() - days);
+  return start.toISOString().slice(0, 10);
+}
+
+// The last few trading dates that have candles for an exchange. It is bounded by time so TimescaleDB
+// only reads the newest chunks; the previous form (DISTINCT over every candle of ~5,900 instruments,
+// listed as bind parameters) scanned the whole hypertable and hit the 30 s query timeout.
+export function recentCandleDatesCondition(exchange: string, tradingDate: string) {
+  return sql`${and(
+    eq(candles.exchange, exchange),
+    eq(candles.timeframe, CANDLE_TIMEFRAME.day),
+    gte(candles.time, recentDatesLookbackStart(tradingDate)),
+    lte(candles.time, tradingDate),
+  )}`;
+}
+
 export async function getMarketDataOperations(at: Date = new Date()) {
   const exchanges = await listProductionExchanges();
   const coverageGroups = await Promise.all(exchanges.map(async (exchange) => {
     const tradingDate = getLatestExpectedTradingDay(exchange, at);
-    const universe = await db
-      .select({ instrumentId: instruments.id })
-      .from(instruments)
-      .where(activeUniverseFilter(exchange));
-    const ids = universe.map((row) => row.instrumentId);
-    const recentDates = ids.length === 0
-      ? []
-      : await db
-          .selectDistinct({ date: candles.time })
-          .from(candles)
-          .where(and(
-            inArray(candles.instrumentId, ids),
-            eq(candles.timeframe, CANDLE_TIMEFRAME.day),
-            lte(candles.time, tradingDate),
-          ))
-          .orderBy(desc(candles.time))
-          .limit(4);
+    const recentDates = await db
+      .selectDistinct({ date: candles.time })
+      .from(candles)
+      .where(recentCandleDatesCondition(exchange, tradingDate))
+      .orderBy(desc(candles.time))
+      .limit(4);
     const dates = [...new Set([tradingDate, ...recentDates.map((row) => row.date)])];
     return Promise.all(dates.map((date) => getHistoricalCoverage(exchange, date)));
   }));
@@ -397,13 +434,36 @@ export async function getMarketDataOperations(at: Date = new Date()) {
   };
 }
 
+// Backtests may only be marked current for a date whose historical data is
+// complete, and there is nothing to refresh when they already reach that date.
+export function decideBacktestRefresh(input: {
+  coverage: { totalExpected: number; missing: number };
+  backtestsThrough: string | null;
+  tradingDate: string;
+}): "historical-incomplete" | "already-current" | "refresh" {
+  if (input.coverage.totalExpected === 0 || input.coverage.missing > 0) return "historical-incomplete";
+  if (input.backtestsThrough !== null && input.backtestsThrough >= input.tradingDate) return "already-current";
+  return "refresh";
+}
+
 export async function refreshMarketDataBacktests(exchange: string, tradingDate: string) {
+  const [coverage, [current]] = await Promise.all([
+    getHistoricalCoverage(exchange, tradingDate),
+    db
+      .select({ through: sql<string | null>`max(${backgroundJobRuns.backtestThrough})` })
+      .from(backgroundJobRuns)
+      .where(and(eq(backgroundJobRuns.exchange, exchange), eq(backgroundJobRuns.backtestStatus, "completed"))),
+  ]);
+  const backtestsThrough = current?.through ?? null;
+  const decision = decideBacktestRefresh({ coverage, backtestsThrough, tradingDate });
+  if (decision !== "refresh") return { exchange, tradingDate, refreshed: false, reason: decision, backtestsThrough };
+
   await reconcileWeeklyStrongBacktests(exchange);
   await db
     .update(backgroundJobRuns)
     .set({ backtestStatus: "completed", backtestThrough: tradingDate, updatedAt: new Date() })
     .where(and(eq(backgroundJobRuns.exchange, exchange), eq(backgroundJobRuns.tradingDate, tradingDate)));
-  return { exchange, backtestsThrough: tradingDate };
+  return { exchange, tradingDate, refreshed: true, reason: null, backtestsThrough: tradingDate };
 }
 
 export async function claimMarketDataLedgerRun(input: {

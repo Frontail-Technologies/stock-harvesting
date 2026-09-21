@@ -5,6 +5,7 @@ import { DATA_PROVIDER_KEY, HTTP_STATUS } from "../../../../shared/constants";
 import { env } from "../../../../shared/env";
 import { AppError, ERROR_CODES, ERROR_MESSAGES } from "../../../../shared/errors";
 import { logger } from "../../../../shared/logger";
+import { GdfCallGate, isGdfRateLimitMessage } from "./global-datafeeds.rate-limit";
 import {
   GLOBAL_DATAFEEDS_AUTH_TIMEOUT_MS,
   GLOBAL_DATAFEEDS_MESSAGE_TYPE,
@@ -23,6 +24,13 @@ type PendingRequest = {
   resolve: (response: GlobalDatafeedsResponse) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
+};
+
+// Set by the session broker when this process must NOT open its own GDF socket (GDF allows one
+// session per key). request()/send() are then answered by the process that owns the session.
+export type GlobalDatafeedsRemoteTransport = {
+  request: (request: GlobalDatafeedsRequest, timeoutMs: number) => Promise<GlobalDatafeedsResponse>;
+  send: (request: GlobalDatafeedsRequest) => Promise<void>;
 };
 
 type QuoteListener = (quote: GlobalDatafeedsQuoteRow) => void;
@@ -128,6 +136,27 @@ export class GlobalDatafeedsWebSocketClient {
   private debugListeners = new Set<DebugListener>();
   private reconnectTimer: NodeJS.Timeout | null = null;
   private shouldReconnect = false;
+  private remoteTransport: GlobalDatafeedsRemoteTransport | null = null;
+  private startupGate: Promise<unknown> | null = null;
+  private callGate = new GdfCallGate(env.GLOBAL_DATAFEEDS_MAX_CALLS_PER_HOUR);
+
+  // Requests wait for this before choosing between the local socket and the remote transport, so
+  // a process never opens a socket before the broker has decided whether it owns the session.
+  setStartupGate(gate: Promise<unknown> | null) {
+    this.startupGate = gate;
+  }
+
+  setRemoteTransport(transport: GlobalDatafeedsRemoteTransport | null) {
+    this.remoteTransport = transport;
+  }
+
+  ingestRemoteQuote(quote: GlobalDatafeedsQuoteRow) {
+    for (const listener of this.quoteListeners) listener(quote);
+  }
+
+  ingestRemoteStatus(connected: boolean, message?: string) {
+    this.emitStatus(connected, message);
+  }
 
   isConfigured() {
     return Boolean(env.GLOBAL_DATAFEEDS_ENABLED && env.GLOBAL_DATAFEEDS_API_KEY);
@@ -152,6 +181,11 @@ export class GlobalDatafeedsWebSocketClient {
     request: GlobalDatafeedsRequest,
     timeoutMs = GLOBAL_DATAFEEDS_REQUEST_TIMEOUT_MS
   ): Promise<T> {
+    await this.startupGate;
+    if (this.remoteTransport) return (await this.remoteTransport.request(request, timeoutMs)) as T;
+    // Refuse (fast, without opening a socket) while GDF is rate-limiting this key or the local hourly cap is reached.
+    this.callGate.assertAllowed();
+    this.callGate.registerCall();
     await this.connect();
 
     if (this.socket?.readyState !== WebSocket.OPEN) {
@@ -197,6 +231,8 @@ export class GlobalDatafeedsWebSocketClient {
   }
 
   async send(request: GlobalDatafeedsRequest) {
+    await this.startupGate;
+    if (this.remoteTransport) return this.remoteTransport.send(request);
     await this.connect();
     if (this.socket?.readyState !== WebSocket.OPEN) return;
     this.socket.send(JSON.stringify(request));
@@ -307,6 +343,17 @@ export class GlobalDatafeedsWebSocketClient {
       return;
     }
 
+    if (isGdfRateLimitMessage(response)) {
+      const error = this.callGate.onRateLimited();
+      this.emitDebug({ stage: "rate.limited", message: response.Message, messageType: response.MessageType });
+      logger.warn(
+        { provider: DATA_PROVIDER_KEY.globalDatafeeds, retryAfterMs: error.retryAfterMs },
+        "Global Datafeeds call limit reached; pausing calls",
+      );
+      this.rejectPending(error);
+      return;
+    }
+
     if (
       response.MessageType === GLOBAL_DATAFEEDS_MESSAGE_TYPE.realtimeResult ||
       response.MessageType === GLOBAL_DATAFEEDS_MESSAGE_TYPE.realtimeSnapshotResult
@@ -327,6 +374,24 @@ export class GlobalDatafeedsWebSocketClient {
       pending = [...this.pending.values()][0];
     }
 
+    // GDF omits UserTag/Request metadata from some RequestError replies. With more than one
+    // request in flight there is no honest way to identify the rejected call. Fail every pending
+    // call immediately so callers retry or record the provider failure; leaving them pending turns
+    // one explicit refusal into a burst of misleading request timeouts.
+    if (!pending && response.MessageType === "RequestError" && this.pending.size > 0) {
+      const error = new Error(
+        `Global Datafeeds request rejected: ${response.Message ?? "request refused"}`,
+      );
+      this.emitDebug({
+        stage: "request.rejected",
+        message: response.Message,
+        messageType: response.MessageType,
+        payload: { pendingRequests: this.pending.size },
+      });
+      this.rejectPending(error);
+      return;
+    }
+
     if (!pending) {
       this.emitDebug({
         stage: "response.unmatched",
@@ -338,6 +403,7 @@ export class GlobalDatafeedsWebSocketClient {
 
     clearTimeout(pending.timeout);
     this.pending.delete(pending.userTag);
+    this.callGate.onSuccess();
     this.emitDebug({
       stage: "request.result",
       messageType: pending.messageType,

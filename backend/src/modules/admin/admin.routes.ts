@@ -26,6 +26,7 @@ import {
 } from "../../shared/middleware";
 import {
   adminAnalyticsQuerySchema,
+  deleteJobQuerySchema,
   adminUsersExportQuerySchema,
   adminUsersQuerySchema,
   backfillCandlesBodySchema,
@@ -67,6 +68,7 @@ import {
   getWeeklyStrongBacktestStatus,
   listAdminUsers,
   listJobs,
+  deleteJobHistoryEntry,
   triggerCandleBackfill,
   triggerDailyCandleRefresh,
   triggerIndexCandleBackfill,
@@ -81,6 +83,7 @@ import {
   updateUserRole,
 } from "./admin.service";
 import { listRecentBackgroundJobRuns } from "../jobs/background-job-runs.service";
+import { getMarketDataQueueSnapshot } from "../jobs/queue-snapshot.service";
 import { getScheduledDailyCandleSyncStatuses } from "../jobs/scheduled-job-status.service";
 import { getMarketDataWorkerStatuses } from "../jobs/worker-status.service";
 import { getMarketDataHealth } from "../market-data/market-data.health";
@@ -333,6 +336,10 @@ adminRouter.get("/market-data/job-runs", asyncHandler(async (_req, res) => {
   sendData(res, { runs: await listRecentBackgroundJobRuns() });
 }));
 
+adminRouter.get("/market-data/queue", asyncHandler(async (_req, res) => {
+  sendData(res, await getMarketDataQueueSnapshot());
+}));
+
 adminRouter.get("/market-data/schedules", asyncHandler(async (_req, res) => {
   sendData(res, { schedules: await getScheduledDailyCandleSyncStatuses() });
 }));
@@ -366,6 +373,16 @@ adminRouter.post(
 adminRouter.get("/jobs", asyncHandler(async (_req, res) => {
   sendData(res, { jobs: await listJobs() });
 }));
+
+adminRouter.delete(
+  "/jobs/:id",
+  validate({ params: userIdParamsSchema, query: deleteJobQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const params = req.params as { id: string };
+    const query = req.query as unknown as { source: "run" | "provider" };
+    sendData(res, await deleteJobHistoryEntry({ actorUserId: getAuthUserId(req), id: params.id, source: query.source }));
+  }),
+);
 
 adminRouter.get(
   "/analytics",

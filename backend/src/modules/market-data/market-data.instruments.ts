@@ -407,6 +407,50 @@ export async function upsertInstruments(input: InstrumentUpsertInput[], provider
   await upsertInstrumentsByExchangeSymbol(passthrough, provider, dbClient);
 }
 
+// Latest two daily candles per symbol. Candles are looked up by instrument_id
+// (candles_instrument_id_timeframe_time_unique -> newest-first index scan that
+// stops after 2 rows), with the instrument found through its
+// (exchange, symbol) unique key. Filtering candles by exchange + symbol has had
+// no index since migration 0020 dropped candles_exchange_symbol_timeframe_time_unique,
+// which made every lookup scan the whole hypertable.
+// `since` bounds the scan by time so the planner only touches recent chunks of
+// the hypertable instead of every chunk; getLatestStockStats retries unbounded
+// for symbols that have fewer than two candles inside the window.
+export function buildLatestCandleStatsQuery(symbols: string[], exchange: string, since?: Date) {
+  const sinceFilter = since ? sql`AND c.time >= ${since}` : sql``;
+  if (symbols.length === 1) {
+    const [symbol] = symbols;
+    return sql`
+      SELECT ${symbol}::text AS symbol, c.open, c.close, c.volume, c.time::text AS time
+      FROM candles c
+      WHERE c.instrument_id = (
+          SELECT i.id FROM instruments i WHERE i.exchange = ${exchange} AND i.symbol = ${symbol}
+        )
+        AND c.timeframe = ${CANDLE_TIMEFRAME.day}
+        ${sinceFilter}
+      ORDER BY c.time DESC
+      LIMIT 2
+    `;
+  }
+
+  return sql`
+    SELECT i.symbol AS symbol, ranked.open, ranked.close, ranked.volume, ranked.time::text AS time
+    FROM instruments i
+    CROSS JOIN LATERAL (
+      SELECT c.open, c.close, c.volume, c.time
+      FROM candles c
+      WHERE c.instrument_id = i.id
+        AND c.timeframe = ${CANDLE_TIMEFRAME.day}
+        ${sinceFilter}
+      ORDER BY c.time DESC
+      LIMIT 2
+    ) ranked
+    WHERE i.exchange = ${exchange}
+      AND i.symbol = ANY(ARRAY[${sql.join(symbols.map((symbol) => sql`${symbol}`), sql`, `)}]::text[])
+    ORDER BY i.symbol, ranked.time DESC
+  `;
+}
+
 type LatestStockStatsRow = {
   symbol: string;
   open: string;
@@ -414,6 +458,8 @@ type LatestStockStatsRow = {
   volume: string;
   time: string;
 };
+
+const LATEST_STATS_WINDOW_DAYS = 45;
 
 async function getLatestStockStats(symbols: string[], exchange: string = DEFAULT_EXCHANGE, dbClient: DbOrTx = db) {
   const uniqueSymbols = [...new Set(symbols.map(normalizeSymbol))].filter(Boolean);
@@ -425,27 +471,16 @@ async function getLatestStockStats(symbols: string[], exchange: string = DEFAULT
   if (uniqueSymbols.length === 0) return stats;
 
   const startedAt = Date.now();
-  // A per-symbol LATERAL + ORDER BY time DESC LIMIT 2 lets Postgres/Timescale
-  // stop scanning each symbol's chunks as soon as it has 2 rows (typically
-  // satisfied from the newest chunk alone), instead of the previous
-  // row_number() OVER (PARTITION BY symbol ...) window function, which had
-  // no LIMIT to push down and had to rank every matching row across every
-  // hypertable chunk up to the present. Same result shape/rows, just reached
-  // without a full-history scan per symbol.
-  const result = await dbClient.execute<LatestStockStatsRow>(sql`
-    SELECT wanted.symbol AS symbol, ranked.open, ranked.close, ranked.volume, ranked.time::text AS time
-    FROM unnest(ARRAY[${sql.join(uniqueSymbols.map((symbol) => sql`${symbol}`), sql`, `)}]::text[]) AS wanted(symbol)
-    CROSS JOIN LATERAL (
-      SELECT open, close, volume, time
-      FROM candles
-      WHERE candles.exchange = ${exchange}
-        AND candles.timeframe = ${CANDLE_TIMEFRAME.day}
-        AND candles.symbol = wanted.symbol
-      ORDER BY candles.time DESC
-      LIMIT 2
-    ) ranked
-    ORDER BY wanted.symbol, ranked.time DESC
-  `);
+  const since = new Date(Date.now() - LATEST_STATS_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const result = await dbClient.execute<LatestStockStatsRow>(buildLatestCandleStatsQuery(uniqueSymbols, exchange, since));
+  const countBySymbol = new Map<string, number>();
+  for (const row of result.rows) countBySymbol.set(row.symbol, (countBySymbol.get(row.symbol) ?? 0) + 1);
+  const sparseSymbols = uniqueSymbols.filter((symbol) => (countBySymbol.get(symbol) ?? 0) < 2);
+  if (sparseSymbols.length > 0) {
+    const fallback = await dbClient.execute<LatestStockStatsRow>(buildLatestCandleStatsQuery(sparseSymbols, exchange));
+    const sparse = new Set(sparseSymbols);
+    result.rows = [...result.rows.filter((row) => !sparse.has(row.symbol)), ...fallback.rows];
+  }
   logger.debug(
     {
       exchange,

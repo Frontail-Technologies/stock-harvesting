@@ -5,6 +5,7 @@ import {
   calculateHistoricalCoverage,
   expectedMarketDataJobsForDate,
   isExpectedJobMissed,
+  decideBacktestRefresh,
   shouldQueueHistoricalCatchUp,
 } from "./market-data-job-ledger";
 
@@ -96,5 +97,30 @@ describe("market-data job ledger", () => {
     expect(isExpectedJobMissed(BACKGROUND_JOB_RUN_STATUS.queued, scheduledAt, overdue)).toBe(true);
     expect(isExpectedJobMissed(BACKGROUND_JOB_RUN_STATUS.running, scheduledAt, overdue)).toBe(false);
     expect(isExpectedJobMissed(BACKGROUND_JOB_RUN_STATUS.completed, scheduledAt, overdue)).toBe(false);
+  });
+});
+
+describe("decideBacktestRefresh - manual backtest refresh guard", () => {
+  const complete = { totalExpected: 500, missing: 0 };
+
+  it("refuses to refresh (or mark current) while the date's historical data is incomplete", () => {
+    expect(
+      decideBacktestRefresh({ coverage: { totalExpected: 500, missing: 3 }, backtestsThrough: "2026-09-17", tradingDate: "2026-09-18" })
+    ).toBe("historical-incomplete");
+  });
+
+  it("refuses when there is no production universe at all", () => {
+    expect(
+      decideBacktestRefresh({ coverage: { totalExpected: 0, missing: 0 }, backtestsThrough: null, tradingDate: "2026-09-18" })
+    ).toBe("historical-incomplete");
+  });
+
+  it("does nothing when backtests already reach the date", () => {
+    expect(decideBacktestRefresh({ coverage: complete, backtestsThrough: "2026-09-18", tradingDate: "2026-09-18" })).toBe("already-current");
+  });
+
+  it("refreshes when history is complete and backtests are behind, or have never run", () => {
+    expect(decideBacktestRefresh({ coverage: complete, backtestsThrough: "2026-09-17", tradingDate: "2026-09-18" })).toBe("refresh");
+    expect(decideBacktestRefresh({ coverage: complete, backtestsThrough: null, tradingDate: "2026-09-18" })).toBe("refresh");
   });
 });

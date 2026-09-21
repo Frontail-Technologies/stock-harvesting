@@ -3,7 +3,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, type DbOrTx } from "../../db/client";
 import { instruments, marketCollections } from "../../db/schema";
 import { CANDLE_SOURCE, CANDLE_TIMEFRAME, DATA_PROVIDER_KEY, DEFAULT_EXCHANGE } from "../../shared/constants";
-import { AppError, getErrorMessage } from "../../shared/errors";
+import { AppError, ProviderRateLimitedError, getErrorMessage } from "../../shared/errors";
 import { logger } from "../../shared/logger";
 import { normalizeSymbol } from "../../shared/normalize";
 import { getActiveProviderAccessToken, getEligibleProviderAdapter, markProviderConnectionExpired } from "../data-provider/data-provider.service";
@@ -32,6 +32,14 @@ import { publishMarketStreamEvent } from "../market-stream/market-stream.hub";
 import { isProviderCapabilityCoolingDown } from "../market-stream/market-stream.capabilities";
 import { ensureMarketStreamSymbols } from "../market-stream/market-stream.service";
 import { deleteDashboardSnapshots } from "./dashboard-snapshot-store";
+import {
+  clearNoHistory,
+  NO_HISTORY_CHECKPOINT_KIND,
+  isNoHistoryRecheckDue,
+  noHistoryRecheckCutoff,
+  readNoHistoryConfirmedAt,
+  recordNoHistoryConfirmed,
+} from "./market-data.no-history";
 import { activeUniverseFilter, productionProviderKeyForExchange } from "./market-data.universe";
 import {
   candleBackfillDurationSeconds,
@@ -115,6 +123,14 @@ function getSafeProviderErrorMessage(error: unknown) {
   return firstLine.length > 300 ? `${firstLine.slice(0, 300)}...` : firstLine;
 }
 
+export type BackfillDailyCandlesResult = {
+  insertedDaily: number;
+  insertedWeekly: number;
+  insertedMonthly: number;
+  dailyCandles: ProviderDailyCandle[];
+  providerConfirmedEmpty?: boolean;
+};
+
 export async function backfillDailyCandles(
   input: {
     symbol: string;
@@ -123,7 +139,7 @@ export async function backfillDailyCandles(
     exchange?: string;
   },
   dbClient: DbOrTx = db
-) {
+): Promise<BackfillDailyCandlesResult> {
   const symbol = normalizeSymbol(input.symbol);
   const exchange = input.exchange ?? DEFAULT_EXCHANGE;
   const startedAt = Date.now();
@@ -193,6 +209,9 @@ export async function backfillDailyCandles(
       insertedWeekly: weekly.length,
       insertedMonthly: monthly.length,
       dailyCandles: daily,
+      // The provider answered successfully and had nothing for the range - unlike an
+      // error/timeout (thrown above) or a no-op because no provider was eligible.
+      providerConfirmedEmpty: daily.length === 0,
     };
   } catch (error) {
     recordCandleBackfill(exchange, "failed", startedAt);
@@ -590,7 +609,7 @@ export type DailyCandleSyncResult = {
 // range planning (planDailyCandleSync) and the write path (backfillDailyCandles)
 // stay identical between both callers, no separate formulas.
 export async function refreshDailyCandles(
-  input: { symbol: string; exchange?: string; targetDate?: string },
+  input: { symbol: string; exchange?: string; targetDate?: string; forceRecheck?: boolean },
   dbClient: DbOrTx = db
 ): Promise<DailyCandleSyncResult> {
   const symbol = normalizeSymbol(input.symbol);
@@ -622,10 +641,33 @@ export async function refreshDailyCandles(
     to: syncTo,
   });
 
+  // No stored candles at all = a full-range bootstrap. Only there can "the provider
+  // has no history for this instrument" be concluded and remembered.
+  const isBootstrap = !input.targetDate && plan.kind === "bootstrap-required";
+
+  if (isBootstrap && !input.forceRecheck) {
+    const confirmedAt = await readNoHistoryConfirmedAt(exchange, symbol).catch(() => null);
+    if (!isNoHistoryRecheckDue(confirmedAt)) {
+      return { symbol, instrumentId: instrument.id, status: "provider-empty", insertedDaily: 0, failedDates: [] };
+    }
+  }
+
   const result = await backfillDailyCandles({ symbol, exchange, from: syncFrom, to: syncTo }, dbClient);
 
   if (result.dailyCandles.length === 0) {
+    if (isBootstrap && result.providerConfirmedEmpty) {
+      await recordNoHistoryConfirmed({ exchange, symbol, requestedFrom: syncFrom, requestedTo: syncTo }).catch((error) => {
+        logger.warn(
+          { exchange, symbol, message: getErrorMessage(error, "Unknown error") },
+          "Failed to record no-history confirmation; the instrument stays retryable"
+        );
+      });
+    }
     return { symbol, instrumentId: instrument.id, status: "provider-empty", insertedDaily: 0, failedDates: [] };
+  }
+
+  if (isBootstrap) {
+    await clearNoHistory(exchange, symbol).catch(() => undefined);
   }
 
   const datesAfter = await readCandleDatesInRange({
@@ -717,7 +759,11 @@ export async function syncDailyCandlesForActiveInstruments(
     failedDetails: [],
   };
 
+  // Once the provider says its call quota is used up, stop starting new symbols: every further call would
+  // be refused, and counting each as a failed symbol only hides the real cause.
+  const limit: { error: ProviderRateLimitedError | null } = { error: null };
   await runWithConcurrency(rows, DAILY_CANDLE_SYNC_CONCURRENCY, async (row) => {
+    if (limit.error) return;
     summary.processed += 1;
     try {
       const result = await refreshDailyCandles({ symbol: row.symbol, exchange, targetDate });
@@ -739,6 +785,11 @@ export async function syncDailyCandlesForActiveInstruments(
         });
       }
     } catch (error) {
+      if (error instanceof ProviderRateLimitedError) {
+        limit.error = error;
+        summary.processed -= 1;
+        return;
+      }
       // getSafeProviderErrorMessage (not plain getErrorMessage) - a DB failure here is a
       // DrizzleQueryError whose own .message is just "Failed query: <sql> params: <params>";
       // the actual reason (timeout, too many connections, connection terminated, etc.) lives
@@ -773,17 +824,17 @@ export async function syncDailyCandlesForActiveInstruments(
     await invalidateDashboardSnapshotsForExchange(exchange);
   }
 
+  // Candles saved before the limit was hit are kept; the run fails so it can be retried after the cooldown.
+  if (limit.error) throw limit.error;
+
   return summary;
 }
 
-export async function findActiveSymbolsWithoutDailyCandles(
-  exchange: string,
-  limit = 100,
-) {
-  const providerKey = productionProviderKeyForExchange(exchange);
-  if (!providerKey) return [];
-
-  const result = await db.execute<{ symbol: string }>(sql`
+// Bootstrap candidates: active production instruments with no daily candle that do not
+// hold a still-fresh "provider confirmed no history" state. "Zero candle rows" alone is
+// not enough - that re-selected every no-history instrument on every reconcile pass.
+export function buildBootstrapCandidatesQuery(exchange: string, providerKey: string, limit: number, now: Date) {
+  return sql`
     SELECT i.symbol
     FROM instruments i
     WHERE i.exchange = ${exchange}
@@ -795,9 +846,31 @@ export async function findActiveSymbolsWithoutDailyCandles(
         WHERE c.instrument_id = i.id
           AND c.timeframe = ${CANDLE_TIMEFRAME.day}
       )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM candle_bootstrap_checkpoints b
+        WHERE b.exchange = i.exchange
+          AND b.symbol = i.symbol
+          AND b.timeframe = ${CANDLE_TIMEFRAME.day}
+          AND b.kind = ${NO_HISTORY_CHECKPOINT_KIND}
+          AND b.status = 'success'
+          AND b.completed_at > ${noHistoryRecheckCutoff(now)}
+      )
     ORDER BY i.created_at ASC, i.symbol ASC
     LIMIT ${limit}
-  `);
+  `;
+}
+
+export async function findActiveSymbolsWithoutDailyCandles(
+  exchange: string,
+  limit = 100,
+  now: Date = new Date(),
+  dbClient: DbOrTx = db,
+) {
+  const providerKey = productionProviderKeyForExchange(exchange);
+  if (!providerKey) return [];
+
+  const result = await dbClient.execute<{ symbol: string }>(buildBootstrapCandidatesQuery(exchange, providerKey, limit, now));
   return result.rows.map((row) => row.symbol);
 }
 
