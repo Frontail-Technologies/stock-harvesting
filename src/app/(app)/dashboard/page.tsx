@@ -6,7 +6,7 @@ export default function Dashboard() {
   return (
     <AppShell>
 
-      <AppPage className="px-3 py-6 sm:px-4 lg:px-6" contentClassName="max-w-none">
+      <AppPage className="px-3 py-3 sm:px-4 sm:py-6 lg:px-6" contentClassName="max-w-none gap-3 sm:gap-6">
         <Suspense fallback={null}>
           <DashboardPage />
         </Suspense>

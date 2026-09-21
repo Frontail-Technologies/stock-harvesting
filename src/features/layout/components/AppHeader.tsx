@@ -23,7 +23,7 @@ export function AppHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/85">
+    <header className="sticky top-0 z-50 hidden h-16 shrink-0 border-b border-border bg-background/95 text-foreground backdrop-blur md:block supports-[backdrop-filter]:bg-background/85">
       <div className="flex h-full w-full items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 lg:px-6">
         <div className="flex shrink-0 items-center gap-2 lg:flex-none">
           <Link href="/charts" className="flex items-center gap-2">

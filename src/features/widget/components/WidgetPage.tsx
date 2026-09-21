@@ -107,16 +107,16 @@ export function WidgetPage() {
   const skeletonCount = sources.length > 0 ? sources.length : SKELETON_FALLBACK_COUNT;
 
   return (
-    <div className="flex min-w-0 flex-col gap-8 overflow-x-clip">
+    <div className="flex min-w-0 flex-col gap-3 overflow-x-clip sm:gap-8">
       <div className="relative flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0">
-          <h1 className="pr-24 text-xl font-semibold tracking-tight text-foreground sm:pr-0 sm:text-[1.75rem]">Widget</h1>
+          <h1 className="pr-24 text-2xl font-semibold tracking-tight text-foreground sm:mt-1 sm:pr-0 sm:text-[1.75rem]">Widget</h1>
           <p className="mt-1.5 hidden text-sm text-muted-foreground sm:block">
             Quick ranked snapshot across your selected Segments and Watchlists.
           </p>
         </div>
         {hasSelection && (
-          <div className="absolute right-0 top-0 flex min-w-0 items-center justify-end gap-2 sm:static sm:w-auto">
+          <div className="ml-auto flex min-w-0 items-center justify-end gap-2 sm:w-auto">
             <div className="hidden sm:block">
               <Select
                 value={viewMode}

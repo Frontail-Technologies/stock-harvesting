@@ -237,6 +237,13 @@ export function deleteAdminJob(input: { id: string; source: "run" | "provider" }
   });
 }
 
+export function bulkDeleteFailedAdminJobs(jobs: Array<{ id: string; source: "run" | "provider" }>) {
+  return adminApiFetch<{ deletedCount: number }>(API_ROUTES.admin.bulkDeleteFailedJobs, {
+    method: "POST",
+    body: JSON.stringify({ jobs }),
+  });
+}
+
 export function getAdminMarketDataQueue() {
   return adminApiFetch<AdminMarketDataQueue>(API_ROUTES.admin.marketDataQueue);
 }

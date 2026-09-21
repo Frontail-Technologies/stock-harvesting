@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import type { Stock } from "@/types/market";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, Maximize, Minimize } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCurrency } from "@/features/currency";
 import { GlobalSearchNavbarField } from "@/features/global-search/components/GlobalSearchNavbarField";
 import { ScannerPriceAlertMenu } from "@/features/price-alerts";
@@ -22,6 +20,7 @@ import {
   type ScannerLookbackMultiplier,
   type Timeframe,
 } from "../types";
+import { useScannerUiStore } from "../stores/scanner-ui-store";
 import { ChartDataThroughLabel } from "./ChartDataThroughLabel";
 import { ChartRefreshButton } from "./ChartRefreshButton";
 import { ChartSnapshotMenu } from "./ChartSnapshotMenu";
@@ -34,6 +33,20 @@ import { TimeframeSelector } from "./TimeframeSelector";
 
 const SCANNER_GHOST_TRIGGER_CLASS =
   "border-transparent bg-transparent hover:bg-muted hover:border-transparent";
+
+function ChartFullscreenButton() {
+  const fullscreen = useScannerUiStore((state) => state.chartFocusMode);
+  const setFullscreen = useScannerUiStore((state) => state.setChartFocusMode);
+
+  return (
+    <ScannerIconButton
+      label={fullscreen ? "Exit full screen" : "Full screen chart"}
+      icon={fullscreen ? Minimize : Maximize}
+      active={fullscreen}
+      onClick={() => setFullscreen(!fullscreen)}
+    />
+  );
+}
 
 type TopToolbarProps = {
   stock: Stock;
@@ -49,10 +62,12 @@ function LookbackDropdown({
   lookbackMultiplier,
   onLookbackMultiplierChange,
   className,
+  align = "start",
 }: {
   lookbackMultiplier: ScannerLookbackMultiplier;
   onLookbackMultiplierChange: (value: ScannerLookbackMultiplier) => void;
   className?: string;
+  align?: "start" | "center" | "end";
 }) {
   return (
     <DropdownMenu>
@@ -66,15 +81,15 @@ function LookbackDropdown({
         <ChevronDown className="size-3 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="start"
-        className="scanner-portal w-20 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl"
+        align={align}
+        className="scanner-portal w-14 min-w-14 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-2xl"
       >
         {SCANNER_LOOKBACK_OPTIONS.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => onLookbackMultiplierChange(option.value)}
             className={cn(
-              "flex h-8 cursor-pointer items-center rounded-md px-2 text-sm font-medium text-muted-foreground focus:bg-muted focus:text-foreground",
+              "flex h-8 cursor-pointer items-center justify-center rounded-md px-1 text-sm font-medium text-muted-foreground focus:bg-muted focus:text-foreground",
               option.value === lookbackMultiplier &&
                 "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground",
             )}
@@ -122,8 +137,6 @@ export function TopToolbar({
 }: TopToolbarProps) {
 
   const hasStock = Boolean(stock.symbol);
-  const [moreOpen, setMoreOpen] = useState(false);
-
   return (
     <div className="flex shrink-0 flex-col overflow-hidden rounded-[3px] border-b border-border/60 bg-background sm:min-h-10 sm:flex-row sm:items-center sm:gap-2 sm:px-2 sm:py-1">
 
@@ -137,6 +150,7 @@ export function TopToolbar({
           stock={stock}
           disabled={!hasStock}
         />
+        <ChartFullscreenButton />
         <ScannerAccountMenu />
       </div>
 
@@ -145,38 +159,17 @@ export function TopToolbar({
       <div className="flex h-10 items-center gap-1 border-t border-border/40 px-1 sm:hidden">
         <TimeframeSelector value={timeframe} onChange={onTimeframeChange} />
         <div className="min-w-0 flex-1" aria-hidden />
-        <ScannerIconButton
-          label="More chart options"
-          icon={MoreHorizontal}
-          active={moreOpen}
-          onClick={() => setMoreOpen(true)}
+        <LookbackDropdown
+          lookbackMultiplier={lookbackMultiplier}
+          onLookbackMultiplierChange={onLookbackMultiplierChange}
+          className="h-8 bg-muted/50 px-2"
+          align="end"
+        />
+        <ThemeToggle
+          className={SCANNER_GHOST_TRIGGER_CLASS}
+          tooltipPortalClassName="scanner-portal"
         />
       </div>
-
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent
-          side="bottom"
-          className="scanner-portal gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:hidden"
-        >
-          <SheetHeader>
-            <SheetTitle>Chart options</SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold text-foreground">Lookback window</span>
-              <LookbackDropdown
-                lookbackMultiplier={lookbackMultiplier}
-                onLookbackMultiplierChange={onLookbackMultiplierChange}
-                className="h-9 border border-border bg-muted/40"
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold text-foreground">Theme</span>
-              <ThemeToggle tooltipPortalClassName="scanner-portal" />
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <div className="hidden items-center gap-1.5 sm:flex">
         <ChartTypeSelector value={chartType} onChange={onChartTypeChange} />
@@ -211,6 +204,7 @@ export function TopToolbar({
             stock={stock}
             disabled={!hasStock}
           />
+          <ChartFullscreenButton />
           <ThemeToggle
             className={SCANNER_GHOST_TRIGGER_CLASS}
             tooltipPortalClassName="scanner-portal"

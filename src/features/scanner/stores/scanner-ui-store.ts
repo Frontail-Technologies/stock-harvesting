@@ -33,6 +33,7 @@ type ScannerUiState = {
   percentageScale: boolean;
   showBacktestStats: boolean;
   scannerHighlightsVisible: boolean;
+  chartFocusMode: boolean;
 
   isWatchlistPanelOpen: boolean;
 
@@ -54,6 +55,7 @@ type ScannerUiState = {
   togglePercentageScale: () => void;
   toggleBacktestStats: () => void;
   toggleScannerHighlights: () => void;
+  setChartFocusMode: (active: boolean) => void;
   setWatchlistPanelOpen: (open: boolean) => void;
   toggleWatchlistPanel: () => void;
   setWatchlistPanelWidth: (width: number) => void;
@@ -89,6 +91,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
       percentageScale: false,
       showBacktestStats: true,
       scannerHighlightsVisible: true,
+      chartFocusMode: false,
       isWatchlistPanelOpen: false,
       watchlistPanelWidth: SCANNER_WATCHLIST_PANEL_DEFAULT_WIDTH,
       activeWatchlistId: null,
@@ -125,6 +128,7 @@ export const useScannerUiStore = create<ScannerUiState>()(
         set((state) => ({
           scannerHighlightsVisible: !state.scannerHighlightsVisible,
         })),
+      setChartFocusMode: (chartFocusMode) => set({ chartFocusMode }),
       setWatchlistPanelOpen: (isWatchlistPanelOpen) => set({ isWatchlistPanelOpen }),
       toggleWatchlistPanel: () =>
         set((state) => ({ isWatchlistPanelOpen: !state.isWatchlistPanelOpen })),

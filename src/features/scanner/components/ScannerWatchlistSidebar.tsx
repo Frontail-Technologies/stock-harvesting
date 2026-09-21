@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
-import { ChevronRight, MoreHorizontal, PanelRightClose, Plus, SquareArrowOutUpRight } from "lucide-react";
+import { ChevronRight, MoreHorizontal, PanelRightClose, Plus, SquareArrowOutUpRight, X } from "lucide-react";
 import type { Stock } from "@/types/market";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -271,17 +271,17 @@ function ScannerWatchlistPanelBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-2.5 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2">
         <span className="text-xs font-bold tracking-wide text-foreground uppercase">
           Watchlists
         </span>
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger
               type="button"
               onClick={() => setCreateDialogOpen(true)}
               aria-label="Create watchlist"
-              className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Plus className="size-3.5" />
             </TooltipTrigger>
@@ -295,7 +295,7 @@ function ScannerWatchlistPanelBody({
                 <Link
                   href="/watchlists"
                   aria-label="Open Watchlists page"
-                  className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 />
               }
             >
@@ -310,9 +310,10 @@ function ScannerWatchlistPanelBody({
               type="button"
               onClick={onCollapse}
               aria-label={collapseLabel}
-              className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <PanelRightClose className="size-3.5" />
+              <X className="size-4 md:hidden" />
+              <PanelRightClose className="hidden size-3.5 md:block" />
             </TooltipTrigger>
             <TooltipContent side="bottom" className="scanner-portal">
               {collapseLabel}
@@ -537,7 +538,7 @@ export function ScannerWatchlistSidebar({
   if (!isDesktop) {
     return (
       <Sheet open={isOpen} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="scanner-portal max-h-[85dvh] gap-0 p-0">
+        <SheetContent side="bottom" showCloseButton={false} className="scanner-portal max-h-[85dvh] gap-0 p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>{panelMode === "segment" ? "Segment" : "Watchlists"}</SheetTitle>
           </SheetHeader>

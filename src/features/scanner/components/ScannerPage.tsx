@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Minimize2, Search } from "lucide-react";
 import { queryKeys } from "@/features/api";
 import { AdPlacement, AdsenseScript } from "@/features/adsense";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -102,6 +102,7 @@ export function ScannerPage() {
   const pathname = usePathname();
   const { theme } = useTheme();
   const openSearchModal = useSearchModalStore((state) => state.open);
+  const launchSearchHandledRef = useRef(false);
   
   
   
@@ -129,6 +130,17 @@ export function ScannerPage() {
   const percentageScale = useScannerUiStore((state) => state.percentageScale);
   const toggleAutoScale = useScannerUiStore((state) => state.toggleAutoScale);
   const togglePercentageScale = useScannerUiStore((state) => state.togglePercentageScale);
+
+  useEffect(() => {
+    if (searchParams.get("search") !== "1" || launchSearchHandledRef.current) return;
+    launchSearchHandledRef.current = true;
+    openSearchModal();
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [openSearchModal, pathname, router, searchParams]);
   const showBacktestStats = useScannerUiStore((state) => state.showBacktestStats);
   const scannerHighlightsVisible = useScannerUiStore((state) => state.scannerHighlightsVisible);
   const toggleBacktestStats = useScannerUiStore((state) => state.toggleBacktestStats);
@@ -416,6 +428,17 @@ function ScannerDrawingWorkspace({
 }: ScannerDrawingWorkspaceProps) {
   const queryClient = useQueryClient();
   const drawing = useScannerDrawingState(stock.symbol, timeframe);
+  const chartFocusMode = useScannerUiStore((state) => state.chartFocusMode);
+  const setChartFocusMode = useScannerUiStore((state) => state.setChartFocusMode);
+
+  useEffect(() => {
+    if (!chartFocusMode) return;
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChartFocusMode(false);
+    };
+    window.addEventListener("keydown", exitOnEscape);
+    return () => window.removeEventListener("keydown", exitOnEscape);
+  }, [chartFocusMode, setChartFocusMode]);
   const authStatus = useSessionStore((state) => state.status);
   const historyRangeQuery = useScannerHistoryRange(stock.symbol, "1D", stock.exchange);
   const historyMetadataRange = useMemo<AvailableHistoryRange | null>(() => {
@@ -695,7 +718,22 @@ function ScannerDrawingWorkspace({
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className={cn("relative min-h-0 min-w-0 flex-1 overflow-hidden", SCANNER_GUTTER_B)}>
+        <div className={cn(
+          "relative min-h-0 min-w-0 flex-1 overflow-hidden",
+          SCANNER_GUTTER_B,
+          chartFocusMode && "fixed inset-0 z-100 bg-(--scanner-shell-bg)"
+        )}>
+          {chartFocusMode && (
+            <button
+              type="button"
+              onClick={() => setChartFocusMode(false)}
+              className="absolute top-2 right-2 z-50 inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background/90 text-foreground shadow-lg backdrop-blur hover:bg-muted"
+              aria-label="Exit full chart view"
+              title="Exit full chart view"
+            >
+              <Minimize2 className="size-4" />
+            </button>
+          )}
           <ScannerChart
             stock={stock}
             candles={displayCandles}

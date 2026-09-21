@@ -17,6 +17,7 @@ import type { AdminJobProgressEvent, AdminMarketDataEvent } from "@/features/mar
 import { cn } from "@/utils/cn";
 import {
   catchUpAdminMarketData,
+  bulkDeleteFailedAdminJobs,
   deleteAdminJob,
   reconcileAdminMarketData,
   refreshAdminMarketDataBacktests,
@@ -397,6 +398,7 @@ export function AdminMarketDataPage() {
   const reconcileMutation = useMutation({ mutationFn: reconcileAdminMarketData, onSuccess: refresh });
   const catchUpMutation = useMutation({ mutationFn: catchUpAdminMarketData, onSuccess: refresh });
   const deleteJobMutation = useMutation({ mutationFn: deleteAdminJob, onSuccess: refresh });
+  const bulkDeleteMutation = useMutation({ mutationFn: bulkDeleteFailedAdminJobs, onSuccess: refresh });
   const refreshCandlesMutation = useMutation({
     mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
       Promise.all(targets.map((target) => catchUpAdminMarketData(target))),
@@ -484,6 +486,12 @@ export function AdminMarketDataPage() {
     (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
     && (!dateFilter || dateFilterValue(jobActivityTime(run)) === dateFilter)
   );
+  const filteredFailedRuns = filteredRuns.filter((run) => run.status === "failed");
+  const deleteFilteredFailedJobs = () => {
+    if (filteredFailedRuns.length === 0) return;
+    if (!window.confirm(`Delete ${filteredFailedRuns.length} failed job${filteredFailedRuns.length === 1 ? "" : "s"} currently shown? This can't be undone.`)) return;
+    bulkDeleteMutation.mutate(filteredFailedRuns.map(({ id, source }) => ({ id, source })));
+  };
   const deleteJob = (run: AdminJobDisplay) => {
     if (!window.confirm(`Delete this ${JOB_TYPE_LABEL[run.jobType] ?? run.jobType} job from the history? This can't be undone.`)) return;
     setDeletingJobId(run.id);
@@ -596,6 +604,16 @@ export function AdminMarketDataPage() {
       <section>
         <div className="mb-2 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Job runs</h2>
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={filteredFailedRuns.length === 0 || bulkDeleteMutation.isPending}
+            onClick={deleteFilteredFailedJobs}
+          >
+            {bulkDeleteMutation.isPending ? <Spinner size="sm" /> : <Trash2 />}
+            Delete failed{filteredFailedRuns.length > 0 ? ` (${filteredFailedRuns.length})` : ""}
+          </Button>
         </div>
         {jobRunsQuery.isLoading || providerJobsQuery.isLoading ? (
           <div className="grid min-h-40 place-items-center"><Spinner size="lg" className="text-primary" /></div>

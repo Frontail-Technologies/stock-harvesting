@@ -58,10 +58,10 @@ function MobileBarButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 min-w-14 cursor-pointer items-center justify-center gap-1 rounded-md px-2.5 text-[0.75rem] font-semibold transition-colors",
+        "relative flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 border-r border-border/50 px-1.5 text-[0.75rem] font-semibold transition-colors last:border-r-0",
         active
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+          ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary"
+          : "text-muted-foreground hover:text-foreground",
       )}
     >
       <Icon className="size-3.5" />
@@ -144,8 +144,8 @@ export function RangeFilterTabs({
         <div className="h-0.5 bg-primary/40" />
       </div>
 
-      <div className="shrink-0 rounded-t-[3px] border-t border-border/60 bg-background px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:hidden">
-        <div className="flex items-center justify-between gap-1 overflow-x-auto">
+      <div className="shrink-0 rounded-t-[3px] border-t border-border/60 bg-background px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] sm:hidden">
+        <div className="flex items-center overflow-hidden">
           <MobileBarButton
             icon={Maximize2}
             label={currentRangeLabel}
