@@ -15,11 +15,13 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const status = useSessionStore((state) => state.status);
+  const accessToken = useSessionStore((state) => state.accessToken);
   const user = useSessionStore((state) => state.user);
 
   const isBlockedAdminAccount = status === "authenticated" && user?.role === "admin";
+  const isRequestReady = status === "authenticated" && Boolean(accessToken) && !isBlockedAdminAccount;
 
-  const showSpinner = useDelayedFlag(status !== "authenticated");
+  const showSpinner = useDelayedFlag(!isRequestReady);
 
   useEffect(() => {
     if (status !== "guest" && !isBlockedAdminAccount) return;
@@ -32,7 +34,7 @@ export function AuthGuard({ children, className }: AuthGuardProps) {
     router.replace(loginPath);
   }, [isBlockedAdminAccount, pathname, router, status]);
 
-  if (status !== "authenticated" || isBlockedAdminAccount) {
+  if (!isRequestReady) {
     return (
       <div
         className={className ?? "grid min-h-dvh place-items-center bg-background"}

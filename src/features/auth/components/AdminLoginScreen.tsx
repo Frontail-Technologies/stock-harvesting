@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/features/api";
 import { AdminForbiddenState } from "@/features/admin/components/shell/AdminAccessState";
-import { getAdminHost } from "@/utils/seo";
+import { adminPath } from "@/utils/seo";
 import { loginFieldRules, type LoginFormValues } from "../schemas/login.schema";
 import { isTurnstileEnabled } from "../constants/turnstile";
 import { useAdminPasswordLogin } from "../hooks/use-auth";
@@ -29,6 +29,7 @@ export function AdminLoginScreen() {
   const searchParams = useSearchParams();
   const adminLogin = useAdminPasswordLogin();
   const status = useAdminSessionStore((state) => state.status);
+  const accessToken = useAdminSessionStore((state) => state.accessToken);
   const user = useAdminSessionStore((state) => state.user);
   const turnstileRef = useRef<TurnstileChallengeHandle | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -44,10 +45,10 @@ export function AdminLoginScreen() {
   const queryError = authReason && authReason !== "success" ? GENERIC_LOGIN_ERROR : null;
   const error = handlerError ?? queryError;
   const turnstileMissing = Boolean(isTurnstileEnabled() && !turnstileToken);
-  const adminHome = getAdminHost() ? "/" : "/admin";
+  const adminHome = adminPath("/admin/analytics");
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || !accessToken) return;
     if (user?.role !== "admin") return;
 
     const params = new URLSearchParams(window.location.search);
@@ -56,7 +57,7 @@ export function AdminLoginScreen() {
       nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") && nextPath !== "/login";
 
     router.replace(validNext ? nextPath : adminHome);
-  }, [adminHome, router, status, user]);
+  }, [accessToken, adminHome, router, status, user]);
 
   async function handleLogin(values: LoginFormValues) {
     setHandlerError(null);

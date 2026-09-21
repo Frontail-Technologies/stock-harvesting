@@ -70,6 +70,8 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
     const containerRef = useRef<HTMLDivElement | null>(null);
     const widgetIdRef = useRef<string | null>(null);
     const tokenRef = useRef<string | null>(null);
+    const retryTimeoutRef = useRef<number | null>(null);
+    const retryCountRef = useRef(0);
     const [status, setStatus] = useState<TurnstileStatus>(isTurnstileEnabled() ? "loading" : "ready");
 
     useImperativeHandle(ref, () => ({
@@ -99,6 +101,7 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
             action,
             theme: "auto",
             callback: (token) => {
+              retryCountRef.current = 0;
               tokenRef.current = token;
               setStatus("verified");
               onTokenChange?.(token);
@@ -112,6 +115,15 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
               tokenRef.current = null;
               setStatus("error");
               onTokenChange?.(null);
+              if (retryCountRef.current < 1) {
+                retryCountRef.current += 1;
+                retryTimeoutRef.current = window.setTimeout(() => {
+                  if (!cancelled && widgetIdRef.current && window.turnstile) {
+                    setStatus("loading");
+                    window.turnstile.reset(widgetIdRef.current);
+                  }
+                }, 1_500);
+              }
             },
           });
           setStatus((current) => (current === "loading" ? "ready" : current));
@@ -122,6 +134,9 @@ export const TurnstileChallenge = forwardRef<TurnstileChallengeHandle, Turnstile
 
       return () => {
         cancelled = true;
+        if (retryTimeoutRef.current !== null) window.clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+        retryCountRef.current = 0;
         if (widgetIdRef.current && window.turnstile) {
           window.turnstile.remove(widgetIdRef.current);
         }
