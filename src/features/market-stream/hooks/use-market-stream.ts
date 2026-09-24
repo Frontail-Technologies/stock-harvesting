@@ -126,16 +126,21 @@ export function useMarketStream({
         symbolCount: activeSymbols.length,
         symbols: activeSymbols.slice(0, 10),
       });
-      socket = new WebSocket(url, getMarketStreamProtocols(token));
+      const nextSocket = new WebSocket(url, getMarketStreamProtocols(token));
+      socket = nextSocket;
 
-      socket.addEventListener("open", () => {
+      nextSocket.addEventListener("open", () => {
+        if (stopped) {
+          nextSocket.close();
+          return;
+        }
         setStatus("connected");
         debugMarketStream("open");
         debugMarketStream("subscribe", {
           symbolCount: activeSymbols.length,
           symbols: activeSymbols.slice(0, 10),
         });
-        socket?.send(
+        nextSocket.send(
           JSON.stringify({
             type: "subscribe",
             symbols: activeSymbols,
@@ -143,7 +148,8 @@ export function useMarketStream({
         );
       });
 
-      socket.addEventListener("message", (event) => {
+      nextSocket.addEventListener("message", (event) => {
+        if (stopped) return;
         try {
           const message = JSON.parse(String(event.data)) as MarketStreamServerMessage;
           debugMarketStream("message", message);
@@ -157,14 +163,15 @@ export function useMarketStream({
         }
       });
 
-      socket.addEventListener("close", () => {
+      nextSocket.addEventListener("close", () => {
         debugMarketStream("close", { stopped });
         if (stopped) return;
         setStatus("disconnected");
         scheduleReconnect();
       });
 
-      socket.addEventListener("error", () => {
+      nextSocket.addEventListener("error", () => {
+        if (stopped) return;
         debugMarketStream("error");
         setStatus("error");
       });
@@ -190,8 +197,10 @@ export function useMarketStream({
             symbols: activeSymbols,
           })
         );
+        socket.close();
       }
-      socket?.close();
+      // Let a CONNECTING socket reach `open`; that handler closes it when
+      // `stopped` instead of triggering the browser's premature-close error.
     };
   }, [enabled, normalizedSymbolsKey, sessionAccessToken]);
 

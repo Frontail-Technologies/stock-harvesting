@@ -73,16 +73,22 @@ export function useAdminMarketDataStream({
 
     const connect = (token: string) => {
       setStatus("connecting");
-      socket = new WebSocket(getMarketStreamUrl(), getMarketStreamProtocols(token));
+      const nextSocket = new WebSocket(getMarketStreamUrl(), getMarketStreamProtocols(token));
+      socket = nextSocket;
 
-      socket.addEventListener("open", () => {
+      nextSocket.addEventListener("open", () => {
+        if (stopped) {
+          nextSocket.close();
+          return;
+        }
         setStatus("connected");
-        socket?.send(JSON.stringify({ type: "admin.subscribe" }));
+        nextSocket.send(JSON.stringify({ type: "admin.subscribe" }));
         if (hasConnectedBeforeRef.current) onReconnectedRef.current?.();
         hasConnectedBeforeRef.current = true;
       });
 
-      socket.addEventListener("message", (event) => {
+      nextSocket.addEventListener("message", (event) => {
+        if (stopped) return;
         try {
           const message = JSON.parse(String(event.data)) as MarketStreamServerMessage;
           if (!isAdminEvent(message)) return;
@@ -92,13 +98,14 @@ export function useAdminMarketDataStream({
         }
       });
 
-      socket.addEventListener("close", () => {
+      nextSocket.addEventListener("close", () => {
         if (stopped) return;
         setStatus("disconnected");
         scheduleReconnect();
       });
 
-      socket.addEventListener("error", () => {
+      nextSocket.addEventListener("error", () => {
+        if (stopped) return;
         setStatus("error");
       });
     };
@@ -114,8 +121,10 @@ export function useAdminMarketDataStream({
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "admin.unsubscribe" }));
+        socket.close();
       }
-      socket?.close();
+      // Calling close() while CONNECTING makes browsers emit a misleading
+      // console error. The open handler sees `stopped` and closes immediately.
     };
   }, [enabled, adminAccessToken]);
 
