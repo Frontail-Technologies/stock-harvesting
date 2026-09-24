@@ -1,5 +1,5 @@
 export { useMarketStream } from "./hooks/use-market-stream";
-export { getMarketStreamUrl } from "./lib/market-stream-url";
+export { getMarketStreamProtocols, getMarketStreamUrl } from "./lib/market-stream-url";
 export {
   getLivePriceKey,
   useLivePriceStore,

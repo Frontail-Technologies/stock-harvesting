@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getApiAccessToken, refreshAccessToken } from "@/features/api";
 import { useSessionStore } from "@/features/auth";
-import { getMarketStreamUrl } from "../lib/market-stream-url";
+import { isAccessTokenExpiring } from "../lib/access-token-expiry";
+import { getMarketStreamProtocols, getMarketStreamUrl } from "../lib/market-stream-url";
 import type {
   MarketStreamEvent,
   MarketStreamServerMessage,
@@ -94,15 +95,38 @@ export function useMarketStream({
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
 
+    async function getFreshToken() {
+      const currentToken = getApiAccessToken() ?? sessionAccessToken;
+      if (currentToken && !isAccessTokenExpiring(currentToken)) return currentToken;
+      debugMarketStream("refreshing token");
+      const refreshed = await refreshAccessToken();
+      return refreshed.accessToken;
+    }
+
+    async function reconnect() {
+      try {
+        const token = await getFreshToken();
+        if (!stopped) connect(token);
+      } catch {
+        debugMarketStream("refresh failed");
+        if (!stopped) setStatus("error");
+      }
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => void reconnect(), RECONNECT_DELAY_MS);
+    }
+
     const connect = (token: string) => {
       setStatus("connecting");
-      const url = getMarketStreamUrl(token);
+      const url = getMarketStreamUrl();
       debugMarketStream("connecting", {
-        url: url.replace(/token=.*/, "token=[redacted]"),
+        url,
         symbolCount: activeSymbols.length,
         symbols: activeSymbols.slice(0, 10),
       });
-      socket = new WebSocket(url);
+      socket = new WebSocket(url, getMarketStreamProtocols(token));
 
       socket.addEventListener("open", () => {
         setStatus("connected");
@@ -137,7 +161,7 @@ export function useMarketStream({
         debugMarketStream("close", { stopped });
         if (stopped) return;
         setStatus("disconnected");
-        reconnectTimer = setTimeout(() => connect(token), RECONNECT_DELAY_MS);
+        scheduleReconnect();
       });
 
       socket.addEventListener("error", () => {
@@ -147,21 +171,7 @@ export function useMarketStream({
     };
 
     async function start() {
-      let token = sessionAccessToken ?? getApiAccessToken();
-
-      if (!token) {
-        try {
-          debugMarketStream("refreshing token");
-          const refreshed = await refreshAccessToken();
-          token = refreshed.accessToken;
-        } catch {
-          debugMarketStream("refresh failed");
-          setStatus("error");
-          return;
-        }
-      }
-
-      if (!stopped) connect(token);
+      await reconnect();
     }
 
     void start();

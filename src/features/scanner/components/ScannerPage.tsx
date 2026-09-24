@@ -458,23 +458,31 @@ function ScannerDrawingWorkspace({
     { symbol: stock.symbol, exchange: stock.exchange },
     { enabled: Boolean(stock.symbol) && stock.exchange === "BSE" && (timeframe === "1D" || timeframe === "1W" || timeframe === "1M") }
   );
-  // Chart display only - never fed into candleHistoryRange or
-  // weeklyScanBands/mapScanBandsToDisplayTimeframe's OWN scan-verdict
-  // computation (which candles matched, per-symbol pass/fail), both of
-  // which keep reading the plain `candles` (completed-only) array above.
-  // mapScanBandsToDisplayTimeframe itself DOES take displayCandles below,
-  // but only to know which real calendar days are on the chart (.time
-  // only, never price) - see the comment at that call site. Holds off
-  // merging in the provisional candle until historical candles have
-  // loaded at least once -
+  // Chart display only. Scan verdicts (which weeks matched and per-symbol
+  // pass/fail) come from the separate completed-week scanner endpoint;
+  // neither these chart candles nor their provisional prices are used to
+  // calculate them. mapScanBandsToDisplayTimeframe takes displayCandles
+  // only to locate real chart bucket times. Hold off merging today's
+  // snapshot until historical candles have loaded at least once -
   // the current-day snapshot query is a single lightweight round trip and
   // routinely resolves before the historical ensure-fresh repair does, so
   // without this the chart would flash "just today's candle" before the
   // history pops in behind it.
   const displayCandles = useMemo(() => {
     if (candleQuery.isLoading) return candles;
-    return mergeProvisionalCandleForDisplay(candles, currentDayCandleQuery.candle, timeframe);
-  }, [candles, candleQuery.isLoading, currentDayCandleQuery.candle, timeframe]);
+    return mergeProvisionalCandleForDisplay(
+      candles,
+      currentDayCandleQuery.candle,
+      timeframe,
+      candleQuery.dataThrough
+    );
+  }, [
+    candles,
+    candleQuery.dataThrough,
+    candleQuery.isLoading,
+    currentDayCandleQuery.candle,
+    timeframe,
+  ]);
   const candleHistoryRange = useMemo<AvailableHistoryRange | null>(() => {
     if (candles.length === 0) return null;
 

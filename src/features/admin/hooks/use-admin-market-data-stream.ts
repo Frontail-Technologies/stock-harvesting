@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { getAdminApiAccessToken, refreshAdminAccessToken } from "@/features/api";
 import { useAdminSessionStore } from "@/features/auth";
-import { getMarketStreamUrl, type AdminMarketDataEvent, type MarketStreamServerMessage, type MarketStreamStatus } from "@/features/market-stream";
+import { getMarketStreamProtocols, getMarketStreamUrl, type AdminMarketDataEvent, type MarketStreamServerMessage, type MarketStreamStatus } from "@/features/market-stream";
+import { isAccessTokenExpiring } from "@/features/market-stream/lib/access-token-expiry";
 
 type UseAdminMarketDataStreamInput = {
   enabled?: boolean;
@@ -49,9 +50,30 @@ export function useAdminMarketDataStream({
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
 
+    async function getFreshToken() {
+      const currentToken = getAdminApiAccessToken() ?? adminAccessToken;
+      if (currentToken && !isAccessTokenExpiring(currentToken)) return currentToken;
+      const refreshed = await refreshAdminAccessToken();
+      return refreshed.accessToken;
+    }
+
+    async function reconnect() {
+      try {
+        const token = await getFreshToken();
+        if (!stopped) connect(token);
+      } catch {
+        if (!stopped) setStatus("error");
+      }
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => void reconnect(), RECONNECT_DELAY_MS);
+    }
+
     const connect = (token: string) => {
       setStatus("connecting");
-      socket = new WebSocket(getMarketStreamUrl(token));
+      socket = new WebSocket(getMarketStreamUrl(), getMarketStreamProtocols(token));
 
       socket.addEventListener("open", () => {
         setStatus("connected");
@@ -73,7 +95,7 @@ export function useAdminMarketDataStream({
       socket.addEventListener("close", () => {
         if (stopped) return;
         setStatus("disconnected");
-        reconnectTimer = setTimeout(() => connect(token), RECONNECT_DELAY_MS);
+        scheduleReconnect();
       });
 
       socket.addEventListener("error", () => {
@@ -82,19 +104,7 @@ export function useAdminMarketDataStream({
     };
 
     async function start() {
-      let token = adminAccessToken ?? getAdminApiAccessToken();
-
-      if (!token) {
-        try {
-          const refreshed = await refreshAdminAccessToken();
-          token = refreshed.accessToken;
-        } catch {
-          setStatus("error");
-          return;
-        }
-      }
-
-      if (!stopped) connect(token);
+      await reconnect();
     }
 
     void start();

@@ -48,6 +48,7 @@ export function AdminSidebar({
   onNavigate,
 }: AdminSidebarProps) {
   const { collapsed } = useSidebar();
+  const visuallyCollapsed = collapsed && !onNavigate;
   const avatarInitials = getAvatarInitials(user.name, user.email);
   const router = useRouter();
   const logout = useAdminLogout();
@@ -74,7 +75,7 @@ export function AdminSidebar({
       } as CSSProperties}
       className={cn(
         "relative border-sidebar-border/70 bg-sidebar",
-        collapsed ? "w-16" : onNavigate ? "w-72" : "w-60",
+        visuallyCollapsed ? "w-16" : onNavigate ? "w-72" : "w-60",
         className,
       )}
     >
@@ -84,11 +85,11 @@ export function AdminSidebar({
           onClick={onNavigate}
           className={cn(
             "flex min-w-0 items-center",
-            collapsed ? "justify-center" : "gap-2.5"
+            visuallyCollapsed ? "justify-center" : "gap-2.5"
           )}
           aria-label="Admin users"
         >
-          {collapsed ? (
+          {visuallyCollapsed ? (
             <Image src={getBrandLogoPath("dark")} alt="Stock Harvesting" width={420} height={420} className="size-9 object-contain" />
           ) : (
             <>
@@ -124,7 +125,7 @@ export function AdminSidebar({
                 disabled={item.disabled}
                 className={cn(
                   "h-10 rounded-md text-[13px] [&_svg]:size-[17px]",
-                  !collapsed && "gap-3 px-3",
+                  !visuallyCollapsed && "gap-3 px-3",
                   active && "before:hidden !bg-primary/15 !text-primary shadow-sm [&_svg]:text-primary",
                 )}
               >
@@ -135,14 +136,14 @@ export function AdminSidebar({
 
             if (item.disabled) {
               return (
-                <AdminSidebarTooltip key={item.href} label={`${item.label} - Soon`}>
+                <AdminSidebarTooltip key={item.href} label={`${item.label} - Soon`} forceExpanded={Boolean(onNavigate)}>
                   {menuItem}
                 </AdminSidebarTooltip>
               );
             }
 
             return (
-              <AdminSidebarTooltip key={item.href} label={item.label}>
+              <AdminSidebarTooltip key={item.href} label={item.label} forceExpanded={Boolean(onNavigate)}>
                 <Link href={href} onClick={onNavigate}>
                   {menuItem}
                 </Link>
@@ -153,7 +154,7 @@ export function AdminSidebar({
       </SidebarContent>
 
       <SidebarFooter className="gap-2 border-t-0 px-3 pb-4 pt-2">
-        {collapsed ? (
+        {visuallyCollapsed ? (
           <>
             <AdminSidebarTooltip label="Change theme">
               <ThemeToggle className="border-sidebar-border bg-transparent" />
@@ -244,13 +245,15 @@ export function AdminSidebar({
 function AdminSidebarTooltip({
   label,
   children,
+  forceExpanded = false,
 }: {
   label: string;
   children: ReactElement;
+  forceExpanded?: boolean;
 }) {
   const { collapsed } = useSidebar();
 
-  if (!collapsed) return <>{children}</>;
+  if (!collapsed || forceExpanded) return <>{children}</>;
 
   return (
     <Tooltip>

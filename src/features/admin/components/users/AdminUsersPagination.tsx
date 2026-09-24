@@ -35,78 +35,115 @@ export function AdminUsersPagination({
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-      <span className="font-mono uppercase tracking-[0.08em]">
-        Showing {firstRecord} to {lastRecord} of {pagination.total} records
-      </span>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <AdminSelect
-          label="Rows"
-          value={String(filters.limit)}
-          onChange={(value) => onFilterChange("limit", Number(value))}
-          options={ADMIN_USER_PAGE_SIZE_OPTIONS.map((option) => ({
-            value: String(option),
-            label: `${option} rows`,
-          }))}
-          compact
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="First page"
-          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
-          disabled={filters.page <= 1 || loading}
-          onClick={() => onFilterChange("page", 1)}
-        >
-          <ChevronsLeft className="size-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Previous page"
-          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
-          disabled={filters.page <= 1 || loading}
-          onClick={() => onFilterChange("page", Math.max(1, filters.page - 1))}
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-primary px-2 font-mono text-xs font-semibold text-primary-foreground">
-          {pagination.page}
+    <>
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground md:hidden">
+        <span className="font-mono">
+          {firstRecord}-{lastRecord} of {pagination.total}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Next page"
-          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
-          disabled={filters.page >= pagination.totalPages || loading}
-          onClick={() =>
-            onFilterChange(
-              "page",
-              Math.min(pagination.totalPages, filters.page + 1)
-            )
-          }
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Last page"
-          className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
-          disabled={filters.page >= pagination.totalPages || loading}
-          onClick={() =>
-            onFilterChange("page", Math.max(1, pagination.totalPages))
-          }
-        >
-          <ChevronsRight className="size-3.5" />
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-md border-border bg-[var(--admin-elevated)]"
+            disabled={filters.page <= 1 || loading}
+            onClick={() => onFilterChange("page", Math.max(1, filters.page - 1))}
+          >
+            <ChevronLeft className="size-3.5" />
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-md border-border bg-[var(--admin-elevated)]"
+            disabled={filters.page >= pagination.totalPages || loading}
+            onClick={() =>
+              onFilterChange(
+                "page",
+                Math.min(pagination.totalPages, filters.page + 1)
+              )
+            }
+          >
+            Next
+            <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
       </div>
-    </div>
+
+      <div className="hidden flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground md:flex">
+        <span className="font-mono uppercase tracking-[0.08em]">
+          Showing {firstRecord} to {lastRecord} of {pagination.total} records
+        </span>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <AdminSelect
+            label="Rows"
+            value={String(filters.limit)}
+            onChange={(value) => onFilterChange("limit", Number(value))}
+            options={ADMIN_USER_PAGE_SIZE_OPTIONS.map((option) => ({
+              value: String(option),
+              label: `${option} rows`,
+            }))}
+            compact
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="First page"
+            className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
+            disabled={filters.page <= 1 || loading}
+            onClick={() => onFilterChange("page", 1)}
+          >
+            <ChevronsLeft className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous page"
+            className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
+            disabled={filters.page <= 1 || loading}
+            onClick={() => onFilterChange("page", Math.max(1, filters.page - 1))}
+          >
+            <ChevronLeft className="size-3.5" />
+          </Button>
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-primary px-2 font-mono text-xs font-semibold text-primary-foreground">
+            {pagination.page}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next page"
+            className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
+            disabled={filters.page >= pagination.totalPages || loading}
+            onClick={() =>
+              onFilterChange(
+                "page",
+                Math.min(pagination.totalPages, filters.page + 1)
+              )
+            }
+          >
+            <ChevronRight className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Last page"
+            className="rounded-md border-border bg-[var(--admin-elevated)] hover:bg-accent"
+            disabled={filters.page >= pagination.totalPages || loading}
+            onClick={() =>
+              onFilterChange("page", Math.max(1, pagination.totalPages))
+            }
+          >
+            <ChevronsRight className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+    </>
   );
 }
 

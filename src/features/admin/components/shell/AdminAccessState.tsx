@@ -8,7 +8,7 @@ import { getSiteUrl } from "@/utils/seo";
 
 export function AdminLoadingState() {
   return (
-    <div className="admin-shell flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+    <div className="admin-shell flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
       <div className="flex flex-col items-center gap-4" aria-label="Loading admin workspace">
         <BrandLogo
           size="sm"
@@ -26,7 +26,7 @@ export function AdminForbiddenState() {
   const siteUrl = getSiteUrl().origin;
 
   return (
-    <div className="admin-shell flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+    <div className="admin-shell flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
       <div className="w-full max-w-md rounded-md border border-border bg-card p-6 text-card-foreground">
         <div className="flex size-10 items-center justify-center rounded-md border border-destructive/25 bg-destructive/10 text-destructive">
           <Shield className="size-5" />

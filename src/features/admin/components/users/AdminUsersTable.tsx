@@ -36,10 +36,53 @@ export function AdminUsersTable({
   onEditUser,
 }: AdminUsersTableProps) {
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-[var(--admin-table)] text-card-foreground">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-border bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
+    <>
+      <div className="overflow-hidden rounded-md border border-border bg-[var(--admin-table)] text-card-foreground md:hidden">
+        {users.map((user, index) => (
+          <button
+            key={user.id}
+            type="button"
+            className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/70 px-3 py-3 text-left last:border-b-0 active:bg-[var(--admin-row-hover)]"
+            onClick={() => onEditUser(user)}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <UserAvatar name={user.name} email={user.email} />
+              <span className="min-w-0">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    {user.name.trim() || user.email}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    #{startIndex + index + 1}
+                  </span>
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {user.email}
+                </span>
+              </span>
+            </div>
+            <span className="flex items-center gap-1.5">
+              <AdminUserTag tone={user.role === "admin" ? "accent" : "neutral"}>
+                {formatUserRole(user.role)}
+              </AdminUserTag>
+              <AdminUserTag tone={user.plan === "pro" ? "accent" : "neutral"}>
+                {formatUserPlan(user.plan)}
+              </AdminUserTag>
+            </span>
+          </button>
+        ))}
+
+        {users.length === 0 ? (
+          <div className="px-4 py-12 text-center text-sm text-muted-foreground">
+            <UsersEmptyState loading={loading} error={error} />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-md border border-border bg-[var(--admin-table)] text-card-foreground md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
             <TableHead className="w-14 border-r border-border/70 px-3 text-right font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Sr. No.
             </TableHead>
@@ -61,14 +104,14 @@ export function AdminUsersTable({
             <TableHead className="w-20 px-4 text-right font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Actions
             </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user, index) => (
-            <TableRow
-              key={user.id}
-              className="h-11 border-border/70 hover:bg-[var(--admin-row-hover)]"
-            >
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user, index) => (
+              <TableRow
+                key={user.id}
+                className="h-11 border-border/70 hover:bg-[var(--admin-row-hover)]"
+              >
               <TableCell className="border-r border-border/70 px-3 text-right font-mono text-xs text-muted-foreground">
                 {startIndex + index + 1}
               </TableCell>
@@ -103,31 +146,23 @@ export function AdminUsersTable({
                   <Pencil className="size-3.5" />
                 </Button>
               </TableCell>
-            </TableRow>
-          ))}
+              </TableRow>
+            ))}
 
-          {users.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={7}
-                className="py-12 text-center text-sm text-muted-foreground"
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Spinner size="md" className="text-primary" />
-                    Loading users...
-                  </span>
-                ) : error ? (
-                  "Unable to load admin users."
-                ) : (
-                  <EmptyState size="compact" title="No users found." className="py-0" />
-                )}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            {users.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="py-12 text-center text-sm text-muted-foreground"
+                >
+                  <UsersEmptyState loading={loading} error={error} />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }
 
@@ -143,23 +178,46 @@ const USER_AVATAR_TONES = [
 
 function AdminUserIdentity({ name, email }: { name: string; email: string }) {
   const label = name.trim() || email.trim();
-  const initial = label.charAt(0).toUpperCase() || "?";
-  const colorIndex = [...label].reduce((total, character) => total + character.charCodeAt(0), 0) % USER_AVATAR_TONES.length;
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-          USER_AVATAR_TONES[colorIndex],
-        )}
-      >
-        {initial}
-      </span>
+      <UserAvatar name={name} email={email} />
       <span className="truncate text-sm font-medium text-foreground">{label}</span>
     </div>
   );
+}
+
+function UserAvatar({ name, email }: { name: string; email: string }) {
+  const label = name.trim() || email.trim();
+  const initial = label.charAt(0).toUpperCase() || "?";
+  const colorIndex =
+    [...label].reduce((total, character) => total + character.charCodeAt(0), 0) %
+    USER_AVATAR_TONES.length;
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+        USER_AVATAR_TONES[colorIndex]
+      )}
+    >
+      {initial}
+    </span>
+  );
+}
+
+function UsersEmptyState({ loading, error }: { loading: boolean; error: unknown }) {
+  if (loading) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <Spinner size="md" className="text-primary" />
+        Loading users...
+      </span>
+    );
+  }
+  if (error) return <>Unable to load admin users.</>;
+  return <EmptyState size="compact" title="No users found." className="py-0" />;
 }
 
 function AdminUserTag({

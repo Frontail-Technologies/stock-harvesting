@@ -30,9 +30,11 @@ function toDisplayCandle(provisional: CurrentDayDelayedCandle, time: string): Ca
 export function mergeProvisionalCandleForDisplay(
   candles: Candle[],
   provisional: CurrentDayDelayedCandle | null,
-  timeframe: Timeframe
+  timeframe: Timeframe,
+  dataThrough?: string | null
 ) {
   if (!provisional) return candles;
+  if (dataThrough && provisional.time <= dataThrough) return candles;
 
   if (timeframe === "1D") {
     const last = candles[candles.length - 1];
@@ -42,14 +44,20 @@ export function mergeProvisionalCandleForDisplay(
 
   if (timeframe === "1W") {
     const bucketLabel = getIsoWeekEndingFriday(provisional.time);
-    // Only today's Friday session (the day that actually completes this
-    // week) is eligible to appear here - Mon-Thu must never show under the
-    // Friday label, since that week genuinely has no candle yet (matches
-    // the completed-week-only rule already enforced for stored 1W data).
-    if (provisional.time !== bucketLabel) return candles;
-    const last = candles[candles.length - 1];
-    if (last && last.time >= bucketLabel) return candles;
-    return [...candles, toDisplayCandle(provisional, bucketLabel)];
+    const existingIndex = candles.findIndex((candle) => candle.time === bucketLabel);
+    if (existingIndex === -1) return [...candles, toDisplayCandle(provisional, bucketLabel)];
+
+    return candles.map((candle, index) =>
+      index === existingIndex
+        ? {
+            ...candle,
+            high: Math.max(candle.high, provisional.high),
+            low: Math.min(candle.low, provisional.low),
+            close: provisional.close,
+            volume: candle.volume + (provisional.volume ?? 0),
+          }
+        : candle
+    );
   }
 
   if (timeframe === "1M") {

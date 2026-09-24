@@ -255,7 +255,7 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
       <TableCell className="text-center">{formatJobDateTime(run.finishedAt)}</TableCell>
       <TableCell className="min-w-28 text-center">
         {run.progress === null ? (
-          <span className="text-xs text-muted-foreground">Running</span>
+          <span className="text-xs text-muted-foreground">{run.status === "running" ? "Running" : "-"}</span>
         ) : (
           <div className="flex items-center gap-2">
             <Progress value={run.progress} className="min-w-16 flex-1" />
