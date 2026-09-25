@@ -559,6 +559,14 @@ function ScannerDrawingWorkspace({
             return candleInput?.symbol === stock.symbol && candleInput?.exchange === stock.exchange;
           },
         });
+        void queryClient.invalidateQueries({
+          predicate: (query) => {
+            const [namespace, resource, input] = query.queryKey;
+            if (namespace !== "scanner" || resource !== "results") return false;
+            const scannerInput = input as { symbol?: string; exchange?: string } | undefined;
+            return scannerInput?.symbol === stock.symbol && scannerInput?.exchange === stock.exchange;
+          },
+        });
         return;
       }
 

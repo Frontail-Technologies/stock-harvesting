@@ -107,7 +107,8 @@ export function useScannerResults(
     },
     enabled: authStatus === "authenticated" && enabled && Boolean(symbol) && Boolean(exchange),
     retry: false,
-    staleTime: 10 * 60_000,
+    staleTime: 2 * 60_000,
+    refetchInterval: 2 * 60_000,
     gcTime: 30 * 60_000,
   });
 
