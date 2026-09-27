@@ -318,16 +318,40 @@ const QUEUE_JOB_LABEL: Record<string, string> = {
 
 const QUEUE_STATE_LABEL = { active: "Running", waiting: "Waiting", delayed: "Scheduled" } as const;
 
-// The worker runs one job at a time. Many jobs (scheduled instrument sync, bootstrap reconcile) never get
-// a row in the Job runs table, so this reads the queue itself to show what the worker is actually doing.
 function QueuePanel({ queue, loading }: { queue: AdminMarketDataQueue | undefined; loading: boolean }) {
+  const displayRows = (() => {
+    if (!queue) return [];
+    const rows: Array<{ job: AdminMarketDataQueue["jobs"][number]; count: number; partial: boolean }> = [];
+    const sampledByState = new Map<string, number>();
+    for (const job of queue.jobs) sampledByState.set(job.state, (sampledByState.get(job.state) ?? 0) + 1);
+
+    for (const job of queue.jobs.filter((entry) => entry.state === "active")) {
+      rows.push({ job, count: 1, partial: false });
+    }
+
+    const groups = new Map<string, { job: AdminMarketDataQueue["jobs"][number]; count: number }>();
+    for (const job of queue.jobs.filter((entry) => entry.state !== "active")) {
+      const key = `${job.state}:${job.name}:${job.exchange ?? "system"}`;
+      const group = groups.get(key);
+      if (group) group.count += 1;
+      else groups.set(key, { job, count: 1 });
+    }
+    for (const group of groups.values()) {
+      rows.push({
+        ...group,
+        partial: queue.counts[group.job.state] > (sampledByState.get(group.job.state) ?? 0),
+      });
+    }
+    return rows;
+  })();
+
   return (
     <section className="mt-6">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Worker queue</h2>
+        <h2 className="text-sm font-semibold text-foreground">Queue activity</h2>
         {queue?.available ? (
           <p className="text-xs text-muted-foreground">
-            {queue.counts.active} running · {queue.counts.waiting} waiting · {queue.counts.delayed} scheduled
+            {queue.counts.active} running | {queue.counts.waiting} waiting | {queue.counts.delayed} scheduled
           </p>
         ) : null}
       </div>
@@ -350,9 +374,12 @@ function QueuePanel({ queue, loading }: { queue: AdminMarketDataQueue | undefine
               </TableRow>
             </TableHeader>
             <TableBody>
-              {queue.jobs.map((job) => (
+              {displayRows.map(({ job, count, partial }) => (
                 <TableRow key={`${job.state}-${job.id}`}>
-                  <TableCell className="font-medium text-foreground">{QUEUE_JOB_LABEL[job.name] ?? job.name}</TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {QUEUE_JOB_LABEL[job.name] ?? job.name}
+                    {count > 1 ? <span className="ml-2 text-xs text-muted-foreground">x{count}{partial ? "+" : ""}</span> : null}
+                  </TableCell>
                   <TableCell className="text-center text-muted-foreground">{job.exchange ?? "System"}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={job.state === "active" ? "default" : "secondary"}>{QUEUE_STATE_LABEL[job.state]}</Badge>
