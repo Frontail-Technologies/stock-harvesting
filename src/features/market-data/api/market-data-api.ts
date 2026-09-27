@@ -100,7 +100,12 @@ export async function getCurrentDayCandle(input: { symbol: string; exchange: str
 export async function ensureFreshCandles(input: EnsureFreshCandlesInput) {
   return apiFetch<EnsureFreshCandlesResponse>(API_ROUTES.marketData.ensureFreshCandles, {
     method: "POST",
-    body: JSON.stringify({ symbol: input.symbol, exchange: input.exchange }),
+    body: JSON.stringify({
+      symbol: input.symbol,
+      exchange: input.exchange,
+      waitForCompletion: input.waitForCompletion,
+      forceRefresh: input.forceRefresh,
+    }),
   });
 }
 

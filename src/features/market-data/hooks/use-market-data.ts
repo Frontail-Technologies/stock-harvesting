@@ -436,22 +436,29 @@ export function useManualChartRefresh() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ensureFreshCandles,
-    onSuccess: (response, variables) => {
+    mutationFn: (input: { symbol: string; exchange?: string }) =>
+      ensureFreshCandles({ ...input, waitForCompletion: true, forceRefresh: true }),
+    onSuccess: async (response, variables) => {
+      const invalidations: Promise<unknown>[] = [];
       if (variables.exchange) {
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.marketData.currentDayCandle({ symbol: variables.symbol, exchange: variables.exchange }),
-        });
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.marketData.currentDayCandle({ symbol: variables.symbol, exchange: variables.exchange }),
+          })
+        );
       }
 
-      void queryClient.invalidateQueries({
-        predicate: (query) => {
-          const [namespace, resource, input] = query.queryKey;
-          if (namespace !== "market-data" || resource !== "candles") return false;
-          const candleInput = input as { symbol?: string; exchange?: string } | undefined;
-          return candleInput?.symbol === variables.symbol && candleInput?.exchange === variables.exchange;
-        },
-      });
+      invalidations.push(
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const [namespace, resource, input] = query.queryKey;
+            if (namespace !== "market-data" || resource !== "candles") return false;
+            const candleInput = input as { symbol?: string; exchange?: string } | undefined;
+            return candleInput?.symbol === variables.symbol && candleInput?.exchange === variables.exchange;
+          },
+        })
+      );
+      await Promise.all(invalidations);
     },
   });
 }

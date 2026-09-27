@@ -102,6 +102,8 @@ export type CandleListInput = {
 export type EnsureFreshCandlesInput = {
   symbol: string;
   exchange?: string;
+  waitForCompletion?: boolean;
+  forceRefresh?: boolean;
 };
 
 export type EnsureFreshCandlesStatus =
