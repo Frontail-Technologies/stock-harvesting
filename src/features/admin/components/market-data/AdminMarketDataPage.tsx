@@ -330,7 +330,9 @@ export function AdminMarketDataPage() {
         exchange: run.exchange ?? null,
         tradingDate: run.tradingDate ?? null,
         collectionId: null,
-        scope: run.exchange ?? "System",
+        scope: run.exchange
+          ? `${run.exchange}${run.tradingDate ? ` · ${formatDate(run.tradingDate)}` : ""}`
+          : "System",
       })),
     ...(providerJobsQuery.data?.jobs ?? [])
       .filter((job) => PROVIDER_ACTION_TYPES.has(job.type))
