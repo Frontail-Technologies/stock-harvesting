@@ -52,9 +52,10 @@ export function ChartRefreshButton({ symbol, exchange, className }: ChartRefresh
             toast.success(`${symbol} updated`);
           }
         },
-        onError: () => {
-          setResultLabel("Failed");
-          toast.error(`Refresh failed for ${symbol}`);
+        onError: (error) => {
+          const message = error instanceof Error ? error.message : `Refresh failed for ${symbol}`;
+          setResultLabel(/call limit reached|rate.?limit/i.test(message) ? "Cooldown" : "Failed");
+          toast.error(message);
         },
       }
     );

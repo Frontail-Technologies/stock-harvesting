@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/utils/cn";
 import { useAdminJobs, useAdminMarketDataJobRuns } from "../../hooks/use-admin-market-data";
-import { formatJobDateTime, JOB_TYPE_LABEL, JobStatusBadge, toProviderJobDisplay } from "./AdminMarketDataPage";
+import { formatJobDateTime, isProviderCooldownMessage, JOB_TYPE_LABEL, JobStatusBadge, toProviderJobDisplay } from "./AdminMarketDataPage";
 
 function DetailItem({ label, value }: { label: string; value: string | number }) {
   return (
@@ -74,7 +74,7 @@ export function AdminMarketDataJobDetailPage({ jobId }: { jobId: string }) {
         </Button>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold text-foreground">{JOB_TYPE_LABEL[run.jobType] ?? run.jobType}</h1>
-          <JobStatusBadge status={run.status} />
+          <JobStatusBadge status={run.status} errorSummary={errorSummary} />
         </div>
         <p className="mt-1 font-mono text-xs text-muted-foreground">{run.id}</p>
       </div>
@@ -98,9 +98,11 @@ export function AdminMarketDataJobDetailPage({ jobId }: { jobId: string }) {
       </div>
 
       {errorSummary && (
-        <section className="rounded-lg border border-danger/30 bg-danger/10 p-4">
-          <h2 className="text-sm font-semibold text-danger">Error summary</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-danger">{errorSummary}</p>
+        <section className={cn("rounded-lg border p-4", isProviderCooldownMessage(errorSummary) ? "border-warning/30 bg-warning/10" : "border-danger/30 bg-danger/10")}>
+          <h2 className={cn("text-sm font-semibold", isProviderCooldownMessage(errorSummary) ? "text-warning" : "text-danger")}>
+            {isProviderCooldownMessage(errorSummary) ? "Provider cooldown" : "Error summary"}
+          </h2>
+          <p className={cn("mt-2 whitespace-pre-wrap text-sm", isProviderCooldownMessage(errorSummary) ? "text-warning" : "text-danger")}>{errorSummary}</p>
         </section>
       )}
 

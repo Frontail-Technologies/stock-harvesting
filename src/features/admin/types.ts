@@ -306,6 +306,11 @@ export type AdminMarketDataOperations = {
   historicalThrough: string | null;
   backtestsThrough: string | null;
   productionProvider: string;
+  providerCooldown: {
+    active: boolean;
+    until: string | null;
+    remainingMs: number;
+  };
   coverage: Array<{
     tradingDate: string;
     exchange: string;

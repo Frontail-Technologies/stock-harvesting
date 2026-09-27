@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Clock3, Database, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { queryKeys } from "@/features/api";
 import { cn } from "@/utils/cn";
@@ -85,6 +86,7 @@ export type AdminJobDisplay = {
   collectionId: string | null;
   scope: string;
   queueState: AdminBackgroundJobQueueState | null;
+  errorSummary: string | null;
 };
 
 // A queued or pending run has no startedAt yet, so date filtering and ordering fall back to when it was
@@ -127,6 +129,7 @@ export function toProviderJobDisplay(job: AdminSyncJob): AdminJobDisplay {
     collectionId: typeof job.payload.collectionId === "string" ? job.payload.collectionId : null,
     scope: typeof job.payload.exchange === "string" ? job.payload.exchange : "Global",
     queueState: null,
+    errorSummary: job.errorMessage,
   };
 }
 
@@ -153,6 +156,15 @@ function formatDate(value: string | null) {
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime())) return "-";
   return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "UTC" }).format(parsed);
+}
+
+function formatCooldown(remainingMs: number) {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1_000));
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function dateFilterValue(value: string | null) {
@@ -191,7 +203,12 @@ function StatCard({ icon: Icon, label, value, sub, tone, title }: {
   );
 }
 
-export function JobStatusBadge({ status }: { status: AdminBackgroundJobRunStatus }) {
+export function isProviderCooldownMessage(message: string | null | undefined) {
+  return Boolean(message && /call limit reached|rate.?limit/i.test(message));
+}
+
+export function JobStatusBadge({ status, errorSummary }: { status: AdminBackgroundJobRunStatus; errorSummary?: string | null }) {
+  const isCooldown = status === "failed" && isProviderCooldownMessage(errorSummary);
   return (
     <Badge
       variant="outline"
@@ -199,11 +216,12 @@ export function JobStatusBadge({ status }: { status: AdminBackgroundJobRunStatus
         "border-transparent capitalize",
         status === "completed" && "bg-success/10 text-success",
         status === "partial" && "bg-warning/10 text-warning",
-        (status === "failed" || status === "missed") && "bg-danger/10 text-danger",
+        (status === "failed" || status === "missed") && !isCooldown && "bg-danger/10 text-danger",
+        isCooldown && "bg-warning/10 text-warning",
         (status === "pending" || status === "queued" || status === "running") && "bg-muted text-muted-foreground"
       )}
     >
-      {status}
+      {isCooldown ? "Cooldown" : status}
     </Badge>
   );
 }
@@ -271,7 +289,7 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
         )}
       </TableCell>
       <TableCell className="text-center"><JobExecutionBadge run={run} /></TableCell>
-      <TableCell className="text-center"><JobStatusBadge status={run.status} /></TableCell>
+      <TableCell className="text-center"><JobStatusBadge status={run.status} errorSummary={run.errorSummary} /></TableCell>
       <TableCell className="text-center">
         <div className="flex items-center justify-center gap-1">
         {canRetry && (run.status === "failed" || run.status === "missed" || run.status === "partial") && (
@@ -316,6 +334,7 @@ export function AdminMarketDataPage() {
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState(() => dateFilterValue(new Date().toISOString()));
   const [jobTypeFilter, setJobTypeFilter] = useState("all");
+  const [clockMs, setClockMs] = useState(() => Date.now());
   const workersQuery = useAdminMarketDataWorkers();
   const healthQuery = useAdminMarketDataHealth();
   const jobRunsQuery = useAdminMarketDataJobRuns();
@@ -343,6 +362,10 @@ export function AdminMarketDataPage() {
     mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
       Promise.all(targets.map((target) => catchUpAdminMarketData(target))),
     onSuccess: refresh,
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Candle refresh could not be started");
+      void queryClient.invalidateQueries({ queryKey: queryKeys.admin.marketDataOperations });
+    },
   });
   const refreshBacktestsMutation = useMutation({
     mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
@@ -380,6 +403,16 @@ export function AdminMarketDataPage() {
       }),
   ].sort((left, right) => new Date(jobActivityTime(right) ?? 0).getTime() - new Date(jobActivityTime(left) ?? 0).getTime());
   const operations = operationsQuery.data;
+  const cooldownUntilMs = operations?.providerCooldown?.until
+    ? new Date(operations.providerCooldown.until).getTime()
+    : 0;
+  const cooldownRemainingMs = Math.max(0, cooldownUntilMs - clockMs);
+  const providerCoolingDown = cooldownRemainingMs > 0;
+  useEffect(() => {
+    if (!cooldownUntilMs || cooldownUntilMs <= Date.now()) return;
+    const timer = window.setInterval(() => setClockMs(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [cooldownUntilMs]);
   const expectedDate = operations?.expectedCompletedTradingDate ?? null;
   const expectedCoverage = operations?.coverage.filter((item) => item.tradingDate === expectedDate) ?? [];
   const candleTargets = expectedCoverage
@@ -388,7 +421,9 @@ export function AdminMarketDataPage() {
   const candlesLoaded = expectedCoverage.length > 0 && candleTargets.length === 0;
   const backtestTargets = expectedCoverage.map((item) => ({ exchange: item.exchange, tradingDate: item.tradingDate }));
   const backtestsStale = expectedDate !== null && (operations?.backtestsThrough ?? "") < expectedDate;
-  const candleButtonTitle = !expectedDate
+  const candleButtonTitle = providerCoolingDown
+    ? `Global DataFeeds refresh limit reached. Retry in ${formatCooldown(cooldownRemainingMs)}`
+    : !expectedDate
     ? "Waiting for market-data status"
     : candlesLoaded
       ? `Daily candles for ${formatDate(expectedDate)} are already loaded`
@@ -471,12 +506,12 @@ export function AdminMarketDataPage() {
             type="button"
             size="sm"
             variant="outline"
-            disabled={candleTargets.length === 0 || refreshCandlesMutation.isPending}
+            disabled={providerCoolingDown || candleTargets.length === 0 || refreshCandlesMutation.isPending}
             title={candleButtonTitle}
             onClick={() => refreshCandlesMutation.mutate(candleTargets)}
           >
             <Database className={cn("size-4", refreshCandlesMutation.isPending && "animate-pulse")} />
-            {candlesLoaded ? "Candles loaded" : "Refresh candles"}
+            {providerCoolingDown ? `Retry in ${formatCooldown(cooldownRemainingMs)}` : candlesLoaded ? "Candles loaded" : "Refresh candles"}
           </Button>
           <Button
             type="button"
@@ -532,6 +567,15 @@ export function AdminMarketDataPage() {
           tone="amber"
         />
       </div>
+
+      {providerCoolingDown && (
+        <div className="flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning" role="status">
+          <Clock3 className="size-4 shrink-0" />
+          <span>
+            Global DataFeeds limit reached. Provider refreshes resume in <strong>{formatCooldown(cooldownRemainingMs)}</strong>.
+          </span>
+        </div>
+      )}
 
       <section>
         <div className="mb-2 flex items-center justify-between gap-3">
