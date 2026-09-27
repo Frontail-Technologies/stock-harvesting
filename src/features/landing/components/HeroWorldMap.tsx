@@ -18,7 +18,7 @@ type CountryMarker = Marker & {
 const COUNTRY_MARKERS: CountryMarker[] = [
   { code: "IN", lat: 21.5, lng: 78.5, size: 0, label: "India", tier: "primary", labelSide: "left" },
   { code: "US", lat: 39.8, lng: -98.6, size: 0, label: "United States", tier: "primary", labelSide: "right" },
-  { code: "JP", lat: 36.2, lng: 138.3, size: 0, label: "Japan", tier: "secondary", labelSide: "left" },
+  { code: "JP", lat: 36.2, lng: 138.3, size: 0, label: "Japan", tier: "secondary", labelSide: "left", dx: -2.5, dy: -2 },
   { code: "AU", lat: -25.3, lng: 133.8, size: 0, label: "Australia", tier: "secondary", labelSide: "left" },
   { code: "GB", lat: 54, lng: -2.5, size: 0, label: "United Kingdom", tier: "secondary", labelSide: "left", dx: -3, dy: -2 },
   { code: "CA", lat: 56.1, lng: -106, size: 0, label: "Canada", tier: "secondary", labelSide: "right" },
