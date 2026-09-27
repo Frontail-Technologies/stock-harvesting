@@ -48,7 +48,12 @@ export function useAdminMarketDataJobRuns() {
     queryKey: queryKeys.admin.marketDataJobRuns,
     queryFn: getAdminMarketDataJobRuns,
     enabled,
-    refetchInterval: MARKET_DATA_STATUS_REFETCH_MS,
+    refetchInterval: (query) =>
+      query.state.data?.runs.some((run) =>
+        run.status === "pending" || run.status === "queued" || run.status === "running"
+      )
+        ? 2_000
+        : MARKET_DATA_STATUS_REFETCH_MS,
   });
 }
 

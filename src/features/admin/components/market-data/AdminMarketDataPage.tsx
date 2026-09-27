@@ -13,7 +13,6 @@ import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { queryKeys } from "@/features/api";
-import type { AdminJobProgressEvent, AdminMarketDataEvent } from "@/features/market-stream";
 import { cn } from "@/utils/cn";
 import {
   catchUpAdminMarketData,
@@ -22,7 +21,6 @@ import {
   reconcileAdminMarketData,
   refreshAdminMarketDataBacktests,
 } from "../../api/admin-api";
-import { useAdminMarketDataStream } from "../../hooks/use-admin-market-data-stream";
 import {
   useBackfillAdminIndexCandles,
   useSyncAdminDataProvider,
@@ -34,11 +32,10 @@ import {
   useAdminJobs,
   useAdminMarketDataJobRuns,
   useAdminMarketDataOperations,
-  useAdminMarketDataQueue,
   useAdminMarketDataWorkers,
 } from "../../hooks/use-admin-market-data";
 import { useAdminMarketCollections } from "../../hooks/use-admin-market-collections";
-import type { AdminBackgroundJobRunStatus, AdminMarketDataQueue, AdminSyncJob } from "../../types";
+import type { AdminBackgroundJobRunStatus, AdminSyncJob } from "../../types";
 
 export const JOB_TYPE_LABEL: Record<string, string> = {
   daily_candle_morning: "Morning Sync",
@@ -88,30 +85,6 @@ export type AdminJobDisplay = {
   collectionId: string | null;
   scope: string;
 };
-
-type JobRunsCache = { runs: Array<{
-  id: string;
-  processedCount: number;
-  updatedCount: number;
-  repairedCount: number;
-  failedCount: number;
-  totalExpected?: number;
-  [key: string]: unknown;
-}> };
-
-function applyJobProgress(current: JobRunsCache | undefined, data: AdminJobProgressEvent["data"]) {
-  if (!current) return current;
-  return {
-    runs: current.runs.map((run) => run.id === data.runId ? {
-      ...run,
-      processedCount: data.processed,
-      updatedCount: data.updated,
-      repairedCount: data.repaired,
-      failedCount: data.failed,
-      totalExpected: data.total,
-    } : run),
-  };
-}
 
 // A queued or pending run has no startedAt yet, so date filtering and ordering fall back to when it was
 // scheduled or created; otherwise it stays hidden until a worker picks it up.
@@ -302,100 +275,6 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
   );
 }
 
-const QUEUE_JOB_LABEL: Record<string, string> = {
-  "instrument-sync": "Instrument Sync",
-  "price-refresh": "Price Refresh",
-  "sector-classification-sync": "Sector Classification",
-  "index-candle-backfill": "Index History Backfill",
-  "daily-candle-sync": "Daily Candle Sync",
-  "market-data-catch-up": "Catch-up (Refresh candles)",
-  "chart-candle-ensure-fresh": "Chart Ensure-Fresh",
-  "candle-bootstrap-reconcile": "Candle Bootstrap Reconcile",
-  "weekly-strong-backtest-backfill": "Current Backtest",
-  "weekly-strong-backtest-historical-rebuild": "Historical Backtest",
-  "collection-prepare": "Segment Preparation",
-};
-
-const QUEUE_STATE_LABEL = { active: "Running", waiting: "Waiting", delayed: "Scheduled" } as const;
-
-function QueuePanel({ queue, loading }: { queue: AdminMarketDataQueue | undefined; loading: boolean }) {
-  const displayRows = (() => {
-    if (!queue) return [];
-    const rows: Array<{ job: AdminMarketDataQueue["jobs"][number]; count: number; partial: boolean }> = [];
-    const sampledByState = new Map<string, number>();
-    for (const job of queue.jobs) sampledByState.set(job.state, (sampledByState.get(job.state) ?? 0) + 1);
-
-    for (const job of queue.jobs.filter((entry) => entry.state === "active")) {
-      rows.push({ job, count: 1, partial: false });
-    }
-
-    const groups = new Map<string, { job: AdminMarketDataQueue["jobs"][number]; count: number }>();
-    for (const job of queue.jobs.filter((entry) => entry.state !== "active")) {
-      const key = `${job.state}:${job.name}:${job.exchange ?? "system"}`;
-      const group = groups.get(key);
-      if (group) group.count += 1;
-      else groups.set(key, { job, count: 1 });
-    }
-    for (const group of groups.values()) {
-      rows.push({
-        ...group,
-        partial: queue.counts[group.job.state] > (sampledByState.get(group.job.state) ?? 0),
-      });
-    }
-    return rows;
-  })();
-
-  return (
-    <section className="mt-6">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Queue activity</h2>
-        {queue?.available ? (
-          <p className="text-xs text-muted-foreground">
-            {queue.counts.active} running | {queue.counts.waiting} waiting | {queue.counts.delayed} scheduled
-          </p>
-        ) : null}
-      </div>
-      {loading ? (
-        <div className="grid min-h-20 place-items-center"><Spinner className="text-primary" /></div>
-      ) : !queue?.available ? (
-        <p className="text-sm text-muted-foreground">The queue can&apos;t be read right now (Redis unreachable).</p>
-      ) : queue.jobs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">The queue is empty.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
-          <Table className="[&_td+td]:border-l [&_th+th]:border-l [&_td+td]:border-border [&_th+th]:border-border">
-            <TableHeader>
-              <TableRow className="bg-[var(--admin-table-header)] hover:bg-[var(--admin-table-header)]">
-                <TableHead>Job</TableHead>
-                <TableHead className="text-center">Scope</TableHead>
-                <TableHead className="text-center">State</TableHead>
-                <TableHead className="text-center">Started / runs at</TableHead>
-                <TableHead className="text-center">Attempts</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayRows.map(({ job, count, partial }) => (
-                <TableRow key={`${job.state}-${job.id}`}>
-                  <TableCell className="font-medium text-foreground">
-                    {QUEUE_JOB_LABEL[job.name] ?? job.name}
-                    {count > 1 ? <span className="ml-2 text-xs text-muted-foreground">x{count}{partial ? "+" : ""}</span> : null}
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">{job.exchange ?? "System"}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={job.state === "active" ? "default" : "secondary"}>{QUEUE_STATE_LABEL[job.state]}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center">{formatJobDateTime(job.startedAt ?? job.runAt ?? job.addedAt)}</TableCell>
-                  <TableCell className="text-center tabular-nums text-muted-foreground">{job.attemptsMade}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function AdminMarketDataPage() {
   const queryClient = useQueryClient();
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
@@ -407,7 +286,6 @@ export function AdminMarketDataPage() {
   const jobRunsQuery = useAdminMarketDataJobRuns();
   const providerJobsQuery = useAdminJobs();
   const operationsQuery = useAdminMarketDataOperations();
-  const queueQuery = useAdminMarketDataQueue();
   const collectionsQuery = useAdminMarketCollections();
   const providerSyncMutation = useSyncAdminDataProvider();
   const priceRefreshMutation = useSyncAdminMarketDataPrices();
@@ -435,17 +313,6 @@ export function AdminMarketDataPage() {
     mutationFn: (targets: Array<{ exchange: string; tradingDate: string }>) =>
       Promise.all(targets.map((target) => refreshAdminMarketDataBacktests(target))),
     onSuccess: refresh,
-  });
-
-  useAdminMarketDataStream({
-    onEvent: (event: AdminMarketDataEvent) => {
-      if (event.type === "market-data:job-progress") {
-        queryClient.setQueryData<JobRunsCache>(queryKeys.admin.marketDataJobRuns, (current) => applyJobProgress(current, event.data));
-        return;
-      }
-      refresh();
-    },
-    onReconnected: refresh,
   });
 
   const worker = workersQuery.data?.workers[0] ?? null;
@@ -668,8 +535,6 @@ export function AdminMarketDataPage() {
           </div>
         )}
       </section>
-
-      <QueuePanel queue={queueQuery.data} loading={queueQuery.isLoading} />
     </div>
   );
 }
