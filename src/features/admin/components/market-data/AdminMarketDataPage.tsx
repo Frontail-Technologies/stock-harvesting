@@ -67,6 +67,22 @@ const PROVIDER_ACTION_TYPES = new Set([
   "market-data.weekly-strong-backtest-historical-rebuild",
 ]);
 
+type JobStatusFilter = "active" | "all" | "completed" | "partial" | "failed";
+
+const JOB_STATUS_OPTIONS: Array<{ value: JobStatusFilter; label: string }> = [
+  { value: "active", label: "Pending / running" },
+  { value: "all", label: "All statuses" },
+  { value: "completed", label: "Completed" },
+  { value: "partial", label: "Partial" },
+  { value: "failed", label: "Failed" },
+];
+
+function matchesJobStatusFilter(status: AdminBackgroundJobRunStatus, filter: JobStatusFilter) {
+  if (filter === "all") return true;
+  if (filter === "active") return status === "pending" || status === "queued" || status === "running";
+  return status === filter;
+}
+
 export type AdminJobDisplay = {
   id: string;
   jobType: string;
@@ -333,6 +349,7 @@ export function AdminMarketDataPage() {
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState(() => dateFilterValue(new Date().toISOString()));
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("active");
   const [jobTypeFilter, setJobTypeFilter] = useState("all");
   const [clockMs, setClockMs] = useState(() => Date.now());
   const workersQuery = useAdminMarketDataWorkers();
@@ -450,7 +467,8 @@ export function AdminMarketDataPage() {
       .map((jobType) => ({ value: jobType, label: JOB_TYPE_LABEL[jobType] ?? jobType })),
   ];
   const filteredRuns = runs.filter((run) =>
-    (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
+    matchesJobStatusFilter(run.status, statusFilter)
+    && (jobTypeFilter === "all" || run.jobType === jobTypeFilter)
     && (!dateFilter || dateFilterValue(jobActivityTime(run)) === dateFilter)
   );
   const filteredFailedRuns = filteredRuns.filter((run) => run.status === "failed");
@@ -494,6 +512,13 @@ export function AdminMarketDataPage() {
             onChange={(event) => setDateFilter(event.target.value)}
             aria-label="Filter jobs by date"
             className="h-9 w-38"
+          />
+          <Select
+            value={statusFilter}
+            options={JOB_STATUS_OPTIONS}
+            onValueChange={(value) => setStatusFilter(value as JobStatusFilter)}
+            className="w-40"
+            triggerClassName="h-9"
           />
           <Select
             value={jobTypeFilter}

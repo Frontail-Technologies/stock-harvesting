@@ -6,6 +6,7 @@ import {
   clearAdminApiAccessToken,
   setAdminApiAccessToken,
 } from "@/features/api";
+import { subscribeAdminApiAccessToken } from "@/features/api/lib/admin-token-store";
 import type { AuthStatus, AuthUser } from "../types";
 
 const ADMIN_SESSION_SNAPSHOT_STORAGE_KEY =
@@ -89,6 +90,29 @@ export const useAdminSessionStore = create<AdminSessionState>()(
     },
   ),
 );
+
+// The API client refreshes expired access tokens independently of React. Keep the
+// session store in step so gated queries and the admin WebSocket use the new token.
+subscribeAdminApiAccessToken((accessToken) => {
+  const state = useAdminSessionStore.getState();
+  if (state.accessToken === accessToken) return;
+
+  if (!accessToken) {
+    useAdminSessionStore.setState({
+      accessToken: null,
+      user: null,
+      status: "guest",
+      verifiedAt: null,
+      isRevalidating: false,
+    });
+    return;
+  }
+
+  useAdminSessionStore.setState({
+    accessToken,
+    verifiedAt: Date.now(),
+  });
+});
 
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
