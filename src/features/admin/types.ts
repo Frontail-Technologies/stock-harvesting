@@ -206,6 +206,7 @@ export type AdminMarketDataHealth = {
 };
 
 export type AdminBackgroundJobRunStatus = "pending" | "queued" | "running" | "completed" | "partial" | "failed" | "missed";
+export type AdminBackgroundJobQueueState = "active" | "waiting" | "waiting-children" | "delayed" | "prioritized" | "completed" | "failed" | "missing" | "not-linked" | "unavailable";
 
 export type AdminFailedSymbolDetail = {
   instrumentId: string | null;
@@ -217,6 +218,7 @@ export type AdminBackgroundJobRun = {
   id: string;
   jobType: string;
   status: AdminBackgroundJobRunStatus;
+  queueState?: AdminBackgroundJobQueueState;
   startedAt: string | null;
   tradingDate?: string | null;
   exchange?: string | null;

@@ -35,7 +35,7 @@ import {
   useAdminMarketDataWorkers,
 } from "../../hooks/use-admin-market-data";
 import { useAdminMarketCollections } from "../../hooks/use-admin-market-collections";
-import type { AdminBackgroundJobRunStatus, AdminSyncJob } from "../../types";
+import type { AdminBackgroundJobQueueState, AdminBackgroundJobRunStatus, AdminSyncJob } from "../../types";
 
 export const JOB_TYPE_LABEL: Record<string, string> = {
   daily_candle_morning: "Morning Sync",
@@ -84,6 +84,7 @@ export type AdminJobDisplay = {
   tradingDate: string | null;
   collectionId: string | null;
   scope: string;
+  queueState: AdminBackgroundJobQueueState | null;
 };
 
 // A queued or pending run has no startedAt yet, so date filtering and ordering fall back to when it was
@@ -125,6 +126,7 @@ export function toProviderJobDisplay(job: AdminSyncJob): AdminJobDisplay {
     tradingDate: null,
     collectionId: typeof job.payload.collectionId === "string" ? job.payload.collectionId : null,
     scope: typeof job.payload.exchange === "string" ? job.payload.exchange : "Global",
+    queueState: null,
   };
 }
 
@@ -206,6 +208,38 @@ export function JobStatusBadge({ status }: { status: AdminBackgroundJobRunStatus
   );
 }
 
+function JobExecutionBadge({ run }: { run: AdminJobDisplay }) {
+  const state = run.queueState;
+  let label = "DB history";
+  let tone = "bg-muted text-muted-foreground";
+
+  if (state === "active") {
+    label = "Redis running";
+    tone = "bg-primary/10 text-primary";
+  } else if (state === "waiting" || state === "waiting-children" || state === "prioritized") {
+    label = "Redis queued";
+    tone = "bg-warning/10 text-warning";
+  } else if (state === "delayed") {
+    label = "Redis scheduled";
+    tone = "bg-warning/10 text-warning";
+  } else if (state === "missing") {
+    label = "DB only / orphaned";
+    tone = "bg-danger/10 text-danger";
+  } else if (state === "unavailable") {
+    label = "Queue unavailable";
+    tone = "bg-danger/10 text-danger";
+  } else if (state === "completed" || state === "failed") {
+    label = `Redis ${state}`;
+    tone = state === "completed" ? "bg-success/10 text-success" : "bg-danger/10 text-danger";
+  } else if (run.status === "pending") {
+    label = "DB schedule";
+  } else if (run.source === "provider") {
+    label = "DB tracked";
+  }
+
+  return <Badge variant="outline" className={cn("whitespace-nowrap border-transparent", tone)}>{label}</Badge>;
+}
+
 function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run: AdminJobDisplay; index: number; onRetry: (run: AdminJobDisplay) => void; retrying: boolean; onDelete: (run: AdminJobDisplay) => void; deleting: boolean }) {
   const router = useRouter();
   const openDetails = () => router.push(`/admin/jobs/${run.id}`);
@@ -236,6 +270,7 @@ function JobRunRow({ run, index, onRetry, retrying, onDelete, deleting }: { run:
           </div>
         )}
       </TableCell>
+      <TableCell className="text-center"><JobExecutionBadge run={run} /></TableCell>
       <TableCell className="text-center"><JobStatusBadge status={run.status} /></TableCell>
       <TableCell className="text-center">
         <div className="flex items-center justify-center gap-1">
@@ -330,6 +365,7 @@ export function AdminMarketDataPage() {
         exchange: run.exchange ?? null,
         tradingDate: run.tradingDate ?? null,
         collectionId: null,
+        queueState: run.queueState ?? null,
         scope: run.exchange
           ? `${run.exchange}${run.tradingDate ? ` · ${formatDate(run.tradingDate)}` : ""}`
           : "System",
@@ -528,6 +564,7 @@ export function AdminMarketDataPage() {
                   <TableHead className="text-center">Started</TableHead>
                   <TableHead className="text-center">Finished</TableHead>
                   <TableHead className="text-center">Progress</TableHead>
+                  <TableHead className="text-center">Execution</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="w-24 text-center">Actions</TableHead>
                 </TableRow>
