@@ -435,6 +435,16 @@ export function useCurrentDayCandle(
 export function useManualChartRefresh() {
   const queryClient = useQueryClient();
 
+  const invalidateSymbolCandles = (symbol: string, exchange?: string) =>
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const [namespace, resource, input] = query.queryKey;
+        if (namespace !== "market-data" || resource !== "candles") return false;
+        const candleInput = input as { symbol?: string; exchange?: string } | undefined;
+        return candleInput?.symbol === symbol && candleInput?.exchange === exchange;
+      },
+    });
+
   return useMutation({
     mutationFn: (input: { symbol: string; exchange?: string }) =>
       ensureFreshCandles({ ...input, waitForCompletion: true, forceRefresh: true }),
@@ -448,17 +458,19 @@ export function useManualChartRefresh() {
         );
       }
 
-      invalidations.push(
-        queryClient.invalidateQueries({
-          predicate: (query) => {
-            const [namespace, resource, input] = query.queryKey;
-            if (namespace !== "market-data" || resource !== "candles") return false;
-            const candleInput = input as { symbol?: string; exchange?: string } | undefined;
-            return candleInput?.symbol === variables.symbol && candleInput?.exchange === variables.exchange;
-          },
-        })
-      );
+      invalidations.push(invalidateSymbolCandles(variables.symbol, variables.exchange));
       await Promise.all(invalidations);
+
+      // A provider request may outlive the API's bounded manual wait. Keep the
+      // visible chart moving without holding the button in a permanent loader;
+      // the worker/API write is idempotent, these are read-only cache refreshes.
+      if (response.status === "in-progress") {
+        for (const delayMs of [5_000, 15_000, 30_000, 60_000]) {
+          window.setTimeout(() => {
+            void invalidateSymbolCandles(variables.symbol, variables.exchange);
+          }, delayMs);
+        }
+      }
     },
   });
 }
