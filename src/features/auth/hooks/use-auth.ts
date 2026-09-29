@@ -31,17 +31,34 @@ export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
   const setGuest = useSessionStore((state) => state.setGuest);
   const setRevalidating = useSessionStore((state) => state.setRevalidating);
   const setBootstrapResolved = useSessionStore((state) => state.setBootstrapResolved);
+  const hasHydrated = useSessionStore((state) => state.hasHydrated);
 
   const startedRef = useRef(false);
 
   useEffect(() => {
 
     if (!enabled) return;
+    // Wait for the persisted snapshot to land before deciding anything below - until then we
+    // don't yet know whether this browser previously resolved to "guest".
+    if (!hasHydrated) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
     let cancelled = false;
-    const hadOptimisticSession = useSessionStore.getState().status === "authenticated";
+    const persisted = useSessionStore.getState();
+    const hadOptimisticSession = persisted.status === "authenticated";
+
+    // A browser that already explicitly resolved to "guest" (a previous bootstrap, or an
+    // explicit logout) has no session to refresh - the endpoint would just 401 immediately. Only
+    // the access token itself is NOT persisted (partialize keeps status/user/verifiedAt only), so
+    // a persisted "authenticated" hint still always calls refresh to actually obtain one, and a
+    // first-ever visit ("unknown", nothing persisted yet) still always calls refresh too, since
+    // only the backend can confirm either of those. This just removes a guaranteed-to-fail round
+    // trip from the common case of a returning guest opening the login page.
+    if (persisted.status === "guest") {
+      setBootstrapResolved(true);
+      return;
+    }
 
     async function bootstrap() {
       setRevalidating(true);
@@ -70,7 +87,7 @@ export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
+  }, [enabled, hasHydrated, queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
 }
 
 export function useCurrentUser() {
@@ -167,14 +184,32 @@ export function useAdminAuthBootstrap() {
   const setGuest = useAdminSessionStore((state) => state.setGuest);
   const setRevalidating = useAdminSessionStore((state) => state.setRevalidating);
   const setBootstrapResolved = useAdminSessionStore((state) => state.setBootstrapResolved);
+  const hasHydrated = useAdminSessionStore((state) => state.hasHydrated);
   const startedRef = useRef(false);
 
   useEffect(() => {
+    // Wait for the persisted snapshot to land before deciding anything below - until then we
+    // don't yet know whether this browser previously resolved to "guest".
+    if (!hasHydrated) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
     let cancelled = false;
-    const hadOptimisticSession = useAdminSessionStore.getState().status === "authenticated";
+    const persisted = useAdminSessionStore.getState();
+    const hadOptimisticSession = persisted.status === "authenticated";
+
+    // A browser that already explicitly resolved to "guest" (a previous bootstrap, or an
+    // explicit logout) has no session to refresh - the endpoint would just 401 immediately. Only
+    // the access token itself is NOT persisted (partialize keeps status/user/verifiedAt only), so
+    // a persisted "authenticated" hint still always calls refresh to actually obtain one, and a
+    // first-ever visit ("unknown", nothing persisted yet) still always calls refresh too, since
+    // only the backend can confirm either of those. This just removes a guaranteed-to-fail round
+    // trip - previously stacked in front of the Turnstile widget's own script fetch - from the
+    // common case of a returning guest opening the login page.
+    if (persisted.status === "guest") {
+      setBootstrapResolved(true);
+      return;
+    }
 
     async function bootstrap() {
       setRevalidating(true);
@@ -201,7 +236,7 @@ export function useAdminAuthBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
+  }, [hasHydrated, queryClient, setBootstrapResolved, setGuest, setRevalidating, setSession]);
 }
 
 export function useAdminCurrentUser() {

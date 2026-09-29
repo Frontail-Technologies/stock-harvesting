@@ -1,1 +1,1 @@
-export { TurnstileChallenge, type TurnstileChallengeHandle } from "./TurnstileChallenge";
+export { TurnstileChallenge, loadTurnstileScript, type TurnstileChallengeHandle } from "./TurnstileChallenge";

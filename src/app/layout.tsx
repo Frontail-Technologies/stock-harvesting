@@ -158,6 +158,11 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Warms up DNS/TLS for the Turnstile widget's CDN as early as possible - the script
+            itself is still only injected when a login/register screen actually needs it, this
+            just removes that connection setup from the critical path once it does. */}
+        <link rel="preconnect" href="https://challenges.cloudflare.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body

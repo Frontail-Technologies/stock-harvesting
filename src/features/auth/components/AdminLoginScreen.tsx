@@ -15,7 +15,7 @@ import { isTurnstileEnabled } from "../constants/turnstile";
 import { useAdminPasswordLogin } from "../hooks/use-auth";
 import { useAdminSessionStore } from "../stores/admin-session-store";
 import { PasswordField } from "./PasswordField";
-import { TurnstileChallenge, type TurnstileChallengeHandle } from "./turnstile";
+import { loadTurnstileScript, TurnstileChallenge, type TurnstileChallengeHandle } from "./turnstile";
 
 const GENERIC_LOGIN_ERROR = "Invalid email or password.";
 
@@ -46,6 +46,15 @@ export function AdminLoginScreen() {
   const error = handlerError ?? queryError;
   const turnstileMissing = Boolean(isTurnstileEnabled() && !turnstileToken);
   const adminHome = adminPath("/admin/analytics");
+
+  // Start the Cloudflare script downloading as soon as this screen mounts, not only once the
+  // form itself renders below (which is gated on auth hydration resolving `status` away from
+  // "unknown"). That gate is a real network round trip to the backend; without this, the
+  // Turnstile widget's own script fetch only starts after that round trip finishes, stacking two
+  // unrelated network waits back to back instead of running them in parallel.
+  useEffect(() => {
+    if (isTurnstileEnabled()) void loadTurnstileScript().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated" || !accessToken) return;

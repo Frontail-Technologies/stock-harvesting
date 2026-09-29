@@ -40,7 +40,11 @@ type TurnstileChallengeProps = {
   onTokenChange?: (token: string | null) => void;
 };
 
-function loadTurnstileScript() {
+// Exported so a screen that mounts TurnstileChallenge only after some other gate (e.g. auth
+// hydration resolving) can kick the script download off immediately on mount instead - the two
+// then run in parallel rather than stacking as two serial waits before the widget can render.
+// Idempotent: safe to call from multiple places, including TurnstileChallenge's own effect below.
+export function loadTurnstileScript() {
   if (window.turnstile) return Promise.resolve();
   if (window.__stockHarvestingTurnstileScript) return window.__stockHarvestingTurnstileScript;
 
