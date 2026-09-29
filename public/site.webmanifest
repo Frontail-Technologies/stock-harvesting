@@ -5,7 +5,7 @@
   "start_url": "/scanner",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#05070d",
+  "background_color": "#ffffff",
   "theme_color": "#f8b800",
   "icons": [
     {
