@@ -47,6 +47,13 @@ export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
     let cancelled = false;
     const persisted = useSessionStore.getState();
     const hadOptimisticSession = persisted.status === "authenticated";
+    // Google login is a full browser redirect: away to Google, then the backend sets the session
+    // cookie and redirects straight back here with `?auth=...` - a fresh page load, so this effect
+    // reruns from scratch with whatever was in localStorage BEFORE that login (often "guest", from
+    // before the user ever signed in). That snapshot is stale evidence in this one case: the cookie
+    // was just set by the very redirect that brought us here, so the skip below must not apply.
+    const justReturnedFromExternalAuth =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).has("auth");
 
     // A browser that already explicitly resolved to "guest" (a previous bootstrap, or an
     // explicit logout) has no session to refresh - the endpoint would just 401 immediately. Only
@@ -55,7 +62,7 @@ export function useAuthBootstrap(options: { enabled?: boolean } = {}) {
     // first-ever visit ("unknown", nothing persisted yet) still always calls refresh too, since
     // only the backend can confirm either of those. This just removes a guaranteed-to-fail round
     // trip from the common case of a returning guest opening the login page.
-    if (persisted.status === "guest") {
+    if (persisted.status === "guest" && !justReturnedFromExternalAuth) {
       setBootstrapResolved(true);
       return;
     }
@@ -197,6 +204,12 @@ export function useAdminAuthBootstrap() {
     let cancelled = false;
     const persisted = useAdminSessionStore.getState();
     const hadOptimisticSession = persisted.status === "authenticated";
+    // Mirrors useAuthBootstrap's guard: no admin login flow does an external-provider redirect
+    // today, but keep this symmetric in case one ever does (a fresh page load returning from one
+    // would otherwise land on a stale pre-login "guest" snapshot and the skip below would wrongly
+    // apply).
+    const justReturnedFromExternalAuth =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).has("auth");
 
     // A browser that already explicitly resolved to "guest" (a previous bootstrap, or an
     // explicit logout) has no session to refresh - the endpoint would just 401 immediately. Only
@@ -206,7 +219,7 @@ export function useAdminAuthBootstrap() {
     // only the backend can confirm either of those. This just removes a guaranteed-to-fail round
     // trip - previously stacked in front of the Turnstile widget's own script fetch - from the
     // common case of a returning guest opening the login page.
-    if (persisted.status === "guest") {
+    if (persisted.status === "guest" && !justReturnedFromExternalAuth) {
       setBootstrapResolved(true);
       return;
     }
