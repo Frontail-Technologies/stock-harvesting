@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,11 +33,9 @@ export function AdminUserSheet({
   user,
   onOpenChange,
   rolePending,
-  planPending,
   deletePending,
   deleteError,
   onRoleChange,
-  onPlanChange,
   onDelete,
 }: AdminUserSheetProps) {
   return (
@@ -73,16 +72,10 @@ export function AdminUserSheet({
 
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">Plan</span>
-                <AdminSelect
-                  label="Plan"
-                  value={user.plan}
-                  onChange={(value) => onPlanChange({ id: user.id, plan: value as UserPlan })}
-                  options={[
-                    { value: "free", label: "Free" },
-                    { value: "pro", label: "Pro" },
-                  ]}
-                  disabled={planPending}
-                />
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                  <span className="text-sm font-medium capitalize">{user.plan}</span>
+                  <Button size="sm" variant="ghost" render={<Link href="/admin/subscriptions" />}>Manage access</Button>
+                </div>
               </div>
             </div>
 

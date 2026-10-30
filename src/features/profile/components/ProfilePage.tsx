@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { CreditCard, LogOut, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -55,6 +55,11 @@ export function ProfilePage() {
         </div>
         <Switch checked={isDark} onCheckedChange={toggleTheme} aria-label="Toggle dark mode" />
       </section>
+
+      <Button type="button" variant="outline" className="w-full justify-start sm:w-fit" onClick={() => router.push("/billing")}>
+        <CreditCard />
+        Manage billing
+      </Button>
 
       <Button type="button" variant="destructive" className="w-full sm:w-fit" disabled={logout.isPending} onClick={handleLogout}>
         <LogOut />

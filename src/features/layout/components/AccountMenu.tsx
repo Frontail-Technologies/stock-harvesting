@@ -179,6 +179,13 @@ export function AccountMenu({ className, portalClassName, extraLinks }: AccountM
             >
               Widget
             </DropdownMenuItem>
+            <DropdownMenuItem
+              render={
+                <Link href="/billing" className="h-9 cursor-pointer px-3" />
+              }
+            >
+              Billing
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {themeRow}
             <DropdownMenuSeparator />
