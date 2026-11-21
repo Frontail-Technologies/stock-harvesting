@@ -8,8 +8,24 @@ below for its exact rewrite/redirect logic.
 
 | Path | File | Notes |
 |---|---|---|
-| `/` | `src/app/page.tsx` | Landing page |
-| `/login` | `src/app/(app)/login/page.tsx` | `LoginScreen`, USER portal login |
+| `/` | `src/app/page.tsx` | Landing page. The only indexable, sitemap-listed page |
+| `/stocks/[exchange]/[symbol]` | `src/app/(public)/stocks/[exchange]/[symbol]/page.tsx` | Server-rendered public stock page (`StockDetailPage`). **`noindex, follow`** while its fundamentals/financials/peers/FAQ sections render mock data (`getMockStockDetail`) |
+| `/login` | `src/app/(app)/login/page.tsx` | `LoginScreen`, USER portal login (noindex via the `(app)` layout) |
+
+## Search indexing
+
+- `src/app/(app)/layout.tsx` sets `robots: noindex, nofollow` for the whole
+  `(app)` group: login, password reset, charts, dashboard, watchlists,
+  widget, billing and admin. Pages in that group don't need to repeat it.
+- The root layout sets **no** `alternates.canonical`. A parent canonical
+  is inherited by every page that doesn't override it, so each indexable
+  page sets its own.
+- `src/app/sitemap.ts` lists only indexable pages (currently just `/`).
+  `src/app/robots.ts` disallows `/admin`, `/dashboard` and `/api/`. Other
+  private pages rely on `noindex` instead, because a robots.txt disallow
+  would stop crawlers from ever seeing the tag.
+- In production, Cloudflare's managed robots.txt block is prepended to
+  this file's output (it blocks AI-training crawlers).
 
 ## USER PORTAL (main host, `AuthGuard`-gated)
 

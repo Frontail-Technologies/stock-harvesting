@@ -1,27 +1,15 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "@/utils/seo";
 
+// Only indexable pages belong here. The (app) route group (charts, dashboard, login,
+// billing, ...) is noindex, and public stock pages are noindex while they still render
+// mock data - see src/app/(public)/stocks/[exchange]/[symbol]/page.tsx.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-
   return [
     {
       url: absoluteUrl("/"),
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
-    },
-    {
-      url: absoluteUrl("/charts"),
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: absoluteUrl("/login"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.4,
     },
   ];
 }

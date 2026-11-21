@@ -5,11 +5,13 @@ import { SITE_NAME, absoluteUrl, getSiteUrl } from "@/utils/seo";
 const LANDING_TITLE = "Stock Charting & Review Workspace";
 const LANDING_DESCRIPTION =
   "Stock Harvesting helps investors surface relevant market behaviour, review stocks in a focused chart workspace, save insights, and explore markets across global exchanges.";
-const SOCIAL_TITLE = `${LANDING_TITLE} | ${SITE_NAME}`;
+// Brand first: the root layout's `title.template` only applies to child segments, so
+// without `absolute` the home page's <title> had no brand name in it at all.
+const SOCIAL_TITLE = `${SITE_NAME} | ${LANDING_TITLE}`;
 const SOCIAL_IMAGE = absoluteUrl("/images/logo-dark-cropped.png");
 
 export const metadata: Metadata = {
-  title: LANDING_TITLE,
+  title: { absolute: SOCIAL_TITLE },
   description: LANDING_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
@@ -31,6 +33,13 @@ export const metadata: Metadata = {
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
+    {
+      // Tells Google the site's name for the search-result site-name line.
+      "@type": "WebSite",
+      name: SITE_NAME,
+      alternateName: ["StockHarvesting", "stockharvesting.com"],
+      url: getSiteUrl().toString(),
+    },
     {
       "@type": "Organization",
       name: SITE_NAME,

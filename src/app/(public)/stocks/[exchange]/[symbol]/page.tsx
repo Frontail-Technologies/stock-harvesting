@@ -20,7 +20,7 @@ export async function generateMetadata({
   const normalized = normalizeStockRouteParams(exchange, symbol);
 
   if (!normalized) {
-    return { title: "Stock Not Found" };
+    return { title: "Stock Not Found", robots: { index: false, follow: false } };
   }
 
   return {
@@ -29,6 +29,10 @@ export async function generateMetadata({
     alternates: {
       canonical: `/stocks/${normalized.exchange}/${normalized.symbol}`,
     },
+    // Kept out of search until the page's fundamentals/financials/peers/FAQ sections stop
+    // rendering mock preview data (getMockStockDetail) - indexing placeholder financials
+    // is a trust/quality risk. Flip back to indexable once that data is real or removed.
+    robots: { index: false, follow: true },
   };
 }
 

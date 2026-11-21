@@ -6,7 +6,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/login", "/charts"],
+        // Private pages that aren't disallowed here (e.g. /login, /charts) are kept out
+        // of search with a `noindex` meta tag instead - a disallow would stop crawlers
+        // from ever seeing that tag.
+        allow: ["/"],
         disallow: ["/admin", "/admin/", "/dashboard", "/dashboard/", "/api/"],
       },
     ],

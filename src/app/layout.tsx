@@ -44,9 +44,8 @@ export const metadata: Metadata = {
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
-  alternates: {
-    canonical: "/",
-  },
+  // No site-wide canonical here: a parent `alternates.canonical` is inherited by every
+  // page that doesn't set its own, which pointed those pages (and the 404 page) at "/".
   manifest: "/site.webmanifest",
   icons: {
     icon: [
